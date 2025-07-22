@@ -1,0 +1,33 @@
+CREDENCIAIS CRIPTOGRAFADAS
+==============================
+
+Chave: O-zOaRv7FLzjh6nzVqRhTj_eQkRmPkZyPb3t-1agal0=
+Server: b'gAAAAABofrqfGwYc1k2csm1pk_kkgRykq6TsLBedxRnOEtA5IN1iM8Bh70FUgTJ_Nr3Yl1IJtCGFGy4oHqCnBoey2wdZjIuYGg=='
+Username: b'gAAAAABofrqfuJPV5bjgAlJxp3iquOzrtrlKVawGhMF4BeQ1dUZdB4fAJG9WdGo2ryiWtyrTCCfHvWGF_MOIoOyjtmAnMvVnZg=='
+Password: b'gAAAAABofrqfFjSm3-W02onTqMjNtPlVISR_Rs7wcE0teYHyI2Hm_oUMqkBm-eF4IdGdWbUS7FHWPeyXunn15bOyiC76TSFqTA=='
+Database: b'gAAAAABofrqfAEfMtkGM6LtnEPLRQ8UIA5pBy_FgbiJOK7fQaLzeG3-_pQJuDSGJxxqyv-EpXBdZfd_Ku4J1-v7WLFDPo9J9uA=='
+
+CÓDIGO PARA DATABASE.PY:
+-------------------------
+
+class DatabaseManager:
+    def __init__(self):
+        # Chave de criptografia (mantenha segura!)
+        key = b'O-zOaRv7FLzjh6nzVqRhTj_eQkRmPkZyPb3t-1agal0='
+        self.cipher = Fernet(key)
+        
+        # Credenciais criptografadas
+        self.encrypted_server = b'gAAAAABofrqfGwYc1k2csm1pk_kkgRykq6TsLBedxRnOEtA5IN1iM8Bh70FUgTJ_Nr3Yl1IJtCGFGy4oHqCnBoey2wdZjIuYGg=='
+        self.encrypted_username = b'gAAAAABofrqfuJPV5bjgAlJxp3iquOzrtrlKVawGhMF4BeQ1dUZdB4fAJG9WdGo2ryiWtyrTCCfHvWGF_MOIoOyjtmAnMvVnZg=='
+        self.encrypted_password = b'gAAAAABofrqfFjSm3-W02onTqMjNtPlVISR_Rs7wcE0teYHyI2Hm_oUMqkBm-eF4IdGdWbUS7FHWPeyXunn15bOyiC76TSFqTA=='
+        self.encrypted_database = b'gAAAAABofrqfAEfMtkGM6LtnEPLRQ8UIA5pBy_FgbiJOK7fQaLzeG3-_pQJuDSGJxxqyv-EpXBdZfd_Ku4J1-v7WLFDPo9J9uA=='
+    
+    def decrypt_credentials(self):
+        try:
+            server = self.cipher.decrypt(self.encrypted_server).decode()
+            username = self.cipher.decrypt(self.encrypted_username).decode()
+            password = self.cipher.decrypt(self.encrypted_password).decode()
+            database = self.cipher.decrypt(self.encrypted_database).decode()
+            return server, username, password, database
+        except Exception as e:
+            raise Exception(f"Erro ao descriptografar credenciais: {str(e)}")

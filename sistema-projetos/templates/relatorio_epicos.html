@@ -1,0 +1,481 @@
+{% extends "base.html" %}
+
+{% block title %}Relatório de Épicos - Sistema de Projetos{% endblock %}
+{% block epicos_active %}active{% endblock %}
+{% block page_title %}Relatório de Épicos{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-list-alt me-2"></i>
+                    Dados dos Épicos
+                </h5>
+                <div>
+                    <button id="btnExportCSV" class="btn btn-success btn-export">
+                        <i class="fas fa-file-csv me-2"></i>
+                        Exportar CSV Filtrado
+                    </button>
+                    <button id="btnRefresh" class="btn btn-primary">
+                        <i class="fas fa-sync-alt me-2"></i>
+                        Atualizar
+                    </button>
+                </div>
+            </div>
+            <div class="card-body">
+                <!-- Filtros Melhorados -->
+                <div class="filter-section bg-light p-3 rounded mb-4">
+                    <h6 class="mb-3">
+                        <i class="fas fa-filter me-2"></i>
+                        Filtros
+                    </h6>
+                    
+                    <!-- Linha 1: Filtros básicos -->
+                    <div class="row mb-3">
+                        <div class="col-md-2">
+                            <label for="filterEquipeEpicos" class="form-label">Equipe</label>
+                            <select id="filterEquipeEpicos" class="form-select">
+                                <option value="">Todas as Equipes</option>
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <label for="filterStatusEpicos" class="form-label">Status</label>
+                            <select id="filterStatusEpicos" class="form-select">
+                                <option value="">Todos os Status</option>
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <label for="filterProdutoEpicos" class="form-label">Produto</label>
+                            <select id="filterProdutoEpicos" class="form-select">
+                                <option value="">Todos os Produtos</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label for="filterDataInicio" class="form-label">Data Início</label>
+                            <input type="date" id="filterDataInicio" class="form-control" value="">
+                        </div>
+                        <div class="col-md-3">
+                            <label for="filterDataFim" class="form-label">Data Fim</label>
+                            <input type="date" id="filterDataFim" class="form-control" value="">
+                        </div>
+                    </div>
+                    
+                    <!-- Linha 2: Busca e botões de período -->
+                    <div class="row">
+                        <div class="col-md-4">
+                            <label for="searchEpicos" class="form-label">Buscar</label>
+                            <input type="text" id="searchEpicos" class="form-control" placeholder="Buscar por número ou resumo...">
+                        </div>
+                        <div class="col-md-8 d-flex align-items-end">
+                            <button type="button" id="btnAnoAtual" class="btn btn-info me-2">
+                                <i class="fas fa-calendar me-1"></i>
+                                Ano Atual
+                            </button>
+                            <button type="button" id="btnUltimos6Meses" class="btn btn-warning me-2">
+                                <i class="fas fa-calendar-alt me-1"></i>
+                                Últimos 6 Meses
+                            </button>
+                            <button type="button" id="btnLimparFiltros" class="btn btn-secondary me-2">
+                                <i class="fas fa-times me-1"></i>
+                                Limpar Filtros
+                            </button>
+                            <span id="totalRegistrosEpicos" class="badge bg-primary ms-3 fs-6">0 registros</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Loading -->
+                <div id="loadingEpicos" class="loading">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Carregando...</span>
+                    </div>
+                    <p class="mt-2">Carregando dados dos épicos...</p>
+                </div>
+
+                <!-- Erro -->
+                <div id="errorEpicos" style="display: none;" class="alert alert-danger">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    <span id="errorMessageEpicos"></span>
+                </div>
+
+                <!-- Tabela -->
+                <div id="tableContainerEpicos" style="display: none;">
+                    <div class="table-responsive">
+                        <table class="table table-striped table-hover" id="tableEpicos">
+                            <thead class="table-dark">
+                                <tr>
+                                    <th>Projeto</th>
+                                    <th>Resumo</th>
+                                    <th>Equipe</th>
+                                    <th>Produto</th>
+                                    <th>Status</th>
+                                    <th>Responsável</th>
+                                    <th>Tipo Registro</th>
+                                    <th>Início Planejado</th>
+                                    <th>Data Fim</th>
+                                    <th>% Progresso</th>
+                                    <th>Indicador</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tbodyEpicos">
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Paginação -->
+                    <nav aria-label="Paginação">
+                        <ul class="pagination justify-content-center" id="paginationEpicos">
+                        </ul>
+                    </nav>
+
+                    <!-- Info da tabela -->
+                    <div class="row">
+                        <div class="col-md-6">
+                            <small class="text-muted">
+                                Mostrando <span id="showingFromEpicos">0</span> a <span id="showingToEpicos">0</span> 
+                                de <span id="totalRecordsEpicos">0</span> registros
+                            </small>
+                        </div>
+                        <div class="col-md-6 text-end">
+                            <label for="pageSize" class="form-label me-2">Registros por página:</label>
+                            <select id="pageSize" class="form-select d-inline-block w-auto">
+                                <option value="25">25</option>
+                                <option value="50">50</option>
+                                <option value="100">100</option>
+                                <option value="200">200</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let epicosData = [];
+let filteredData = [];
+let currentPage = 1;
+let pageSize = 25;
+
+// Inicializar datas padrão (ano atual)
+function initializeDefaultDates() {
+    const currentYear = new Date().getFullYear();
+    document.getElementById('filterDataInicio').value = `${currentYear}-01-01`;
+    document.getElementById('filterDataFim').value = `${currentYear}-12-31`;
+}
+
+// Carregar dados dos épicos
+function loadEpicosData() {
+    fetch('/api/epicos-data')
+        .then(response => response.json())
+        .then(data => {
+            document.getElementById('loadingEpicos').style.display = 'none';
+            
+            if (data.error) {
+                showErrorEpicos(data.error);
+            } else {
+                epicosData = data;
+                applyFiltersEpicos(); // Aplicar filtros após carregar
+                populateFiltersEpicos();
+                document.getElementById('tableContainerEpicos').style.display = 'block';
+            }
+        })
+        .catch(error => {
+            document.getElementById('loadingEpicos').style.display = 'none';
+            showErrorEpicos('Erro ao carregar dados: ' + error.message);
+        });
+}
+
+function populateFiltersEpicos() {
+    // Popular filtro de equipes
+    const equipeSelect = document.getElementById('filterEquipeEpicos');
+    const equipes = [...new Set(epicosData.map(item => item.EpicEquipe).filter(e => e))];
+    equipes.sort().forEach(equipe => {
+        const option = document.createElement('option');
+        option.value = equipe;
+        option.textContent = equipe;
+        equipeSelect.appendChild(option);
+    });
+
+    // Popular filtro de status
+    const statusSelect = document.getElementById('filterStatusEpicos');
+    const statuses = [...new Set(epicosData.map(item => item.EpicStatus).filter(s => s))];
+    statuses.sort().forEach(status => {
+        const option = document.createElement('option');
+        option.value = status;
+        option.textContent = status;
+        statusSelect.appendChild(option);
+    });
+
+    // Popular filtro de produtos
+    const produtoSelect = document.getElementById('filterProdutoEpicos');
+    const produtos = [...new Set(epicosData.map(item => item.EpicProduto).filter(p => p))];
+    produtos.sort().forEach(produto => {
+        const option = document.createElement('option');
+        option.value = produto;
+        option.textContent = produto;
+        produtoSelect.appendChild(option);
+    });
+}
+
+function applyFiltersEpicos() {
+    const equipeFilter = document.getElementById('filterEquipeEpicos').value;
+    const statusFilter = document.getElementById('filterStatusEpicos').value;
+    const produtoFilter = document.getElementById('filterProdutoEpicos').value;
+    const searchFilter = document.getElementById('searchEpicos').value.toLowerCase();
+    const dataInicio = document.getElementById('filterDataInicio').value;
+    const dataFim = document.getElementById('filterDataFim').value;
+
+    filteredData = epicosData.filter(item => {
+        // Filtros básicos
+        let matches = (!equipeFilter || item.EpicEquipe === equipeFilter) &&
+                     (!statusFilter || item.EpicStatus === statusFilter) &&
+                     (!produtoFilter || item.EpicProduto === produtoFilter) &&
+                     (!searchFilter || 
+                      (item.EpicNumber && item.EpicNumber.toLowerCase().includes(searchFilter)) ||
+                      (item.EpicSummary && item.EpicSummary.toLowerCase().includes(searchFilter)));
+
+        // Filtro de data (verificar se o épico está no período)
+        if (matches && (dataInicio || dataFim)) {
+            const epicInicio = item.EpicInicioPlanejado ? parseDate(item.EpicInicioPlanejado) : null;
+            const epicFim = item.EpicDueDate ? parseDate(item.EpicDueDate) : null;
+            
+            if (dataInicio && dataFim) {
+                const filterStart = new Date(dataInicio);
+                const filterEnd = new Date(dataFim);
+                
+                // Épico deve ter alguma sobreposição com o período filtrado
+                if (epicInicio && epicFim) {
+                    matches = matches && (
+                        (epicFim >= filterStart && epicFim <= filterEnd) ||
+                        (epicInicio >= filterStart && epicInicio <= filterEnd) ||
+                        (epicInicio < filterStart && epicFim > filterEnd)
+                    );
+                }
+            }
+        }
+
+        return matches;
+    });
+
+    currentPage = 1;
+    renderTableEpicos();
+    updateTotalRegistros();
+}
+
+function parseDate(dateString) {
+    // Converter formato brasileiro DD/MM/YYYY HH:MM para Date
+    if (!dateString) return null;
+    
+    // Se já está no formato ISO
+    if (dateString.includes('-')) {
+        return new Date(dateString);
+    }
+    
+    // Se está no formato brasileiro
+    const parts = dateString.split(' ')[0].split('/');
+    if (parts.length === 3) {
+        return new Date(parts[2], parts[1] - 1, parts[0]);
+    }
+    
+    return new Date(dateString);
+}
+
+function renderTableEpicos() {
+    const tbody = document.getElementById('tbodyEpicos');
+    const startIndex = (currentPage - 1) * pageSize;
+    const endIndex = Math.min(startIndex + pageSize, filteredData.length);
+    const pageData = filteredData.slice(startIndex, endIndex);
+
+    tbody.innerHTML = '';
+
+    pageData.forEach(item => {
+        const row = document.createElement('tr');
+        
+        // Função para formatar percentual
+        const formatPercentual = (value) => {
+            if (!value) return '0%';
+            return parseFloat(value).toFixed(1) + '%';
+        };
+
+        // Função para formatar data
+        const formatDate = (dateStr) => {
+            if (!dateStr) return '-';
+            return dateStr;
+        };
+
+        // Classe para o indicador
+        const getIndicadorClass = (indicador) => {
+            switch(indicador) {
+                case 'Em Dia': return 'badge bg-success';
+                case 'Atrasado': return 'badge bg-danger';
+                case 'Atenção': return 'badge bg-warning text-dark';
+                default: return 'badge bg-secondary';
+            }
+        };
+
+        row.innerHTML = `
+            <td>${item.EpicProjectKey || '-'}</td>
+            <td title="${item.EpicSummary || ''}">
+                ${item.EpicSummary ? (item.EpicSummary.length > 50 ? item.EpicSummary.substring(0, 50) + '...' : item.EpicSummary) : '-'}
+            </td>
+            <td>${item.EpicEquipe || '-'}</td>
+            <td>${item.EpicProduto || '-'}</td>
+            <td><span class="badge bg-info">${item.EpicStatus || '-'}</span></td>
+            <td>${item.EpicAssignee || '-'}</td>            
+            <td>${item.TipoRegistroCalculo || '-'}</td>
+            <td>${formatDate(item.EpicInicioPlanejado)}</td>
+            <td>${formatDate(item.EpicDueDate)}</td>
+            <td>${formatPercentual(item.TasksPercentualMedia)}</td>
+            <td><span class="${getIndicadorClass(item.IndicadorAndamentoEpico)}">${item.IndicadorAndamentoEpico || '-'}</span></td>
+        `;
+        
+        tbody.appendChild(row);
+    });
+
+    renderPaginationEpicos();
+    updateTableInfoEpicos();
+}
+
+function renderPaginationEpicos() {
+    const pagination = document.getElementById('paginationEpicos');
+    const totalPages = Math.ceil(filteredData.length / pageSize);
+    
+    pagination.innerHTML = '';
+
+    if (totalPages <= 1) return;
+
+    // Botão Anterior
+    const prevLi = document.createElement('li');
+    prevLi.className = `page-item ${currentPage === 1 ? 'disabled' : ''}`;
+    prevLi.innerHTML = `<a class="page-link" href="#" onclick="changePage(${currentPage - 1})">Anterior</a>`;
+    pagination.appendChild(prevLi);
+
+    // Números das páginas
+    const startPage = Math.max(1, currentPage - 2);
+    const endPage = Math.min(totalPages, currentPage + 2);
+
+    for (let i = startPage; i <= endPage; i++) {
+        const li = document.createElement('li');
+        li.className = `page-item ${i === currentPage ? 'active' : ''}`;
+        li.innerHTML = `<a class="page-link" href="#" onclick="changePage(${i})">${i}</a>`;
+        pagination.appendChild(li);
+    }
+
+    // Botão Próximo
+    const nextLi = document.createElement('li');
+    nextLi.className = `page-item ${currentPage === totalPages ? 'disabled' : ''}`;
+    nextLi.innerHTML = `<a class="page-link" href="#" onclick="changePage(${currentPage + 1})">Próximo</a>`;
+    pagination.appendChild(nextLi);
+}
+
+function changePage(page) {
+    const totalPages = Math.ceil(filteredData.length / pageSize);
+    if (page >= 1 && page <= totalPages) {
+        currentPage = page;
+        renderTableEpicos();
+    }
+}
+
+function updateTableInfoEpicos() {
+    const startIndex = (currentPage - 1) * pageSize + 1;
+    const endIndex = Math.min(currentPage * pageSize, filteredData.length);
+    
+    document.getElementById('showingFromEpicos').textContent = filteredData.length > 0 ? startIndex : 0;
+    document.getElementById('showingToEpicos').textContent = endIndex;
+    document.getElementById('totalRecordsEpicos').textContent = filteredData.length;
+}
+
+function updateTotalRegistros() {
+    document.getElementById('totalRegistrosEpicos').textContent = `${filteredData.length} registros`;
+}
+
+function showErrorEpicos(message) {
+    document.getElementById('errorMessageEpicos').textContent = message;
+    document.getElementById('errorEpicos').style.display = 'block';
+}
+
+function setCurrentYear() {
+    const currentYear = new Date().getFullYear();
+    document.getElementById('filterDataInicio').value = `${currentYear}-01-01`;
+    document.getElementById('filterDataFim').value = `${currentYear}-12-31`;
+    applyFiltersEpicos();
+}
+
+function setLast6Months() {
+    const hoje = new Date();
+    const seisMesesAtras = new Date();
+    seisMesesAtras.setMonth(hoje.getMonth() - 6);
+    
+    const dataInicio = seisMesesAtras.toISOString().split('T')[0];
+    const dataFim = hoje.toISOString().split('T')[0];
+    
+    document.getElementById('filterDataInicio').value = dataInicio;
+    document.getElementById('filterDataFim').value = dataFim;
+    applyFiltersEpicos();
+}
+
+function clearFilters() {
+    document.getElementById('filterEquipeEpicos').value = '';
+    document.getElementById('filterStatusEpicos').value = '';
+    document.getElementById('filterProdutoEpicos').value = '';
+    document.getElementById('searchEpicos').value = '';
+    document.getElementById('filterDataInicio').value = '';
+    document.getElementById('filterDataFim').value = '';
+    applyFiltersEpicos();
+}
+
+function exportFilteredCSV() {
+    // Obter parâmetros dos filtros atuais
+    const params = new URLSearchParams({
+        equipe: document.getElementById('filterEquipeEpicos').value,
+        status: document.getElementById('filterStatusEpicos').value,
+        produto: document.getElementById('filterProdutoEpicos').value,
+        search: document.getElementById('searchEpicos').value,
+        data_inicio: document.getElementById('filterDataInicio').value,
+        data_fim: document.getElementById('filterDataFim').value
+    });
+    
+    // Abrir URL de export com filtros
+    window.open(`/export/epicos?${params.toString()}`, '_blank');
+}
+
+// Event Listeners
+document.getElementById('filterEquipeEpicos').addEventListener('change', applyFiltersEpicos);
+document.getElementById('filterStatusEpicos').addEventListener('change', applyFiltersEpicos);
+document.getElementById('filterProdutoEpicos').addEventListener('change', applyFiltersEpicos);
+document.getElementById('searchEpicos').addEventListener('input', applyFiltersEpicos);
+document.getElementById('filterDataInicio').addEventListener('change', applyFiltersEpicos);
+document.getElementById('filterDataFim').addEventListener('change', applyFiltersEpicos);
+
+document.getElementById('btnAnoAtual').addEventListener('click', setCurrentYear);
+document.getElementById('btnUltimos6Meses').addEventListener('click', setLast6Months);
+document.getElementById('btnLimparFiltros').addEventListener('click', clearFilters);
+
+document.getElementById('pageSize').addEventListener('change', function() {
+    pageSize = parseInt(this.value);
+    currentPage = 1;
+    renderTableEpicos();
+});
+
+document.getElementById('btnRefresh').addEventListener('click', function() {
+    document.getElementById('tableContainerEpicos').style.display = 'none';
+    document.getElementById('errorEpicos').style.display = 'none';
+    document.getElementById('loadingEpicos').style.display = 'block';
+    loadEpicosData();
+});
+
+document.getElementById('btnExportCSV').addEventListener('click', exportFilteredCSV);
+
+// Carregar dados quando a página carregar
+document.addEventListener('DOMContentLoaded', function() {
+    initializeDefaultDates();
+    loadEpicosData();
+});
+</script>
+{% endblock %}
