@@ -1,0 +1,632 @@
+<!-- Modal para Detalhes dos Alertas -->
+<div class="modal fade" id="modalDetalhesAlerta" tabindex="-1" aria-labelledby="modalDetalhesAlertaLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header bg-light">
+                <h5 class="modal-title d-flex align-items-center" id="modalDetalhesAlertaLabel">
+                    <i class="fas fa-exclamation-triangle me-2 text-warning"></i>
+                    <span id="tituloAlerta">Detalhes do Alerta</span>
+                </h5>
+                <div class="d-flex align-items-center">
+                    <span class="badge bg-secondary me-3" id="contadorRegistros">0 registros</span>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+            </div>
+            
+            <div class="modal-body p-0">
+                <!-- Loading State -->
+                <div id="loadingDetalhes" class="text-center p-5">
+                    <div class="spinner-border text-primary mb-3" role="status" style="width: 3rem; height: 3rem;">
+                        <span class="visually-hidden">Carregando...</span>
+                    </div>
+                    <h5 class="text-muted">Carregando detalhes...</h5>
+                    <p class="text-muted small">Aguarde enquanto buscamos os dados</p>
+                </div>
+
+                <!-- Conteúdo Principal -->
+                <div id="conteudoDetalhes" style="display: none;">
+                    <!-- Filtros Rápidos -->
+                    <div class="bg-light p-3 border-bottom">
+                        <div class="row align-items-center">
+                            <div class="col-md-3">
+                                <label class="form-label small fw-bold mb-1">Filtrar por Equipe:</label>
+                                <select id="filtroEquipeModal" class="form-select form-select-sm">
+                                    <option value="">Todas as Equipes</option>
+                                </select>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label small fw-bold mb-1">Filtrar por Status:</label>
+                                <select id="filtroStatusModal" class="form-select form-select-sm">
+                                    <option value="">Todos os Status</option>
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label small fw-bold mb-1">Buscar:</label>
+                                <input type="text" id="buscaModal" class="form-control form-control-sm" placeholder="Digite para buscar...">
+                            </div>
+                            <div class="col-md-2 d-flex align-items-end">
+                                <button id="btnLimparFiltros" class="btn btn-outline-secondary btn-sm w-100">
+                                    <i class="fas fa-times me-1"></i>Limpar
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Estatísticas Rápidas -->
+                    <div class="bg-white p-3 border-bottom">
+                        <div class="row text-center">
+                            <div class="col-md-3">
+                                <div class="border-end">
+                                    <h6 class="text-muted small mb-1">TOTAL</h6>
+                                    <h4 class="mb-0 text-primary" id="statTotal">0</h4>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="border-end">
+                                    <h6 class="text-muted small mb-1">CRÍTICOS</h6>
+                                    <h4 class="mb-0 text-danger" id="statCriticos">0</h4>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="border-end">
+                                    <h6 class="text-muted small mb-1">PROGRESSO MÉDIO</h6>
+                                    <h4 class="mb-0 text-info" id="statProgressoMedio">0%</h4>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <h6 class="text-muted small mb-1">EQUIPES AFETADAS</h6>
+                                <h4 class="mb-0 text-warning" id="statEquipes">0</h4>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Tabela de Dados -->
+                    <div class="table-responsive" style="max-height: 400px;">
+                        <table class="table table-striped table-hover mb-0" id="tabelaDetalhes">
+                            <thead class="table-dark sticky-top">
+                                <tr id="cabecalhoTabela">
+                                    <!-- Cabeçalho será preenchido dinamicamente -->
+                                </tr>
+                            </thead>
+                            <tbody id="corpoTabela">
+                                <!-- Dados serão preenchidos dinamicamente -->
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Paginação -->
+                    <div class="d-flex justify-content-between align-items-center p-3 bg-light border-top">
+                        <div class="d-flex align-items-center">
+                            <span class="text-muted small me-3">Registros por página:</span>
+                            <select id="registrosPorPagina" class="form-select form-select-sm" style="width: auto;">
+                                <option value="10">10</option>
+                                <option value="25" selected>25</option>
+                                <option value="50">50</option>
+                                <option value="100">Todos</option>
+                            </select>
+                        </div>
+                        
+                        <div class="d-flex align-items-center">
+                            <span class="text-muted small me-3" id="infoPaginacao">Mostrando 0-0 de 0</span>
+                            <nav>
+                                <ul class="pagination pagination-sm mb-0" id="paginacao">
+                                    <!-- Paginação será gerada dinamicamente -->
+                                </ul>
+                            </nav>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Estado de Erro -->
+                <div id="erroDetalhes" class="alert alert-danger m-4" style="display: none;">
+                    <div class="d-flex align-items-center">
+                        <i class="fas fa-exclamation-circle fa-2x me-3"></i>
+                        <div>
+                            <h5 class="alert-heading mb-2">Erro ao carregar dados</h5>
+                            <p class="mb-0">Não foi possível carregar os detalhes do alerta. Verifique sua conexão e tente novamente.</p>
+                        </div>
+                    </div>
+                    <hr>
+                    <div class="d-flex justify-content-end">
+                        <button class="btn btn-outline-danger" onclick="recarregarDetalhes()">
+                            <i class="fas fa-redo me-1"></i>Tentar Novamente
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Estado Vazio -->
+                <div id="vazioDetalhes" class="text-center p-5" style="display: none;">
+                    <div class="mb-4">
+                        <i class="fas fa-check-circle fa-4x text-success mb-3"></i>
+                        <h4 class="text-success">Excelente!</h4>
+                        <p class="text-muted mb-0">Nenhum problema encontrado para este tipo de alerta.</p>
+                        <small class="text-muted">Seus projetos estão em dia!</small>
+                    </div>
+                    <div class="row justify-content-center">
+                        <div class="col-md-6">
+                            <div class="alert alert-success" role="alert">
+                                <i class="fas fa-lightbulb me-2"></i>
+                                <strong>Dica:</strong> Continue monitorando regularmente para manter essa excelente performance!
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="modal-footer bg-light">
+                <div class="d-flex justify-content-between align-items-center w-100">
+                    <div class="text-muted small">
+                        <i class="fas fa-clock me-1"></i>
+                        Atualizado em: <span id="timestampModal">--</span>
+                    </div>
+                    <div>
+                        <button type="button" class="btn btn-secondary me-2" data-bs-dismiss="modal">
+                            <i class="fas fa-times me-1"></i>Fechar
+                        </button>
+                        <button type="button" class="btn btn-success" id="btnExportarDetalhes">
+                            <i class="fas fa-download me-1"></i>Exportar CSV
+                        </button>
+                        <button type="button" class="btn btn-primary" id="btnAtualizarDetalhes">
+                            <i class="fas fa-sync-alt me-1"></i>Atualizar
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Estilos específicos do modal -->
+<style>
+#modalDetalhesAlerta .modal-content {
+    border-radius: 0.75rem;
+    overflow: hidden;
+}
+
+#modalDetalhesAlerta .table thead th {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+}
+
+#modalDetalhesAlerta .badge {
+    font-size: 0.75rem;
+}
+
+#modalDetalhesAlerta .progress-mini {
+    height: 0.5rem;
+    border-radius: 0.25rem;
+    overflow: hidden;
+}
+
+#modalDetalhesAlerta .text-truncate {
+    max-width: 200px;
+}
+
+/* Animação de loading */
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+.spinner-border {
+    animation: spin 1s linear infinite;
+}
+
+/* Hover effects */
+#modalDetalhesAlerta .table tbody tr {
+    transition: all 0.2s ease;
+}
+
+#modalDetalhesAlerta .table tbody tr:hover {
+    background-color: rgba(0, 123, 255, 0.1) !important;
+    transform: scale(1.01);
+}
+
+/* Status badges */
+.badge-done {
+    background-color: #28a745 !important;
+}
+
+.badge-progress {
+    background-color: #17a2b8 !important;
+}
+
+.badge-todo {
+    background-color: #6c757d !important;
+}
+
+.badge-delayed {
+    background-color: #dc3545 !important;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    #modalDetalhesAlerta .modal-dialog {
+        margin: 0.5rem;
+        max-width: calc(100% - 1rem);
+    }
+    
+    #modalDetalhesAlerta .table-responsive {
+        font-size: 0.875rem;
+    }
+    
+    #modalDetalhesAlerta .d-flex.justify-content-between {
+        flex-direction: column;
+        gap: 1rem;
+    }
+}
+</style>
+
+<!-- JavaScript específico do modal -->
+<script>
+// Variáveis globais do modal
+let dadosOriginais = [];
+let dadosFiltrados = [];
+let paginaAtual = 1;
+let registrosPorPag = 25;
+let tipoAlertaAtual = '';
+
+// Função para inicializar os event listeners do modal
+function inicializarModalEventos() {
+    // Filtros
+    document.getElementById('filtroEquipeModal').addEventListener('change', aplicarFiltrosModal);
+    document.getElementById('filtroStatusModal').addEventListener('change', aplicarFiltrosModal);
+    document.getElementById('buscaModal').addEventListener('input', aplicarFiltrosModal);
+    
+    // Limpeza de filtros
+    document.getElementById('btnLimparFiltros').addEventListener('click', limparFiltrosModal);
+    
+    // Paginação
+    document.getElementById('registrosPorPagina').addEventListener('change', function() {
+        registrosPorPag = parseInt(this.value);
+        paginaAtual = 1;
+        atualizarTabelaModal();
+    });
+    
+    // Botões de ação
+    document.getElementById('btnAtualizarDetalhes').addEventListener('click', function() {
+        mostrarDetalhesAlerta(tipoAlertaAtual, document.getElementById('tituloAlerta').textContent);
+    });
+}
+
+// Aplicar filtros no modal
+function aplicarFiltrosModal() {
+    const filtroEquipe = document.getElementById('filtroEquipeModal').value.toLowerCase();
+    const filtroStatus = document.getElementById('filtroStatusModal').value.toLowerCase();
+    const busca = document.getElementById('buscaModal').value.toLowerCase();
+    
+    dadosFiltrados = dadosOriginais.filter(registro => {
+        const equipe = (registro.EpicEquipe || registro.TaskEquipe || '').toLowerCase();
+        const status = (registro.EpicStatus || registro.TaskStatus || '').toLowerCase();
+        const numero = (registro.EpicNumber || registro.TaskNumberId || '').toLowerCase();
+        const resumo = (registro.EpicSummary || registro.TaskSummary || '').toLowerCase();
+        
+        const passaEquipe = !filtroEquipe || equipe.includes(filtroEquipe);
+        const passaStatus = !filtroStatus || status.includes(filtroStatus);
+        const passaBusca = !busca || numero.includes(busca) || resumo.includes(busca);
+        
+        return passaEquipe && passaStatus && passaBusca;
+    });
+    
+    paginaAtual = 1;
+    atualizarTabelaModal();
+    atualizarEstatisticasModal();
+}
+
+// Limpar filtros do modal
+function limparFiltrosModal() {
+    document.getElementById('filtroEquipeModal').value = '';
+    document.getElementById('filtroStatusModal').value = '';
+    document.getElementById('buscaModal').value = '';
+    dadosFiltrados = [...dadosOriginais];
+    paginaAtual = 1;
+    atualizarTabelaModal();
+    atualizarEstatisticasModal();
+}
+
+// Atualizar estatísticas do modal
+function atualizarEstatisticasModal() {
+    const total = dadosFiltrados.length;
+    const criticos = dadosFiltrados.filter(r => {
+        if (tipoAlertaAtual === 'atrasados') return (r.DiasAtraso || 0) > 30;
+        if (tipoAlertaAtual === 'proximo_prazo') return (r.DiasRestantes || 0) <= 2;
+        if (tipoAlertaAtual === 'baixo_progresso') return (r.PercentualConcluido || 0) < 20;
+        return false;
+    }).length;
+    
+    const progressoMedio = dadosFiltrados.reduce((acc, r) => acc + (r.PercentualConcluido || 0), 0) / (total || 1);
+    const equipesUnicas = new Set(dadosFiltrados.map(r => r.EpicEquipe || r.TaskEquipe || 'Sem Equipe')).size;
+    
+    document.getElementById('statTotal').textContent = total;
+    document.getElementById('statCriticos').textContent = criticos;
+    document.getElementById('statProgressoMedio').textContent = progressoMedio.toFixed(1) + '%';
+    document.getElementById('statEquipes').textContent = equipesUnicas;
+    document.getElementById('contadorRegistros').textContent = `${total} registros`;
+}
+
+// Atualizar tabela do modal com paginação
+function atualizarTabelaModal() {
+    const inicio = (paginaAtual - 1) * registrosPorPag;
+    const fim = registrosPorPag === 100 ? dadosFiltrados.length : inicio + registrosPorPag;
+    const registrosPagina = dadosFiltrados.slice(inicio, fim);
+    
+    let corpoHTML = '';
+    registrosPagina.forEach(registro => {
+        let linha = '<tr>';
+        
+        if (tipoAlertaAtual === 'atrasados') {
+            const diasAtraso = registro.DiasAtraso || 0;
+            const criticidade = diasAtraso > 30 ? 'danger' : diasAtraso > 15 ? 'warning' : 'info';
+            
+            linha += `
+                <td><strong class="text-primary">${registro.EpicNumber || 'N/A'}</strong></td>
+                <td class="text-truncate" title="${registro.EpicSummary || ''}">${registro.EpicSummary || 'N/A'}</td>
+                <td><span class="badge bg-secondary">${registro.EpicEquipe || 'Sem Equipe'}</span></td>
+                <td><span class="badge bg-warning">${registro.EpicStatus || 'N/A'}</span></td>
+                <td><small class="text-muted">${registro.EpicDueDate || 'N/A'}</small></td>
+                <td><span class="badge bg-${criticidade}">${diasAtraso} dias</span></td>
+                <td>
+                    <div class="d-flex align-items-center">
+                        <div class="progress progress-mini me-2" style="width: 60px;">
+                            <div class="progress-bar bg-${criticidade}" style="width: ${registro.PercentualConcluido || 0}%"></div>
+                        </div>
+                        <small class="text-muted">${registro.PercentualConcluido || 0}%</small>
+                    </div>
+                </td>
+            `;
+        } else if (tipoAlertaAtual === 'proximo_prazo') {
+            const diasRestantes = registro.DiasRestantes || 0;
+            const urgencia = diasRestantes <= 2 ? 'danger' : diasRestantes <= 5 ? 'warning' : 'info';
+            
+            linha += `
+                <td><strong class="text-primary">${registro.EpicNumber || 'N/A'}</strong></td>
+                <td class="text-truncate" title="${registro.EpicSummary || ''}">${registro.EpicSummary || 'N/A'}</td>
+                <td><span class="badge bg-secondary">${registro.EpicEquipe || 'Sem Equipe'}</span></td>
+                <td><span class="badge bg-info">${registro.EpicStatus || 'N/A'}</span></td>
+                <td><small class="text-muted">${registro.EpicDueDate || 'N/A'}</small></td>
+                <td><span class="badge bg-${urgencia}">${diasRestantes} dias</span></td>
+                <td>
+                    <div class="d-flex align-items-center">
+                        <div class="progress progress-mini me-2" style="width: 60px;">
+                            <div class="progress-bar bg-${urgencia}" style="width: ${registro.PercentualConcluido || 0}%"></div>
+                        </div>
+                        <small class="text-muted">${registro.PercentualConcluido || 0}%</small>
+                    </div>
+                </td>
+            `;
+        } else if (tipoAlertaAtual === 'baixo_progresso') {
+            const progresso = registro.PercentualConcluido || 0;
+            const nivel = progresso < 20 ? 'danger' : progresso < 30 ? 'warning' : 'info';
+            
+            linha += `
+                <td><strong class="text-primary">${registro.EpicNumber || 'N/A'}</strong></td>
+                <td class="text-truncate" title="${registro.EpicSummary || ''}">${registro.EpicSummary || 'N/A'}</td>
+                <td><span class="badge bg-secondary">${registro.EpicEquipe || 'Sem Equipe'}</span></td>
+                <td><span class="badge bg-info">${registro.EpicStatus || 'N/A'}</span></td>
+                <td><small class="text-muted">${registro.EpicInicioPlanejado || 'N/A'}</small></td>
+                <td><span class="badge bg-info">${registro.DiasDecorridos || 0} dias</span></td>
+                <td>
+                    <div class="d-flex align-items-center">
+                        <div class="progress progress-mini me-2" style="width: 60px;">
+                            <div class="progress-bar bg-${nivel}" style="width: ${progresso}%"></div>
+                        </div>
+                        <small class="text-muted">${progresso}%</small>
+                    </div>
+                </td>
+            `;
+        }
+        
+        linha += '</tr>';
+        corpoHTML += linha;
+    });
+    
+    document.getElementById('corpoTabela').innerHTML = corpoHTML;
+    
+    // Atualizar informações de paginação
+    const totalPaginas = Math.ceil(dadosFiltrados.length / registrosPorPag);
+    const inicioMostra = dadosFiltrados.length === 0 ? 0 : inicio + 1;
+    const fimMostra = Math.min(fim, dadosFiltrados.length);
+    
+    document.getElementById('infoPaginacao').textContent = 
+        `Mostrando ${inicioMostra}-${fimMostra} de ${dadosFiltrados.length}`;
+    
+    // Gerar paginação
+    if (registrosPorPag < dadosFiltrados.length) {
+        gerarPaginacao(totalPaginas);
+    } else {
+        document.getElementById('paginacao').innerHTML = '';
+    }
+}
+
+// Gerar controles de paginação
+function gerarPaginacao(totalPaginas) {
+    let paginacaoHTML = '';
+    
+    // Botão anterior
+    paginacaoHTML += `
+        <li class="page-item ${paginaAtual === 1 ? 'disabled' : ''}">
+            <a class="page-link" href="#" onclick="irParaPagina(${paginaAtual - 1})">
+                <i class="fas fa-chevron-left"></i>
+            </a>
+        </li>
+    `;
+    
+    // Páginas
+    const inicio = Math.max(1, paginaAtual - 2);
+    const fim = Math.min(totalPaginas, inicio + 4);
+    
+    if (inicio > 1) {
+        paginacaoHTML += `<li class="page-item"><a class="page-link" href="#" onclick="irParaPagina(1)">1</a></li>`;
+        if (inicio > 2) {
+            paginacaoHTML += `<li class="page-item disabled"><span class="page-link">...</span></li>`;
+        }
+    }
+    
+    for (let i = inicio; i <= fim; i++) {
+        paginacaoHTML += `
+            <li class="page-item ${i === paginaAtual ? 'active' : ''}">
+                <a class="page-link" href="#" onclick="irParaPagina(${i})">${i}</a>
+            </li>
+        `;
+    }
+    
+    if (fim < totalPaginas) {
+        if (fim < totalPaginas - 1) {
+            paginacaoHTML += `<li class="page-item disabled"><span class="page-link">...</span></li>`;
+        }
+        paginacaoHTML += `<li class="page-item"><a class="page-link" href="#" onclick="irParaPagina(${totalPaginas})">${totalPaginas}</a></li>`;
+    }
+    
+    // Botão próximo
+    paginacaoHTML += `
+        <li class="page-item ${paginaAtual === totalPaginas ? 'disabled' : ''}">
+            <a class="page-link" href="#" onclick="irParaPagina(${paginaAtual + 1})">
+                <i class="fas fa-chevron-right"></i>
+            </a>
+        </li>
+    `;
+    
+    document.getElementById('paginacao').innerHTML = paginacaoHTML;
+}
+
+// Ir para página específica
+function irParaPagina(pagina) {
+    const totalPaginas = Math.ceil(dadosFiltrados.length / registrosPorPag);
+    if (pagina >= 1 && pagina <= totalPaginas) {
+        paginaAtual = pagina;
+        atualizarTabelaModal();
+    }
+}
+
+// Recarregar detalhes (em caso de erro)
+function recarregarDetalhes() {
+    mostrarDetalhesAlerta(tipoAlertaAtual, document.getElementById('tituloAlerta').textContent);
+}
+
+// Função melhorada para mostrar detalhes com o novo modal
+function mostrarTabelaDetalhesAprimorada(data, tipo) {
+    document.getElementById('loadingDetalhes').style.display = 'none';
+    document.getElementById('erroDetalhes').style.display = 'none';
+    
+    const registros = data.registros || [];
+    tipoAlertaAtual = tipo;
+    dadosOriginais = registros;
+    dadosFiltrados = [...registros];
+    
+    if (registros.length === 0) {
+        document.getElementById('conteudoDetalhes').style.display = 'none';
+        document.getElementById('vazioDetalhes').style.display = 'block';
+        return;
+    }
+    
+    document.getElementById('conteudoDetalhes').style.display = 'block';
+    document.getElementById('vazioDetalhes').style.display = 'none';
+    
+    // Configurar cabeçalho da tabela
+    let cabecalho = '';
+    if (tipo === 'atrasados') {
+        cabecalho = `
+            <th><i class="fas fa-hashtag me-1"></i>Épico</th>
+            <th><i class="fas fa-file-alt me-1"></i>Resumo</th>
+            <th><i class="fas fa-users me-1"></i>Equipe</th>
+            <th><i class="fas fa-flag me-1"></i>Status</th>
+            <th><i class="fas fa-calendar me-1"></i>Prazo</th>
+            <th><i class="fas fa-clock me-1"></i>Atraso</th>
+            <th><i class="fas fa-chart-line me-1"></i>Progresso</th>
+        `;
+    } else if (tipo === 'proximo_prazo') {
+        cabecalho = `
+            <th><i class="fas fa-hashtag me-1"></i>Épico</th>
+            <th><i class="fas fa-file-alt me-1"></i>Resumo</th>
+            <th><i class="fas fa-users me-1"></i>Equipe</th>
+            <th><i class="fas fa-flag me-1"></i>Status</th>
+            <th><i class="fas fa-calendar me-1"></i>Prazo</th>
+            <th><i class="fas fa-hourglass me-1"></i>Restante</th>
+            <th><i class="fas fa-chart-line me-1"></i>Progresso</th>
+        `;
+    } else if (tipo === 'baixo_progresso') {
+        cabecalho = `
+            <th><i class="fas fa-hashtag me-1"></i>Épico</th>
+            <th><i class="fas fa-file-alt me-1"></i>Resumo</th>
+            <th><i class="fas fa-users me-1"></i>Equipe</th>
+            <th><i class="fas fa-flag me-1"></i>Status</th>
+            <th><i class="fas fa-play me-1"></i>Início</th>
+            <th><i class="fas fa-calendar-day me-1"></i>Decorrido</th>
+            <th><i class="fas fa-chart-line me-1"></i>Progresso</th>
+        `;
+    }
+    
+    document.getElementById('cabecalhoTabela').innerHTML = cabecalho;
+    
+    // Popular filtros
+    const equipesUnicas = [...new Set(registros.map(r => r.EpicEquipe || 'Sem Equipe'))].sort();
+    const statusUnicos = [...new Set(registros.map(r => r.EpicStatus || 'Indefinido'))].sort();
+    
+    const selectEquipe = document.getElementById('filtroEquipeModal');
+    const selectStatus = document.getElementById('filtroStatusModal');
+    
+    selectEquipe.innerHTML = '<option value="">Todas as Equipes</option>';
+    equipesUnicas.forEach(equipe => {
+        selectEquipe.innerHTML += `<option value="${equipe}">${equipe}</option>`;
+    });
+    
+    selectStatus.innerHTML = '<option value="">Todos os Status</option>';
+    statusUnicos.forEach(status => {
+        selectStatus.innerHTML += `<option value="${status}">${status}</option>`;
+    });
+    
+    // Atualizar timestamp
+    document.getElementById('timestampModal').textContent = new Date().toLocaleString('pt-BR');
+    
+    // Configurar paginação inicial
+    paginaAtual = 1;
+    atualizarTabelaModal();
+    atualizarEstatisticasModal();
+    
+    // Configurar exportação
+    document.getElementById('btnExportarDetalhes').onclick = function() {
+        exportarDetalhesCSV(tipo, dadosFiltrados);
+    };
+}
+
+// Função melhorada de exportação
+function exportarDetalhesCSV(tipo, registros) {
+    if (registros.length === 0) {
+        alert('Nenhum registro para exportar.');
+        return;
+    }
+    
+    const headers = Object.keys(registros[0]);
+    let csvContent = '\uFEFF'; // BOM para UTF-8
+    csvContent += headers.join(';') + '\n';
+    
+    registros.forEach(registro => {
+        const row = headers.map(header => {
+            const value = registro[header] || '';
+            return `"${value.toString().replace(/"/g, '""')}"`;
+        }).join(';');
+        csvContent += row + '\n';
+    });
+    
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    
+    const dataHora = new Date().toISOString().slice(0, 19).replace(/[:-]/g, '');
+    const nomeArquivo = `alerta_${tipo}_${dataHora}.csv`;
+    link.setAttribute('download', nomeArquivo);
+    
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+}
+
+// Inicializar eventos quando o DOM estiver pronto
+document.addEventListener('DOMContentLoaded', function() {
+    inicializarModalEventos();
+});
+</script>

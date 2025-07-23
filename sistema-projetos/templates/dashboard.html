@@ -5,6 +5,11 @@
 {% block page_title %}Dashboard Executivo{% endblock %}
 
 {% block content %}
+<div id="periodo-info" class="alert alert-info py-2 mb-3">
+    <i class="fas fa-calendar-alt me-2"></i>
+    <strong>Período de Análise:</strong> 
+    <span id="periodo-texto">Ano Atual</span>
+</div>
 <!-- Filtros Superiores -->
 <div class="row mb-4">
     <div class="col-12">
@@ -35,7 +40,7 @@
                     </div>
                     <div class="col-md-3">
                         <label for="filterStatusDash" class="form-label small fw-bold">Status</label>
-                        <select id="filterStatusDash" class="form-select form-select-sm" multiple>
+                        <select id="filterStatusDash" class="form-select form-select-sm">
                             <option value="">Todos os Status</option>
                         </select>
                     </div>
@@ -70,7 +75,7 @@
                         </div>
                         <div class="mt-2 d-flex align-items-center">
                             <span class="text-success small fw-bold" id="epicosTendencia">
-                                <i class="fas fa-arrow-up me-1"></i>12%
+                                <i class="fas fa-arrow-up text-muted me-1"></i>12%
                             </span>
                             <span class="text-muted small ms-1">vs mês anterior</span>
                         </div>
@@ -101,7 +106,7 @@
                             {% endif %}
                         </div>
                         <div class="progress mt-2" style="height: 6px;">
-                            <div class="progress-bar bg-success" role="progressbar" 
+                            <div class="progress-bar bg-success" role="progressbar" id="progressConclusao"
                                  style="width: {% if stats.total_epicos and stats.total_epicos > 0 %}{{ (stats.epicos_concluidos or 0) / stats.total_epicos * 100 }}{% else %}0{% endif %}%">
                             </div>
                         </div>
@@ -222,7 +227,7 @@
                 </h6>
             </div>
             <div class="card-body">
-                <div id="timelineEntregas" style="height: 300px;"></div>
+                <div id="timelineEntregas" style=" width: 100%; height: 300px;"></div>
             </div>
         </div>
     </div>
@@ -311,6 +316,57 @@
     </div>
 </div>
 
+<!-- Modal para Detalhes dos Alertas -->
+<div class="modal fade" id="modalDetalhesAlerta" tabindex="-1" aria-labelledby="modalDetalhesAlertaLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="modalDetalhesAlertaLabel">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    Detalhes do Alerta
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div id="loadingDetalhes" class="text-center p-4">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Carregando...</span>
+                    </div>
+                    <p class="mt-2">Carregando detalhes...</p>
+                </div>
+                <div id="conteudoDetalhes" style="display: none;">
+                    <div class="table-responsive">
+                        <table class="table table-striped table-hover" id="tabelaDetalhes">
+                            <thead class="table-dark">
+                                <tr id="cabecalhoTabela">
+                                    <!-- Cabeçalho será preenchido dinamicamente -->
+                                </tr>
+                            </thead>
+                            <tbody id="corpoTabela">
+                                <!-- Dados serão preenchidos dinamicamente -->
+                            </tbody>
+                        </table>
+                    </div>
+                    <div id="resumoDetalhes" class="mt-3 p-3 bg-light rounded">
+                        <!-- Resumo será preenchido dinamicamente -->
+                    </div>
+                </div>
+                <div id="erroDetalhes" class="alert alert-danger" style="display: none;">
+                    <i class="fas fa-exclamation-circle me-2"></i>
+                    Erro ao carregar detalhes. Tente novamente.
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
+                <button type="button" class="btn btn-primary" id="btnExportarDetalhes">
+                    <i class="fas fa-download me-1"></i>
+                    Exportar
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- Estilos personalizados -->
 <style>
 .icon-circle {
@@ -351,6 +407,13 @@
     border-left: 4px solid;
     border-radius: 0.35rem;
     margin-bottom: 1rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.alert-dashboard:hover {
+    background-color: rgba(0,0,0,0.05);
+    transform: translateX(2px);
 }
 
 .alert-high { border-left-color: #dc3545; }
@@ -364,15 +427,36 @@
 .shadow-sm {
     box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075) !important;
 }
+
+#tabelaDetalhes th {
+    font-size: 0.875rem;
+    font-weight: 600;
+}
+
+#tabelaDetalhes td {
+    font-size: 0.875rem;
+}
+
+.badge-status {
+    font-size: 0.75rem;
+    padding: 0.375rem 0.75rem;
+}
+
+.progress-mini {
+    height: 0.5rem;
+    border-radius: 0.25rem;
+}
 </style>
 {% endblock %}
 
 {% block scripts %}
+<script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
 <script>
 // Dados globais
 let dashboardData = {
     stats: {{ stats | tojson }},
-    equipes: {{ equipes | tojson }}
+    equipes: {{ equipes | tojson }},
+    timeline: { meses: [], planejado: [], realizado: [] }
 };
 
 // Configuração de cores
@@ -385,29 +469,212 @@ const colors = {
     secondary: '#858796'
 };
 
+
+
+function setupEventListeners() {
+    // Filtros com atualização do período
+    document.getElementById('filterEquipeDash').addEventListener('change', applyDashboardFilters);
+    document.getElementById('filterProdutoDash').addEventListener('change', applyDashboardFilters);
+    document.getElementById('filterPeriodoDash').addEventListener('change', function() {
+        updatePeriodLabel();
+        applyDashboardFilters();
+    });
+    document.getElementById('filterStatusDash').addEventListener('change', applyDashboardFilters);
+    
+    // Botões de ação
+    document.getElementById('btnAtualizarDash').addEventListener('click', refreshDashboard);
+    document.getElementById('btnExportDash').addEventListener('click', function() {
+        window.open('/export/dashboard-completo', '_blank');
+    });
+}
+
 // Inicialização do Dashboard
 document.addEventListener('DOMContentLoaded', function() {
     console.log('Inicializando Dashboard...');
+    console.log('Dashboard inicializado com dados:', dashboardData);
+
+    // 1. Configurações básicas 
     initializeDashboard();
-    loadFilterOptions();
-    createCharts();
     generateAlerts();
-    updateTimestamp(); // Atualizar timestamp imediatamente
+    updateTimestamp();
+    setupEventListeners();
+
+
+    // 2. GARANTIR loading em todos os gráficos ANTES de qualquer coisa
+    console.log('Aplicando loading inicial em todos os gráficos...');
+    showLoadingInCharts();
+
+     // 3. Carregar opções de filtros (em paralelo)
+    loadFilterOptions();
+   
+    // 4. Carregar dados principais APÓS um pequeno delay para mostrar loading
+    setTimeout(() => {
+        loadInitialData();
+    }, 500); // 500ms de delay para garantir que loading seja visto
     
-    // Auto-refresh a cada 5 minutos
-    setInterval(refreshDashboard, 300000);
-    
-    // Atualizar timestamp a cada minuto
-    setInterval(updateTimestamp, 60000);
+    // 5. Configurar timers
+    setInterval(refreshDashboard, 300000); // Auto-refresh a cada 5 minutos
+    setInterval(updateTimestamp, 60000);   // Atualizar timestamp a cada minuto
+
+    console.log('=== DASHBOARD INICIALIZADO ===');
 });
 
+// Mostrar erro nos gráficos
+function showErrorInCharts(errorMessage) {
+    const charts = [
+        { id: 'performanceEquipes', title: 'Performance por Equipe' },
+        { id: 'statusDistribution', title: 'Distribuição por Status' },
+        { id: 'timelineEntregas', title: 'Timeline de Entregas' }
+    ];
+    
+    charts.forEach(chart => {
+        const element = document.getElementById(chart.id);
+        if (element) {
+            element.innerHTML = `
+                <div class="text-center text-danger p-4">
+                    <i class="fas fa-exclamation-triangle fa-3x mb-3 text-danger"></i>
+                    <br>
+                    <strong>Erro ao carregar</strong>
+                    <br>
+                    <small class="text-muted">${errorMessage}</small>
+                    <br>
+                    <button class="btn btn-sm btn-outline-danger mt-2" onclick="location.reload()">
+                        <i class="fas fa-redo"></i> Tentar Novamente
+                    </button>
+                </div>
+            `;
+        }
+    });
+}
+
+
+
+// ==============================================
+// initializeDashboard
+// ==============================================
 function initializeDashboard() {
-    console.log('Inicializando Dashboard...', dashboardData);
+    console.log('Dashboard inicializado com dados:', dashboardData);
+    
+    // Aplicar animações fade-in aos cards
+    const cards = document.querySelectorAll('.card');
+    cards.forEach((card, index) => {
+        setTimeout(() => {
+            card.classList.add('fade-in');
+        }, index * 100);
+    });
+
+    updatePeriodLabel();
+    atualizarTendenciaEpicos();
+    
+    // Garantir que timeline também tenha loading inicial
+    const timelineElement = document.getElementById('timelineEntregas');
+    if (timelineElement && !timelineElement.innerHTML.includes('spinner')) {
+        timelineElement.innerHTML = `
+            <div class="text-center text-info p-4">
+                <div class="spinner-border text-info mb-3" role="status" style="width: 3rem; height: 3rem;">
+                    <span class="visually-hidden">Carregando...</span>
+                </div>
+                <div>
+                    <i class="fas fa-calendar-alt fa-2x mb-2 text-info"></i>
+                    <br>
+                    <strong>Carregando Timeline...</strong>
+                    <br>
+                    <small class="text-muted">Processando entregas...</small>
+                </div>
+            </div>
+        `;
+    }
+}
+
+// ==============================================
+// loadInitialData 
+// ==============================================
+
+function loadInitialData() {
+    console.log('Carregando dados iniciais...');
+    
+    // Fazer requisição inicial
+    fetch('/api/dashboard-data')
+        .then(response => {
+            console.log('Response inicial:', response.status);
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+            return response.json();
+        })
+        .then(data => {
+            console.log('Dados iniciais recebidos:', data);
+            
+            if (data.error) {
+                throw new Error(data.error);
+            }
+            
+            // Atualizar dados globais
+            if (data.stats) {
+                dashboardData.stats = data.stats;
+            }
+            
+            if (data.equipes) {
+                dashboardData.equipes = data.equipes;
+            }
+            
+            if (data.timeline && data.timeline.meses && data.timeline.meses.length > 0) {
+                dashboardData.timeline = data.timeline;
+                console.log('Timeline inicial carregado:', dashboardData.timeline);
+            } else {
+                console.log('Timeline vazio nos dados iniciais');
+                dashboardData.timeline = { meses: [], planejado: [], realizado: [] };
+            }
+            
+            // Atualizar cards
+            updateDashboardCards(data.stats || {});
+            
+            // Criar todos os gráficos (remove o loading automaticamente)
+            createCharts();
+            
+            console.log('Dados iniciais carregados com sucesso');
+        })
+        .catch(error => {
+            console.error('Erro ao carregar dados iniciais:', error);
+            
+            // Mostrar erro nos gráficos
+            showErrorInCharts(`Erro ao carregar dados iniciais: ${error.message}`);
+            
+            // cria gráficos com dados existentes após um certo tempo
+            setTimeout(() => {
+                try {
+                    console.log('Tentando criar gráficos após erro...');
+                    createCharts();
+                } catch (chartError) {
+                    console.error('Erro ao criar gráficos após falha:', chartError);
+                }
+            }, 2000);
+        });
+}
+
+
+
+function atualizarTendenciaEpicos() {
+    const tendencia = dashboardData.stats?.tendencia_epicos;
+    const tendenciaSpan = document.getElementById('epicosTendencia');
+
+    if (!tendenciaSpan) return;
+
+    if (tendencia !== undefined && tendencia !== null) {
+        const icone = tendencia > 0 ? 'fa-arrow-up' : (tendencia < 0 ? 'fa-arrow-down' : 'fa-minus');
+        const cor = tendencia > 0 ? 'text-success' : (tendencia < 0 ? 'text-danger' : 'text-muted');
+        tendenciaSpan.innerHTML = `
+            <i class="fas ${icone} me-1"></i>${Math.abs(tendencia).toFixed(1)}%
+        `;
+        tendenciaSpan.className = `small fw-bold ${cor}`;
+    } else {
+        tendenciaSpan.innerHTML = `<i class="fas fa-minus me-1"></i>0.0%`;
+        tendenciaSpan.className = 'small fw-bold text-muted';
+    }
 }
 
 function loadFilterOptions() {
     console.log('Carregando opções de filtros...');
-    // Carregar opções de filtros
     fetch('/api/dashboard-filters')
         .then(response => {
             console.log('Resposta filtros:', response.status);
@@ -423,7 +690,6 @@ function loadFilterOptions() {
         })
         .catch(error => {
             console.error('Erro na requisição de filtros:', error);
-            // Mesmo com erro, tentar popular com dados vazios
             populateFilterSelects({equipes: [], produtos: [], status: []});
         });
 }
@@ -434,7 +700,6 @@ function populateFilterSelects(data) {
     // Popular select de equipes
     const equipeSelect = document.getElementById('filterEquipeDash');
     if (equipeSelect && data.equipes) {
-        // Limpar opções existentes (exceto a primeira)
         while (equipeSelect.children.length > 1) {
             equipeSelect.removeChild(equipeSelect.lastChild);
         }
@@ -451,7 +716,6 @@ function populateFilterSelects(data) {
     // Popular select de produtos
     const produtoSelect = document.getElementById('filterProdutoDash');
     if (produtoSelect && data.produtos) {
-        // Limpar opções existentes (exceto a primeira)
         while (produtoSelect.children.length > 1) {
             produtoSelect.removeChild(produtoSelect.lastChild);
         }
@@ -465,10 +729,9 @@ function populateFilterSelects(data) {
         console.log(`Adicionados ${data.produtos.length} produtos`);
     }
 
-    // Popular select de status
+    // Popular select de status (sem multiple)
     const statusSelect = document.getElementById('filterStatusDash');
     if (statusSelect && data.status) {
-        // Limpar opções existentes (exceto a primeira)
         while (statusSelect.children.length > 1) {
             statusSelect.removeChild(statusSelect.lastChild);
         }
@@ -484,66 +747,111 @@ function populateFilterSelects(data) {
 }
 
 function createCharts() {
-    createPerformanceChart();
-    createStatusChart();
-    createTimelineChart();
+    console.log('=== INICIANDO CRIAÇÃO DE GRÁFICOS ===');
+    
+    try {
+        console.log('1. Criando gráfico de performance...');
+        createPerformanceChart();
+        
+        console.log('2. Criando gráfico de status...');
+        createStatusChart();
+        
+        console.log('3. Criando gráfico de timeline...');
+        createTimelineChart();
+        
+        console.log('=== TODOS OS GRÁFICOS CRIADOS ===');
+    } catch (error) {
+        console.error('Erro geral na criação de gráficos:', error);
+    }
 }
 
 function createPerformanceChart() {
     console.log('Criando gráfico de performance...');
     console.log('Dados equipes:', dashboardData.equipes);
     
+    // Declarar a variável corretamente
+    const performanceElement = document.getElementById('performanceEquipes');
+    
+    if (!performanceElement) {
+        console.error('Elemento performanceEquipes não encontrado');
+        return;
+    }
+    
+    // Limpar conteúdo primeiro
+    performanceElement.innerHTML = '';
+    
     if (!dashboardData.equipes || dashboardData.equipes.length === 0) {
-        document.getElementById('performanceEquipes').innerHTML = 
+        performanceElement.innerHTML = 
             '<div class="text-center text-muted p-4"><i class="fas fa-chart-bar fa-2x mb-2"></i><br>Sem dados disponíveis</div>';
         return;
     }
 
-    const data = [{
-        x: dashboardData.equipes.map(e => e.EpicEquipe || 'Sem Equipe'),
-        y: dashboardData.equipes.map(e => e.quantidade || 0),
-        type: 'bar',
-        marker: {
-            color: dashboardData.equipes.map(e => {
-                const progress = e.percentual_medio || 0;
-                if (progress >= 80) return colors.success;
-                if (progress >= 50) return colors.warning;
-                return colors.danger;
-            }),
-            opacity: 0.8
-        },
-        text: dashboardData.equipes.map(e => `${e.quantidade || 0} épicos`),
-        textposition: 'auto',
-        hovertemplate: '<b>%{x}</b><br>Épicos: %{y}<br>Progresso: %{customdata:.1f}%<extra></extra>',
-        customdata: dashboardData.equipes.map(e => e.percentual_medio || 0)
-    }];
+    try {
+        const data = [{
+            x: dashboardData.equipes.map(e => e.EpicEquipe || 'Sem Equipe'),
+            y: dashboardData.equipes.map(e => e.quantidade || 0),
+            type: 'bar',
+            marker: {
+                color: dashboardData.equipes.map(e => {
+                    const progress = e.percentual_medio || 0;
+                    if (progress >= 80) return colors.success;
+                    if (progress >= 50) return colors.warning;
+                    return colors.danger;
+                }),
+                opacity: 0.8
+            },
+            text: dashboardData.equipes.map(e => `${e.quantidade || 0} épicos`),
+            textposition: 'auto',
+            hovertemplate: '<b>%{x}</b><br>Épicos: %{y}<br>Progresso: %{customdata:.1f}%<extra></extra>',
+            customdata: dashboardData.equipes.map(e => e.percentual_medio || 0)
+        }];
 
-    const layout = {
-        margin: { t: 20, b: 50, l: 50, r: 20 },
-        xaxis: { 
-            tickangle: -45,
-            tickfont: { size: 10 }
-        },
-        yaxis: { 
-            title: 'Quantidade'
-        },
-        plot_bgcolor: 'rgba(0,0,0,0)',
-        paper_bgcolor: 'rgba(0,0,0,0)',
-        font: { size: 11 }
-    };
+        const layout = {
+            margin: { t: 20, b: 50, l: 50, r: 20 },
+            xaxis: { 
+                tickangle: -45,
+                tickfont: { size: 10 }
+            },
+            yaxis: { 
+                title: 'Quantidade'
+            },
+            plot_bgcolor: 'rgba(0,0,0,0)',
+            paper_bgcolor: 'rgba(0,0,0,0)',
+            font: { size: 11 }
+        };
 
-    Plotly.newPlot('performanceEquipes', data, layout, {
-        responsive: true,
-        displayModeBar: false
-    });
+        // Usar Plotly.newPlot para garantir criação limpa
+        Plotly.newPlot('performanceEquipes', data, layout, {
+            responsive: true,
+            displayModeBar: false
+        });
+        
+        console.log('Gráfico de performance criado com sucesso');
+        
+    } catch (error) {
+        console.error('Erro ao criar gráfico de performance:', error);
+        performanceElement.innerHTML = 
+            '<div class="text-center text-danger p-4"><i class="fas fa-exclamation-triangle fa-2x mb-2"></i><br>Erro ao carregar gráfico</div>';
+    }
 }
 
 function createStatusChart() {
     console.log('Criando gráfico de status...');
     console.log('Dados stats:', dashboardData.stats);
     
+    // Declarar a variável corretamente
+    const statusElement = document.getElementById('statusDistribution');
+    
+    if (!statusElement) {
+        console.error('Elemento statusDistribution não encontrado');
+        return;
+    }
+    
+    // Limpar conteúdo primeiro
+    statusElement.innerHTML = '';
+    
     if (!dashboardData.stats || dashboardData.stats.error) {
-        document.getElementById('statusDistribution').innerHTML = 
+        statusElement.innerHTML = 
             '<div class="text-center text-muted p-4"><i class="fas fa-chart-pie fa-2x mb-2"></i><br>Sem dados disponíveis</div>';
         return;
     }
@@ -554,112 +862,187 @@ function createStatusChart() {
     const total = stats.total_epicos || 0;
     const outros = Math.max(0, total - concluidos - emAndamento);
     
-    // Se não há dados, mostrar mensagem
     if (total === 0) {
-        document.getElementById('statusDistribution').innerHTML = 
+        statusElement.innerHTML = 
             '<div class="text-center text-muted p-4"><i class="fas fa-chart-pie fa-2x mb-2"></i><br>Nenhum épico encontrado</div>';
         return;
     }
 
-    const data = [{
-        values: [concluidos, emAndamento, outros],
-        labels: ['Concluídos', 'Em Andamento', 'Outros'],
-        type: 'pie',
-        hole: 0.5,
-        marker: {
-            colors: [colors.success, colors.info, colors.secondary]
-        },
-        textinfo: 'label+percent',
-        textposition: 'auto',
-        hovertemplate: '<b>%{label}</b><br>Quantidade: %{value}<br>Percentual: %{percent}<extra></extra>'
-    }];
+    try {
+        const data = [{
+            values: [concluidos, emAndamento, outros],
+            labels: ['Concluídos', 'Em Andamento', 'Outros'],
+            type: 'pie',
+            hole: 0.5,
+            marker: {
+                colors: [colors.success, colors.info, colors.secondary]
+            },
+            textinfo: 'label+percent',
+            textposition: 'auto',
+            hovertemplate: '<b>%{label}</b><br>Quantidade: %{value}<br>Percentual: %{percent}<extra></extra>'
+        }];
 
-    const layout = {
-        margin: { t: 20, b: 20, l: 20, r: 20 },
-        showlegend: false,
-        font: { size: 11 }
-    };
+        const layout = {
+            margin: { t: 20, b: 20, l: 20, r: 20 },
+            showlegend: false,
+            font: { size: 11 }
+        };
 
-    Plotly.newPlot('statusDistribution', data, layout, {
-        responsive: true,
-        displayModeBar: false
-    });
+        // Usar Plotly.newPlot para garantir criação limpa
+        Plotly.newPlot('statusDistribution', data, layout, {
+            responsive: true,
+            displayModeBar: false
+        });
+        
+        console.log('Gráfico de status criado com sucesso');
+        
+    } catch (error) {
+        console.error('Erro ao criar gráfico de status:', error);
+        statusElement.innerHTML = 
+            '<div class="text-center text-danger p-4"><i class="fas fa-exclamation-triangle fa-2x mb-2"></i><br>Erro ao carregar gráfico</div>';
+    }
 }
+
+// ==============================================
+// createTimelineChart
+// ==============================================
 
 function createTimelineChart() {
-    // Simulação de dados de timeline
-    const timelineData = [{
-        x: ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun'],
-        y: [12, 15, 10, 18, 22, 16],
-        type: 'scatter',
-        mode: 'lines+markers',
-        line: { color: colors.primary, width: 3 },
-        marker: { size: 8, color: colors.primary },
-        name: 'Entregas Planejadas'
-    }, {
-        x: ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun'],
-        y: [10, 12, 8, 15, 20, 14],
-        type: 'scatter',
-        mode: 'lines+markers',
-        line: { color: colors.success, width: 3 },
-        marker: { size: 8, color: colors.success },
-        name: 'Entregas Realizadas'
-    }];
+    console.log('Criando gráfico de timeline...');
+    
+    // Declarar a variável corretamente
+    const timelineElement = document.getElementById('timelineEntregas');
+    
+    if (!timelineElement) {
+        console.error('Elemento timelineEntregas não encontrado');
+        return;
+    }
+    
+    //  Limpar o conteúdo primeiro SEMPRE
+    console.log('Limpando elemento timeline...');
+    timelineElement.innerHTML = '';
+    
+    // Verificar se existe timeline nos dados globais
+    let timeline = dashboardData.timeline;
+    
+    console.log('Timeline data:', timeline);
+    
+    // Validação dados timeline
+    if (!timeline || !timeline.meses || !Array.isArray(timeline.meses) || timeline.meses.length === 0) {
+        console.log('Timeline vazio ou sem dados válidos');
+        timelineElement.innerHTML = '<div class="text-center text-muted p-4"><i class="fas fa-calendar-alt fa-2x mb-2"></i><br>Sem dados de entregas</div>';
+        return;
+    }
 
-    const layout = {
-        margin: { t: 20, b: 50, l: 50, r: 20 },
-        xaxis: { title: 'Mês' },
-        yaxis: { title: 'Épicos' },
-        showlegend: true,
-        legend: {
-            orientation: 'h',
-            y: -0.2
-        },
-        plot_bgcolor: 'rgba(0,0,0,0)',
-        paper_bgcolor: 'rgba(0,0,0,0)',
-        font: { size: 11 }
-    };
-
-    Plotly.newPlot('timelineEntregas', timelineData, layout, {
-        responsive: true,
-        displayModeBar: false
+    console.log('Dados do timeline encontrados:', {
+        meses: timeline.meses,
+        planejado: timeline.planejado,
+        realizado: timeline.realizado
     });
+
+    try {
+        const data = [{
+            x: timeline.meses,
+            y: timeline.planejado || [],
+            type: 'scatter',
+            mode: 'lines+markers',
+            name: 'Entregas Planejadas',
+            line: { color: '#4e73df', width: 3 },
+            marker: { size: 8, color: '#4e73df' },
+            hovertemplate: '<b>Planejadas</b><br>Mês: %{x}<br>Quantidade: %{y}<extra></extra>'
+        }, {
+            x: timeline.meses,
+            y: timeline.realizado || [],
+            type: 'scatter',
+            mode: 'lines+markers',
+            name: 'Entregas Realizadas',
+            line: { color: '#1cc88a', width: 3 },
+            marker: { size: 8, color: '#1cc88a' },
+            hovertemplate: '<b>Realizadas</b><br>Mês: %{x}<br>Quantidade: %{y}<extra></extra>'
+        }];
+
+        const layout = {
+            margin: { t: 20, b: 50, l: 50, r: 20 },
+            xaxis: { 
+                title: 'Mês',
+                tickangle: -45,
+                type: 'category'
+            },
+            yaxis: { 
+                title: 'Quantidade de Épicos',
+                rangemode: 'tozero'
+            },
+            showlegend: true,
+            legend: { 
+                orientation: 'h', 
+                y: -0.3,
+                x: 0.5,
+                xanchor: 'center'
+            },
+            plot_bgcolor: 'rgba(0,0,0,0)',
+            paper_bgcolor: 'rgba(0,0,0,0)',
+            font: { size: 11 }
+        };
+
+        console.log('Criando gráfico Plotly com dados:', data);
+
+        // Usar Plotly.newPlot para garantir criação limpa
+        Plotly.newPlot('timelineEntregas', data, layout, {
+            responsive: true,
+            displayModeBar: false
+        });
+        
+        console.log('Timeline chart criado com sucesso');
+        
+    } catch (error) {
+        console.error('Erro ao criar gráfico timeline:', error);
+        timelineElement.innerHTML = '<div class="text-center text-danger p-4"><i class="fas fa-exclamation-triangle fa-2x mb-2"></i><br>Erro ao carregar gráfico</div>';
+    }
 }
 
+//Função generateAlerts atualizada para usar dados reais
 function generateAlerts() {
     const alertsContainer = document.getElementById('alertas-container');
     const stats = dashboardData.stats || {};
+    
+    // Usar dados reais dos stats, incluindo os novos campos
+    const epicosAtrasados = stats.epicos_atrasados || 0;
+    const epicosProximoPrazo = stats.epicos_proximo_prazo || 0;
+    const epicosBaixoProgresso = stats.epicos_baixo_progresso || 0;
     
     const alerts = [
         {
             type: 'high',
             icon: 'fas fa-exclamation-circle',
             title: 'Épicos Atrasados',
-            message: `${stats.epicos_atrasados || 0} épicos estão com prazo vencido`,
+            message: `${epicosAtrasados} épicos estão com prazo vencido`,
             action: 'Ver Detalhes',
-            link: '/relatorio-epicos?status=atrasado'
+            alertType: 'atrasados',
+            count: epicosAtrasados
         },
         {
             type: 'medium',
             icon: 'fas fa-clock',
             title: 'Prazo Próximo',
-            message: 'Verificar épicos que vencem nos próximos 7 dias',
+            message: `${epicosProximoPrazo} épicos vencem nos próximos 7 dias`,
             action: 'Verificar',
-            link: '/gantt'
+            alertType: 'proximo_prazo',
+            count: epicosProximoPrazo
         },
         {
             type: 'low',
             icon: 'fas fa-info-circle',
-            title: 'Performance',
-            message: `Progresso médio atual: ${(stats.percentual_medio || 0).toFixed(1)}%`,
-            action: 'Acompanhar',
-            link: '/dashboard'
+            title: 'Baixo Progresso',
+            message: `${epicosBaixoProgresso} épicos com progresso inferior a 30%`,
+            action: 'Analisar',
+            alertType: 'baixo_progresso',
+            count: epicosBaixoProgresso
         }
     ];
 
     if (alertsContainer) {
         alertsContainer.innerHTML = alerts.map(alert => `
-            <div class="alert alert-dashboard alert-${alert.type} d-flex align-items-center">
+            <div class="alert alert-dashboard alert-${alert.type} d-flex align-items-center" onclick="mostrarDetalhesAlerta('${alert.alertType}', '${alert.title}')">
                 <div class="flex-shrink-0">
                     <i class="${alert.icon} text-${alert.type === 'high' ? 'danger' : alert.type === 'medium' ? 'warning' : 'info'}"></i>
                 </div>
@@ -668,13 +1051,259 @@ function generateAlerts() {
                     <p class="mb-0">${alert.message}</p>
                 </div>
                 <div class="flex-shrink-0">
-                    <a href="${alert.link}" class="btn btn-sm btn-outline-${alert.type === 'high' ? 'danger' : alert.type === 'medium' ? 'warning' : 'info'}">
+                    <button class="btn btn-sm btn-outline-${alert.type === 'high' ? 'danger' : alert.type === 'medium' ? 'warning' : 'info'}">
                         ${alert.action}
-                    </a>
+                    </button>
                 </div>
             </div>
         `).join('');
     }
+}
+
+// Função para adicionar label do período
+function updatePeriodLabel() {
+    const periodoSelect = document.getElementById('filterPeriodoDash');
+    const periodoValue = periodoSelect ? periodoSelect.value : 'ano_atual';
+    
+    // Pegar o elemento que JÁ EXISTE no HTML
+    const periodoTexto = document.getElementById('periodo-texto');
+    if (!periodoTexto) return; // Se não existir, não faz nada
+    
+    // Equivalente ao datetime.now() do Python
+    const today = new Date();
+    
+    // Função auxiliar para subtrair dias
+    function subtractDays(days) {
+        const result = new Date(today);
+        result.setDate(result.getDate() - days);
+        return result.toLocaleDateString('pt-BR');
+    }
+    
+    // Função auxiliar para formatar data brasileira
+    function formatBR(date) {
+        return date.toLocaleDateString('pt-BR');
+    }
+    
+    // Definir texto do período
+    const periodoTextos = {
+        'ano_atual': `01/01/${today.getFullYear()} até 31/12/${today.getFullYear()}`,
+        '6_meses': `${subtractDays(180)} até ${formatBR(today)}`,
+        '3_meses': `${subtractDays(90)} até ${formatBR(today)}`,
+        'mes_atual': (() => {
+            const inicioMes = new Date(today.getFullYear(), today.getMonth(), 1);
+            const fimMes = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+            return `${formatBR(inicioMes)} até ${formatBR(fimMes)}`;
+        })(),
+        'todos': 'Todos os registros'
+    };
+    
+    // APENAS ATUALIZAR O TEXTO
+    periodoTexto.textContent = periodoTextos[periodoValue] || 'Período selecionado';
+    
+    console.log(`Período atualizado: ${periodoTextos[periodoValue]}`);
+}
+
+function mostrarDetalhesAlerta(tipo, titulo) {
+    console.log('Mostrando detalhes do alerta:', tipo);
+    
+    // Configurar o modal
+    document.getElementById('modalDetalhesAlertaLabel').innerHTML = `
+        <i class="fas fa-exclamation-triangle me-2"></i>
+        ${titulo}
+    `;
+    
+    // Mostrar loading
+    document.getElementById('loadingDetalhes').style.display = 'block';
+    document.getElementById('conteudoDetalhes').style.display = 'none';
+    document.getElementById('erroDetalhes').style.display = 'none';
+    
+    // Abrir modal
+    const modal = new bootstrap.Modal(document.getElementById('modalDetalhesAlerta'));
+    modal.show();
+    
+    // Buscar dados
+    fetch(`/api/alertas-detalhes?tipo=${tipo}`)
+        .then(response => response.json())
+        .then(data => {
+            console.log('Dados do alerta recebidos:', data);
+            
+            if (data.error) {
+                document.getElementById('loadingDetalhes').style.display = 'none';
+                document.getElementById('erroDetalhes').style.display = 'block';
+                document.getElementById('erroDetalhes').innerHTML = `
+                    <i class="fas fa-exclamation-circle me-2"></i>
+                    Erro: ${data.error}
+                `;
+            } else {
+                mostrarTabelaDetalhes(data, tipo);
+            }
+        })
+        .catch(error => {
+            console.error('Erro ao buscar detalhes:', error);
+            document.getElementById('loadingDetalhes').style.display = 'none';
+            document.getElementById('erroDetalhes').style.display = 'block';
+        });
+}
+
+function mostrarTabelaDetalhes(data, tipo) {
+    document.getElementById('loadingDetalhes').style.display = 'none';
+    document.getElementById('conteudoDetalhes').style.display = 'block';
+    
+    const registros = data.registros || [];
+    
+    if (registros.length === 0) {
+        document.getElementById('conteudoDetalhes').innerHTML = `
+            <div class="text-center p-4">
+                <i class="fas fa-check-circle fa-3x text-success mb-3"></i>
+                <h5>Nenhum problema encontrado!</h5>
+                <p class="text-muted">Não há registros para este tipo de alerta no momento.</p>
+            </div>
+        `;
+        return;
+    }
+    
+    // Configurar cabeçalho da tabela baseado no tipo
+    let cabecalho = '';
+    if (tipo === 'atrasados') {
+        cabecalho = `
+            <th>Épico</th>
+            <th>Resumo</th>
+            <th>Equipe</th>
+            <th>Status</th>
+            <th>Prazo</th>
+            <th>Dias de Atraso</th>
+            <th>Progresso</th>
+        `;
+    } else if (tipo === 'proximo_prazo') {
+        cabecalho = `
+            <th>Épico</th>
+            <th>Resumo</th>
+            <th>Equipe</th>
+            <th>Status</th>
+            <th>Prazo</th>
+            <th>Dias Restantes</th>
+            <th>Progresso</th>
+        `;
+    } else if (tipo === 'baixo_progresso') {
+        cabecalho = `
+            <th>Épico</th>
+            <th>Resumo</th>
+            <th>Equipe</th>
+            <th>Status</th>
+            <th>Início</th>
+            <th>Dias Decorridos</th>
+            <th>Progresso</th>
+        `;
+    }
+    
+    document.getElementById('cabecalhoTabela').innerHTML = cabecalho;
+    
+    // Preencher corpo da tabela
+    let corpoHTML = '';
+    registros.forEach(registro => {
+        let linha = '<tr>';
+        
+        if (tipo === 'atrasados') {
+            linha += `
+                <td><strong>${registro.EpicNumber || 'N/A'}</strong></td>
+                <td class="text-truncate" style="max-width: 200px;" title="${registro.EpicSummary || ''}">${registro.EpicSummary || 'N/A'}</td>
+                <td><span class="badge bg-secondary">${registro.EpicEquipe || 'Sem Equipe'}</span></td>
+                <td><span class="badge bg-warning">${registro.EpicStatus || 'N/A'}</span></td>
+                <td>${registro.EpicDueDate || 'N/A'}</td>
+                <td><span class="badge bg-danger">${registro.DiasAtraso || 0} dias</span></td>
+                <td>
+                    <div class="progress progress-mini">
+                        <div class="progress-bar bg-danger" style="width: ${registro.PercentualConcluido || 0}%"></div>
+                    </div>
+                    <small>${registro.PercentualConcluido || 0}%</small>
+                </td>
+            `;
+        } else if (tipo === 'proximo_prazo') {
+            linha += `
+                <td><strong>${registro.EpicNumber || 'N/A'}</strong></td>
+                <td class="text-truncate" style="max-width: 200px;" title="${registro.EpicSummary || ''}">${registro.EpicSummary || 'N/A'}</td>
+                <td><span class="badge bg-secondary">${registro.EpicEquipe || 'Sem Equipe'}</span></td>
+                <td><span class="badge bg-info">${registro.EpicStatus || 'N/A'}</span></td>
+                <td>${registro.EpicDueDate || 'N/A'}</td>
+                <td><span class="badge bg-warning">${registro.DiasRestantes || 0} dias</span></td>
+                <td>
+                    <div class="progress progress-mini">
+                        <div class="progress-bar bg-warning" style="width: ${registro.PercentualConcluido || 0}%"></div>
+                    </div>
+                    <small>${registro.PercentualConcluido || 0}%</small>
+                </td>
+            `;
+        } else if (tipo === 'baixo_progresso') {
+            linha += `
+                <td><strong>${registro.EpicNumber || 'N/A'}</strong></td>
+                <td class="text-truncate" style="max-width: 200px;" title="${registro.EpicSummary || ''}">${registro.EpicSummary || 'N/A'}</td>
+                <td><span class="badge bg-secondary">${registro.EpicEquipe || 'Sem Equipe'}</span></td>
+                <td><span class="badge bg-info">${registro.EpicStatus || 'N/A'}</span></td>
+                <td>${registro.EpicInicioPlanejado || 'N/A'}</td>
+                <td><span class="badge bg-info">${registro.DiasDecorridos || 0} dias</span></td>
+                <td>
+                    <div class="progress progress-mini">
+                        <div class="progress-bar bg-danger" style="width: ${registro.PercentualConcluido || 0}%"></div>
+                    </div>
+                    <small>${registro.PercentualConcluido || 0}%</small>
+                </td>
+            `;
+        }
+        
+        linha += '</tr>';
+        corpoHTML += linha;
+    });
+    
+    document.getElementById('corpoTabela').innerHTML = corpoHTML;
+    
+    // Mostrar resumo
+    const resumo = `
+        <h6><i class="fas fa-chart-bar me-2"></i>Resumo</h6>
+        <div class="row">
+            <div class="col-md-4">
+                <strong>Total de registros:</strong> ${registros.length}
+            </div>
+            <div class="col-md-4">
+                <strong>Tipo de alerta:</strong> ${tipo.replace('_', ' ').toUpperCase()}
+            </div>
+            <div class="col-md-4">
+                <strong>Gerado em:</strong> ${new Date().toLocaleString('pt-BR')}
+            </div>
+        </div>
+    `;
+    
+    document.getElementById('resumoDetalhes').innerHTML = resumo;
+    
+    // Configurar botão de exportar
+    document.getElementById('btnExportarDetalhes').onclick = function() {
+        exportarDetalhes(tipo, registros);
+    };
+}
+
+function exportarDetalhes(tipo, registros) {
+    // Converter para CSV e fazer download
+    if (registros.length === 0) return;
+    
+    const headers = Object.keys(registros[0]);
+    let csvContent = headers.join(',') + '\n';
+    
+    registros.forEach(registro => {
+        const row = headers.map(header => {
+            const value = registro[header] || '';
+            return `"${value.toString().replace(/"/g, '""')}"`;
+        }).join(',');
+        csvContent += row + '\n';
+    });
+    
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', `alerta_${tipo}_${new Date().toISOString().slice(0,10)}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
 }
 
 function updateTimestamp() {
@@ -689,19 +1318,136 @@ function updateTimestamp() {
     
     document.getElementById('ultimaAtualizacao').textContent = timestamp;
     
-    // Atualizar próxima atualização
     const proxima = new Date(now.getTime() + 5 * 60 * 1000);
     document.getElementById('proximaAtualizacao').textContent = 
         'às ' + proxima.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
 }
 
+
+// ==============================================
+// refreshDashboard
+// ==============================================
+
 function refreshDashboard() {
-    // Atualizar dados
-    location.reload();
+    console.log('Atualizando dashboard...');
+    
+    // Mostrar loading de refresh
+    showRefreshLoading();
+    
+    // Verificar se os elementos existem antes de acessar .value
+    let equipe = '';
+    let produto = '';
+    let periodo = 'ano_atual'; // valor padrão
+    let status = '';
+    
+    try {
+        const equipeElement = document.getElementById('filterEquipeDash');
+        const produtoElement = document.getElementById('filterProdutoDash');
+        const periodoElement = document.getElementById('filterPeriodoDash');
+        const statusElement = document.getElementById('filterStatusDash');
+        
+        if (equipeElement) equipe = equipeElement.value || '';
+        if (produtoElement) produto = produtoElement.value || '';
+        if (periodoElement) periodo = periodoElement.value || 'ano_atual';
+        if (statusElement) status = statusElement.value || '';
+        
+        console.log('Filtros obtidos:', { equipe, produto, periodo, status });
+        
+    } catch (error) {
+        console.error('Erro ao obter valores dos filtros:', error);
+        // Usar valores padrão em caso de erro
+        equipe = '';
+        produto = '';
+        periodo = 'ano_atual';
+        status = '';
+    }
+
+    const params = new URLSearchParams({ equipe, produto, periodo, status });
+
+    fetch(`/api/dashboard-data?${params.toString()}`)
+        .then(response => {
+            console.log('Response status:', response.status);
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+            return response.json();
+        })
+        .then(data => {
+            console.log('Dashboard atualizado:', data);
+            
+            if (data.error) {
+                throw new Error(data.error);
+            }
+            
+            // Atualizar dados globais
+            dashboardData.stats = data.stats || {};
+            dashboardData.equipes = data.equipes || [];
+            dashboardData.timeline = data.timeline || { meses: [], planejado: [], realizado: [] };
+            
+            // Atualizar interface
+            updateDashboardCards(data.stats || {});
+            createCharts();
+            generateAlerts();
+            updateTimestamp();
+            
+            console.log('Dashboard refresh completo');
+        })
+        .catch(error => {
+            console.error('Erro ao atualizar dashboard:', error);
+            showErrorInCharts(`Erro ao atualizar: ${error.message}`);
+            
+            // Tentar criar gráficos com dados existentes após erro
+            setTimeout(() => {
+                try {
+                    createCharts();
+                } catch (chartError) {
+                    console.error('Erro ao criar gráficos após falha:', chartError);
+                }
+            }, 1000);
+        });
+}
+
+// Loading específico para refresh
+function showRefreshLoading() {
+    console.log('Mostrando loading de refresh...');
+    
+    // Loading nos cards
+    showLoadingInCards();
+    
+    // Loading específico para refresh nos gráficos
+    const charts = [
+        { id: 'performanceEquipes', title: 'Performance por Equipe', icon: 'fa-chart-bar' },
+        { id: 'statusDistribution', title: 'Distribuição por Status', icon: 'fa-chart-pie' },
+        { id: 'timelineEntregas', title: 'Timeline de Entregas', icon: 'fa-calendar-alt' }
+    ];
+    
+    charts.forEach(chart => {
+        const element = document.getElementById(chart.id);
+        if (element) {
+         //   console.log(`Aplicando refresh loading em: ${chart.id}`);
+         //   console.log(`Título: ${chart.title}, Ícone: ${chart.icon}`);
+        //    console.log(`icone:`, chart.icon);
+            element.innerHTML = `
+                <div class="text-center text-muted p-4">
+                    <div class="spinner-border text-primary  mb-3" role="status" style="width: 2.5rem; height: 2.5rem;">
+                        <span class="visually-hidden">Atualizando...</span>
+                    </div>
+                    <div>
+                        <i class="fas ${chart.icon} fa-2x mb-2 text-muted"></i>
+                        <br>
+                        <strong>Atualizando dados...</strong>
+                        <br>
+                        <small class="text-muted">Sincronizando ${chart.title}</small>
+                    </div>
+                </div>
+            `;
+        } else {
+            console.warn(`Elemento ${chart.id} não encontrado para refresh loading`);
+        }
+    });
 }
 
 function exportEquipeData() {
-    // Implementar exportação
     window.open('/export/dashboard-equipes', '_blank');
 }
 
@@ -715,22 +1461,22 @@ document.getElementById('btnExportDash').addEventListener('click', function() {
 document.getElementById('filterEquipeDash').addEventListener('change', applyDashboardFilters);
 document.getElementById('filterProdutoDash').addEventListener('change', applyDashboardFilters);
 document.getElementById('filterPeriodoDash').addEventListener('change', applyDashboardFilters);
+document.getElementById('filterStatusDash').addEventListener('change', applyDashboardFilters);
+
 
 function applyDashboardFilters() {
     console.log('Aplicando filtros do dashboard...');
     
-    // Mostrar loading nos cards
-    showLoadingInCards();
+
+    showFilterLoading();
     
-    // Obter valores dos filtros
     const equipe = document.getElementById('filterEquipeDash').value;
     const produto = document.getElementById('filterProdutoDash').value;
     const periodo = document.getElementById('filterPeriodoDash').value;
-    const status = Array.from(document.getElementById('filterStatusDash').selectedOptions).map(option => option.value).join(',');
+    const status = document.getElementById('filterStatusDash').value;
     
     console.log('Filtros selecionados:', { equipe, produto, periodo, status });
     
-    // Criar parâmetros da requisição
     const params = new URLSearchParams({
         equipe: equipe,
         produto: produto,
@@ -738,7 +1484,6 @@ function applyDashboardFilters() {
         status: status
     });
     
-    // Fazer requisição para dados filtrados
     fetch(`/api/dashboard-data?${params.toString()}`)
         .then(response => {
             console.log('Resposta dashboard-data:', response.status);
@@ -752,20 +1497,30 @@ function applyDashboardFilters() {
                 hideLoadingInCards();
                 showErrorMessage('Erro ao carregar dados: ' + data.error);
             } else {
-                // Atualizar dados globais
+                // Atualizar todos os dados globais
                 dashboardData.stats = data.stats || {};
                 dashboardData.equipes = data.equipes || [];
                 
-                // Atualizar cards
+                //  Validar e atualizar timeline
+                if (data.timeline && data.timeline.meses && Array.isArray(data.timeline.meses)) {
+                    console.log('Timeline recebido nos filtros:', data.timeline);
+                    dashboardData.timeline = data.timeline;
+                } else {
+                    console.log('Timeline vazio nos filtros, mantendo dados anteriores ou vazios');
+                    if (!dashboardData.timeline || !dashboardData.timeline.meses) {
+                        dashboardData.timeline = { meses: [], planejado: [], realizado: [] };
+                    }
+                }
+                
+                // Atualizar cards primeiro
                 updateDashboardCards(data.stats);
                 
-                // Recriar gráficos
+                // Criar gráficos diretamente
                 createCharts();
-                
-                // Atualizar alertas
+              
+                // Gerar alertas
                 generateAlerts();
                 
-                // Esconder loading
                 hideLoadingInCards();
                 
                 console.log('Dashboard atualizado com sucesso');
@@ -778,8 +1533,42 @@ function applyDashboardFilters() {
         });
 }
 
+function showFilterLoading() {
+    console.log('Aplicando filtros - mostrando loading...');
+    
+    // Mostrar loading nos cards de números
+    showLoadingInCards();
+    
+    // Mostrar mensagem específica de filtros nos gráficos
+    const charts = [
+        { id: 'performanceEquipes', title: 'Performance por Equipe' },
+        { id: 'statusDistribution', title: 'Distribuição por Status' },
+        { id: 'timelineEntregas', title: 'Timeline de Entregas' }
+    ];
+    
+    charts.forEach(chart => {
+        const element = document.getElementById(chart.id);
+        if (element) {
+            element.innerHTML = `
+                <div class="text-center text-primary p-4">
+                    <div class="spinner-border text-primary mb-3" role="status" style="width: 2.5rem; height: 2.5rem;">
+                        <span class="visually-hidden">Aplicando filtros...</span>
+                    </div>
+                    <div>
+                        <i class="fas fa-filter fa-2x mb-2 text-primary"></i>
+                        <br>
+                        <strong>Aplicando filtros...</strong>
+                        <br>
+                        <small class="text-muted">Atualizando ${chart.title}</small>
+                    </div>
+                </div>
+            `;
+        }
+    });
+}
+
 function showLoadingInCards() {
-    // Mostrar loading nos cards principais
+    console.log('Mostrando loading nos cards...');
     const cards = ['totalEpicos', 'taxaConclusao', 'progressoMedio', 'epicosAtrasados'];
     cards.forEach(cardId => {
         const element = document.getElementById(cardId);
@@ -787,10 +1576,44 @@ function showLoadingInCards() {
             element.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
         }
     });
+} 
+
+function showLoadingInCharts() {
+    console.log('Mostrando loading nos gráficos...');
+    
+    const charts = [
+        { id: 'performanceEquipes', title: 'Performance por Equipe', icon: 'fa-chart-bar' },
+        { id: 'statusDistribution', title: 'Distribuição por Status', icon: 'fa-chart-pie' },
+        { id: 'timelineEntregas', title: 'Timeline de Entregas', icon: 'fa-calendar-alt' }
+    ];
+    
+    charts.forEach(chart => {
+        const element = document.getElementById(chart.id);
+        if (element) {
+            console.log(`Aplicando loading em: ${chart.id}`);
+            element.innerHTML = `
+                <div class="text-center text-muted p-4">
+                    <div class="spinner-border text-primary font-primary mb-3" role="status" style="width: 3rem; height: 3rem;">
+                        <span class="visually-hidden">Carregando...</span>
+                    </div>
+                    <div>
+                        <i class="fas ${chart.icon} fa-2x mb-2 text-muted"></i>
+                        <br>
+                        <strong>Carregando ${chart.title}...</strong>
+                        <br>
+                        <small class="text-muted">Processando dados...</small>
+                    </div>
+                </div>
+            `;
+        } else {
+            console.warn(`Elemento ${chart.id} não encontrado para loading`);
+        }
+    });
 }
 
 function hideLoadingInCards() {
-    // Loading será removido quando updateDashboardCards for chamado
+    console.log('Loading nos cards removido automaticamente por updateDashboardCards()');
+    // O loading será removido quando updateDashboardCards() for chamada
 }
 
 function updateDashboardCards(stats) {
@@ -802,19 +1625,60 @@ function updateDashboardCards(stats) {
         totalEpicos.textContent = stats.total_epicos || 0;
     }
     
+    // 
+    const tendencia = dashboardData.stats?.tendencia_epicos;
+    const tendenciaSpan = document.getElementById('epicosTendencia');
+
+    if (tendencia !== undefined && tendencia !== null) {
+        const icone = tendencia > 0 ? 'fa-arrow-up' : tendencia < 0 ? 'fa-arrow-down' : 'fa-minus';
+        const cor = tendencia > 0 ? 'text-success' : tendencia < 0 ? 'text-danger' : 'text-muted';
+
+        tendenciaSpan.innerHTML = `
+            <i class="fas ${icone} me-1"></i>${Math.abs(tendencia).toFixed(1)}%
+        `;
+        tendenciaSpan.className = `small fw-bold ${cor}`;
+    } else {
+        tendenciaSpan.innerHTML = `<i class="fas fa-minus me-1"></i>0%`;
+        tendenciaSpan.className = 'text-muted small fw-bold';
+    }
+        
     // Atualizar Taxa de Conclusão
     const taxaConclusao = document.getElementById('taxaConclusao');
+    const progressConclusao = document.getElementById('progressConclusao');
     if (taxaConclusao) {
         const taxa = stats.total_epicos > 0 ? 
             ((stats.epicos_concluidos || 0) / stats.total_epicos * 100).toFixed(1) : 
             '0.0';
         taxaConclusao.textContent = taxa + '%';
+        
+        if (progressConclusao) {
+            progressConclusao.style.width = taxa + '%';
+        }
     }
     
     // Atualizar Progresso Médio
     const progressoMedio = document.getElementById('progressoMedio');
     if (progressoMedio) {
-        progressoMedio.textContent = (stats.percentual_medio || 0).toFixed(1) + '%';
+        const progresso = (stats.percentual_medio || 0).toFixed(1);
+        progressoMedio.textContent = progresso + '%';
+        
+        // Atualizar badge de status
+        const statusProgresso = document.getElementById('statusProgresso');
+        if (statusProgresso) {
+            if (progresso >= 80) {
+                statusProgresso.className = 'badge bg-success';
+                statusProgresso.textContent = 'Excelente';
+            } else if (progresso >= 60) {
+                statusProgresso.className = 'badge bg-info';
+                statusProgresso.textContent = 'No Prazo';
+            } else if (progresso >= 40) {
+                statusProgresso.className = 'badge bg-warning';
+                statusProgresso.textContent = 'Atenção';
+            } else {
+                statusProgresso.className = 'badge bg-danger';
+                statusProgresso.textContent = 'Crítico';
+            }
+        }
     }
     
     // Atualizar Épicos Atrasados
@@ -834,24 +1698,67 @@ function updateDashboardCards(stats) {
             ${percentual}%
         `;
     }
+    
+    // Atualizar total de registros no footer
+    const totalRegistros = document.getElementById('totalRegistros');
+    if (totalRegistros) {
+        totalRegistros.textContent = (stats.total_epicos || 0) + (stats.total_subtasks || 0);
+    }
+    
+    // Atualizar período label
+    updatePeriodLabel();
+}
+
+// Função para obter filtros atuais
+function getCurrentFilters() {
+    return {
+        equipe: document.getElementById('filterEquipeDash').value,
+        produto: document.getElementById('filterProdutoDash').value,
+        periodo: document.getElementById('filterPeriodoDash').value,
+        status: document.getElementById('filterStatusDash').value
+    };
+}
+
+//Adicionar event listener para mudança de período
+function setupEventListeners() {
+    // Filtros existentes
+    document.getElementById('filterEquipeDash').addEventListener('change', applyDashboardFilters);
+    document.getElementById('filterProdutoDash').addEventListener('change', applyDashboardFilters);
+    document.getElementById('filterPeriodoDash').addEventListener('change', function() {
+        updatePeriodLabel();
+        applyDashboardFilters();
+    });
+    document.getElementById('filterStatusDash').addEventListener('change', applyDashboardFilters);
+     
+    // Botões de ação
+    document.getElementById('btnAtualizarDash').addEventListener('click', refreshDashboard);
+    document.getElementById('btnExportDash').addEventListener('click', function() {
+        window.open('/export/dashboard-completo', '_blank');
+    });
 }
 
 function showErrorMessage(message) {
-    // Criar ou atualizar uma div de erro
     let errorDiv = document.getElementById('dashboard-error');
     if (!errorDiv) {
         errorDiv = document.createElement('div');
         errorDiv.id = 'dashboard-error';
-        errorDiv.className = 'alert alert-danger mt-3';
-        document.querySelector('.container-fluid').insertBefore(errorDiv, document.querySelector('.row').nextSibling);
+        errorDiv.className = 'alert alert-danger alert-dismissible mt-3';
+        document.querySelector('.container-fluid').insertBefore(errorDiv, document.querySelector('.row'));
     }
     
     errorDiv.innerHTML = `
         <i class="fas fa-exclamation-triangle me-2"></i>
         ${message}
-        <button type="button" class="btn-close" onclick="document.getElementById('dashboard-error').style.display='none'"></button>
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
     `;
     errorDiv.style.display = 'block';
+    
+    // Auto-hide após 5 segundos
+    setTimeout(() => {
+        if (errorDiv) {
+            errorDiv.style.display = 'none';
+        }
+    }, 5000);
 }
 </script>
 {% endblock %}

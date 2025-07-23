@@ -2,7 +2,7 @@ import os
 import sys
 import webbrowser
 import threading
-from datetime import datetime
+from datetime import datetime, timedelta
 from flask import Flask, render_template, jsonify, request, send_file
 import pandas as pd
 import plotly
@@ -65,6 +65,8 @@ def index():
         'epicos_concluidos': 0,
         'epicos_em_andamento': 0,
         'epicos_atrasados': 0,
+        'epicos_proximo_prazo': 0,  # NOVO
+        'epicos_baixo_progresso': 0,  # NOVO
         'total_subtasks': 0,
         'percentual_medio': 0.0,
         'error': None
@@ -101,6 +103,34 @@ def index():
         else:
             stats = default_stats
         
+        # CORREÇÃO: Adicionar contagens de alertas específicos
+        # Épicos que vencem nos próximos 7 dias
+        query_proximo = """
+        SELECT COUNT(*) as count_proximo
+        FROM BI_Jira_Epico_Datas_Grafico
+        WHERE EpicInicioPlanejado IS NOT NULL
+        AND EpicDueDate BETWEEN GETDATE() AND DATEADD(day, 7, GETDATE())
+        AND EpicStatus NOT IN ('Done', 'Closed')
+        """
+        
+        df_proximo = pd.read_sql(query_proximo, conn)
+        if not df_proximo.empty:
+            stats['epicos_proximo_prazo'] = convert_numpy_types(df_proximo.iloc[0]['count_proximo'])
+        
+        # Épicos com baixo progresso
+        query_baixo = """
+        SELECT COUNT(*) as count_baixo
+        FROM BI_Jira_Epico_Datas_Grafico
+        WHERE EpicInicioPlanejado IS NOT NULL
+        AND CAST(ISNULL(TasksPercentualMedia, 0) as decimal(5,2)) < 30
+        AND EpicInicioPlanejado < DATEADD(day, -15, GETDATE())
+        AND EpicStatus NOT IN ('Done', 'Closed')
+        """
+        
+        df_baixo = pd.read_sql(query_baixo, conn)
+        if not df_baixo.empty:
+            stats['epicos_baixo_progresso'] = convert_numpy_types(df_baixo.iloc[0]['count_baixo'])
+        
         # Contagem de subtasks
         query_subtasks = "SELECT COUNT(*) as total_subtasks FROM BI_Jira_SubTasks_Datas_Grafico"
         df_subtasks = pd.read_sql(query_subtasks, conn)
@@ -132,56 +162,9 @@ def index():
         default_stats['error'] = str(e)
         return render_template('dashboard.html', stats=default_stats, equipes=default_equipes)
 
-@app.route('/api/dashboard-filters')
-def dashboard_filters():
-    """API para obter opções de filtros do dashboard"""
-    try:
-        conn = db_manager.get_connection()
-        
-        # Buscar equipes distintas
-        query_equipes = """
-        SELECT DISTINCT ISNULL(EpicEquipe, 'Sem Equipe') as equipe
-        FROM BI_Jira_Epico_Datas_Grafico
-        WHERE EpicEquipe IS NOT NULL AND EpicEquipe != ''
-        ORDER BY equipe
-        """
-        df_equipes = pd.read_sql(query_equipes, conn)
-        equipes = df_equipes['equipe'].tolist() if not df_equipes.empty else []
-        
-        # Buscar produtos distintos
-        query_produtos = """
-        SELECT DISTINCT ISNULL(EpicProduto, 'Sem Produto') as produto
-        FROM BI_Jira_Epico_Datas_Grafico
-        WHERE EpicProduto IS NOT NULL AND EpicProduto != ''
-        ORDER BY produto
-        """
-        df_produtos = pd.read_sql(query_produtos, conn)
-        produtos = df_produtos['produto'].tolist() if not df_produtos.empty else []
-        
-        # Buscar status distintos
-        query_status = """
-        SELECT DISTINCT ISNULL(EpicStatus, 'Indefinido') as status
-        FROM BI_Jira_Epico_Datas_Grafico
-        WHERE EpicStatus IS NOT NULL AND EpicStatus != ''
-        ORDER BY status
-        """
-        df_status = pd.read_sql(query_status, conn)
-        status = df_status['status'].tolist() if not df_status.empty else []
-        
-        conn.close()
-        
-        return jsonify({
-            'equipes': equipes,
-            'produtos': produtos,
-            'status': status
-        })
-        
-    except Exception as e:
-        return jsonify({'error': str(e)})
-
 @app.route('/api/dashboard-data')
 def dashboard_data():
-    """API para dados do dashboard com filtros"""
+    """API para dados do dashboard com filtros e contagens de alertas"""
     try:
         conn = db_manager.get_connection()
         
@@ -250,6 +233,32 @@ def dashboard_data():
         df_stats = pd.read_sql(query_stats, conn, params=params)
         stats = convert_numpy_types(df_stats.iloc[0].to_dict()) if not df_stats.empty else {}
         
+        # CORREÇÃO: Adicionar contagens específicas para alertas
+        # Épicos que vencem nos próximos 7 dias
+        query_proximo_prazo = f"""
+        SELECT COUNT(*) as count_proximo_prazo
+        FROM BI_Jira_Epico_Datas_Grafico
+        WHERE {where_clause}
+        AND EpicDueDate BETWEEN GETDATE() AND DATEADD(day, 7, GETDATE())
+        AND EpicStatus NOT IN ('Done', 'Closed')
+        """
+        
+        df_proximo = pd.read_sql(query_proximo_prazo, conn, params=params)
+        stats['epicos_proximo_prazo'] = convert_numpy_types(df_proximo.iloc[0]['count_proximo_prazo']) if not df_proximo.empty else 0
+        
+        # Épicos com baixo progresso
+        query_baixo_progresso = f"""
+        SELECT COUNT(*) as count_baixo_progresso
+        FROM BI_Jira_Epico_Datas_Grafico
+        WHERE {where_clause}
+        AND CAST(ISNULL(TasksPercentualMedia, 0) as decimal(5,2)) < 30
+        AND EpicInicioPlanejado < DATEADD(day, -15, GETDATE())
+        AND EpicStatus NOT IN ('Done', 'Closed')
+        """
+        
+        df_baixo = pd.read_sql(query_baixo_progresso, conn, params=params)
+        stats['epicos_baixo_progresso'] = convert_numpy_types(df_baixo.iloc[0]['count_baixo_progresso']) if not df_baixo.empty else 0
+        
         # Dados por equipe filtrados
         query_equipes = f"""
         SELECT 
@@ -267,18 +276,448 @@ def dashboard_data():
         df_equipes = pd.read_sql(query_equipes, conn, params=params)
         equipes = convert_numpy_types(df_equipes.to_dict('records')) if not df_equipes.empty else []
         
+        # Buscar dados para distribuição de status
+        query_status_dist = f"""
+        SELECT 
+            ISNULL(EpicStatus, 'Indefinido') as status,
+            COUNT(*) as quantidade
+        FROM BI_Jira_Epico_Datas_Grafico
+        WHERE {where_clause}
+        GROUP BY EpicStatus
+        ORDER BY quantidade DESC
+        """
+        
+        df_status_dist = pd.read_sql(query_status_dist, conn, params=params)
+        status_distribution = convert_numpy_types(df_status_dist.to_dict('records')) if not df_status_dist.empty else []
+        
+        # Estatísticas para o período atual 
+        epicos_atual = stats.get('total_epicos', 0)
+
+        # Buscar total do período anterior (ex: mês anterior)
+        if periodo_filter == 'mes_atual':
+            mes_anterior_inicio = (today.replace(day=1) - timedelta(days=1)).replace(day=1)
+            mes_anterior_fim = today.replace(day=1) - timedelta(days=1)
+            
+            query_anterior = """
+            SELECT COUNT(*) as total_epicos
+            FROM BI_Jira_Epico_Datas_Grafico
+            WHERE EpicInicioPlanejado IS NOT NULL
+            AND EpicInicioPlanejado >= ?
+            AND EpicInicioPlanejado <= ?
+            """
+            df_ant = pd.read_sql(query_anterior, conn, params=[mes_anterior_inicio, mes_anterior_fim])
+            
+            if not df_ant.empty:
+                epicos_anterior = convert_numpy_types(df_ant.iloc[0]['total_epicos'])
+                if epicos_anterior > 0:
+                    tendencia = round(((epicos_atual - epicos_anterior) / epicos_anterior) * 100, 1)
+                    stats['tendencia_epicos'] = tendencia
+                else:
+                    stats['tendencia_epicos'] = None
+
+        # Query do Timeline
+        log_message("Buscando dados do timeline...")
+        
+        query_timeline = f"""
+        SELECT 
+            FORMAT(EpicInicioPlanejado, 'yyyy-MM') as Mes,
+            COUNT(*) as Total,
+            SUM(CASE WHEN EpicStatus IN ('Done', 'Closed', 'Concluído') THEN 1 ELSE 0 END) as Realizados
+        FROM BI_Jira_Epico_Datas_Grafico
+        WHERE {where_clause}
+        GROUP BY FORMAT(EpicInicioPlanejado, 'yyyy-MM')
+        ORDER BY FORMAT(EpicInicioPlanejado, 'yyyy-MM')
+        """
+
+        log_message(f"Query timeline: {query_timeline}")
+        log_message(f"Params timeline: {params}")
+        
+        df_timeline = pd.read_sql(query_timeline, conn, params=params)
+        
+        log_message(f"Timeline result: {len(df_timeline)} rows")
+        if not df_timeline.empty:
+            log_message(f"Timeline data: {df_timeline.head()}")
+
+        # Monta os arrays para o frontend
+        if not df_timeline.empty:
+            timeline_data = {
+                'meses': df_timeline['Mes'].tolist(),
+                'planejado': df_timeline['Total'].astype(int).tolist(),
+                'realizado': df_timeline['Realizados'].astype(int).tolist()
+            }
+            log_message(f"Timeline data criado: {timeline_data}")
+        else:
+            log_message("Timeline vazio - usando dados padrão")
+            timeline_data = {
+                'meses': [],
+                'planejado': [],
+                'realizado': []
+            }
+        
+        #  Adicionar informação do período para o frontend
+        periodo_info = {
+            'periodo_selecionado': periodo_filter,
+            'data_inicio': data_inicio,
+            'data_fim': data_fim,
+            'descricao': get_periodo_description(periodo_filter)
+        }
+        
         conn.close()
         
-        return jsonify({
+        # Total de entregas (mesmo que total de épicos concluídos)
+        stats['total_entregas'] = stats.get('epicos_concluidos', 0)
+        
+        response_data = {
             'stats': stats,
             'equipes': equipes,
-            'timeline': [],  # Pode ser implementado depois se necessário
+            'status_distribution': status_distribution,
+            'periodo_info': periodo_info,
+            'timeline': timeline_data,  # IMPORTANTE: Incluir timeline na resposta
             'filtros_aplicados': {
                 'equipe': equipe_filter,
                 'produto': produto_filter,
                 'status': status_filter,
                 'periodo': periodo_filter
             }
+        }
+        
+        log_message(f"Retornando dados com timeline: {response_data.get('timeline', {})}")
+        
+        return jsonify(response_data)
+        
+    except Exception as e:
+        log_message(f"Erro no dashboard_data: {str(e)}")
+        return jsonify({'error': str(e)})
+
+@app.route('/api/dashboard-filters')
+def dashboard_filters():
+    """API para obter opções de filtros do dashboard"""
+    try:
+        conn = db_manager.get_connection()
+        
+        # Buscar equipes distintas
+        query_equipes = """
+        SELECT DISTINCT ISNULL(EpicEquipe, 'Sem Equipe') as equipe
+        FROM BI_Jira_Epico_Datas_Grafico
+        WHERE EpicEquipe IS NOT NULL AND EpicEquipe != ''
+        ORDER BY equipe
+        """
+        df_equipes = pd.read_sql(query_equipes, conn)
+        equipes = df_equipes['equipe'].tolist() if not df_equipes.empty else []
+        
+        # Buscar produtos distintos
+        query_produtos = """
+        SELECT DISTINCT ISNULL(EpicProduto, 'Sem Produto') as produto
+        FROM BI_Jira_Epico_Datas_Grafico
+        WHERE EpicProduto IS NOT NULL AND EpicProduto != ''
+        ORDER BY produto
+        """
+        df_produtos = pd.read_sql(query_produtos, conn)
+        produtos = df_produtos['produto'].tolist() if not df_produtos.empty else []
+        
+        # Buscar status distintos
+        query_status = """
+        SELECT DISTINCT ISNULL(EpicStatus, 'Indefinido') as status
+        FROM BI_Jira_Epico_Datas_Grafico
+        WHERE EpicStatus IS NOT NULL AND EpicStatus != ''
+        ORDER BY status
+        """
+        df_status = pd.read_sql(query_status, conn)
+        status = df_status['status'].tolist() if not df_status.empty else []
+        
+        conn.close()
+        
+        return jsonify({
+            'equipes': equipes,
+            'produtos': produtos,
+            'status': status
+        })
+        
+    except Exception as e:
+        return jsonify({'error': str(e)})
+
+def dashboard_data():
+    """API para dados do dashboard com filtros e contagens de alertas"""
+    try:
+        conn = db_manager.get_connection()
+        
+        # Obter parâmetros dos filtros
+        equipe_filter = request.args.get('equipe', '').strip()
+        produto_filter = request.args.get('produto', '').strip()
+        status_filter = request.args.get('status', '').strip()
+        periodo_filter = request.args.get('periodo', 'ano_atual')
+        
+        # Construir filtros de data baseado no período
+        today = datetime.now()
+        if periodo_filter == 'ano_atual':
+            data_inicio = f"{today.year}-01-01"
+            data_fim = f"{today.year}-12-31"
+        elif periodo_filter == '6_meses':
+            data_inicio = (today - timedelta(days=180)).strftime('%Y-%m-%d')
+            data_fim = today.strftime('%Y-%m-%d')
+        elif periodo_filter == '3_meses':
+            data_inicio = (today - timedelta(days=90)).strftime('%Y-%m-%d')
+            data_fim = today.strftime('%Y-%m-%d')
+        elif periodo_filter == 'mes_atual':
+            data_inicio = f"{today.year}-{today.month:02d}-01"
+            data_fim = today.strftime('%Y-%m-%d')
+        else:  # todos
+            data_inicio = None
+            data_fim = None
+        
+        # Query base com filtros
+        where_conditions = ["EpicInicioPlanejado IS NOT NULL"]
+        params = []
+        
+        if equipe_filter:
+            where_conditions.append("ISNULL(EpicEquipe, '') = ?")
+            params.append(equipe_filter)
+        
+        if produto_filter:
+            where_conditions.append("ISNULL(EpicProduto, '') = ?")
+            params.append(produto_filter)
+        
+        if status_filter:
+            where_conditions.append("ISNULL(EpicStatus, '') = ?")
+            params.append(status_filter)
+        
+        if data_inicio and data_fim:
+            where_conditions.append("""(
+                (EpicDueDate >= ? AND EpicDueDate <= ?) OR
+                (EpicInicioPlanejado >= ? AND EpicInicioPlanejado <= ?) OR
+                (EpicInicioPlanejado < ? AND EpicDueDate > ?)
+            )""")
+            params.extend([data_inicio, data_fim, data_inicio, data_fim, data_inicio, data_fim])
+        
+        where_clause = " AND ".join(where_conditions)
+        
+        # Estatísticas filtradas
+        query_stats = f"""
+        SELECT 
+            COUNT(*) as total_epicos,
+            SUM(CASE WHEN EpicStatus = 'Done' THEN 1 ELSE 0 END) as epicos_concluidos,
+            SUM(CASE WHEN EpicStatus IN ('In Progress', 'Development', 'In Review') THEN 1 ELSE 0 END) as epicos_em_andamento,
+            SUM(CASE WHEN EpicDueDate < GETDATE() AND EpicStatus NOT IN ('Done', 'Closed') THEN 1 ELSE 0 END) as epicos_atrasados,
+            AVG(CAST(ISNULL(TasksPercentualMedia, 0) as float)) as percentual_medio
+        FROM BI_Jira_Epico_Datas_Grafico
+        WHERE {where_clause}
+        """
+        
+        df_stats = pd.read_sql(query_stats, conn, params=params)
+        stats = convert_numpy_types(df_stats.iloc[0].to_dict()) if not df_stats.empty else {}
+        
+        # CORREÇÃO: Adicionar contagens específicas para alertas
+        # Épicos que vencem nos próximos 7 dias
+        query_proximo_prazo = f"""
+        SELECT COUNT(*) as count_proximo_prazo
+        FROM BI_Jira_Epico_Datas_Grafico
+        WHERE {where_clause}
+        AND EpicDueDate BETWEEN GETDATE() AND DATEADD(day, 7, GETDATE())
+        AND EpicStatus NOT IN ('Done', 'Closed')
+        """
+        
+        df_proximo = pd.read_sql(query_proximo_prazo, conn, params=params)
+        stats['epicos_proximo_prazo'] = convert_numpy_types(df_proximo.iloc[0]['count_proximo_prazo']) if not df_proximo.empty else 0
+        
+        # Épicos com baixo progresso
+        query_baixo_progresso = f"""
+        SELECT COUNT(*) as count_baixo_progresso
+        FROM BI_Jira_Epico_Datas_Grafico
+        WHERE {where_clause}
+        AND CAST(ISNULL(TasksPercentualMedia, 0) as decimal(5,2)) < 30
+        AND EpicInicioPlanejado < DATEADD(day, -15, GETDATE())
+        AND EpicStatus NOT IN ('Done', 'Closed')
+        """
+        
+        df_baixo = pd.read_sql(query_baixo_progresso, conn, params=params)
+        stats['epicos_baixo_progresso'] = convert_numpy_types(df_baixo.iloc[0]['count_baixo_progresso']) if not df_baixo.empty else 0
+        
+        # Dados por equipe filtrados
+        query_equipes = f"""
+        SELECT 
+            ISNULL(EpicEquipe, 'Sem Equipe') as EpicEquipe,
+            COUNT(*) as quantidade,
+            AVG(CAST(ISNULL(TasksPercentualMedia, 0) as float)) as percentual_medio,
+            SUM(CASE WHEN EpicStatus = 'Done' THEN 1 ELSE 0 END) as concluidos,
+            SUM(CASE WHEN EpicDueDate < GETDATE() AND EpicStatus NOT IN ('Done', 'Closed') THEN 1 ELSE 0 END) as atrasados
+        FROM BI_Jira_Epico_Datas_Grafico
+        WHERE {where_clause}
+        GROUP BY EpicEquipe
+        ORDER BY quantidade DESC
+        """
+        
+        df_equipes = pd.read_sql(query_equipes, conn, params=params)
+        equipes = convert_numpy_types(df_equipes.to_dict('records')) if not df_equipes.empty else []
+        
+        # Buscar dados para distribuição de status
+        query_status_dist = f"""
+        SELECT 
+            ISNULL(EpicStatus, 'Indefinido') as status,
+            COUNT(*) as quantidade
+        FROM BI_Jira_Epico_Datas_Grafico
+        WHERE {where_clause}
+        GROUP BY EpicStatus
+        ORDER BY quantidade DESC
+        """
+        
+        df_status_dist = pd.read_sql(query_status_dist, conn, params=params)
+        status_distribution = convert_numpy_types(df_status_dist.to_dict('records')) if not df_status_dist.empty else []
+        
+        # Calculando tendência de épicos (vs período anterior)
+        epicos_atual = stats.get('total_epicos', 0)
+        epicos_anterior = 0
+        tendencia = None
+
+        # Calcular período anterior (apenas se houver filtro de tempo)
+        if data_inicio and data_fim:
+            dt_inicio_anterior = (datetime.strptime(data_inicio, '%Y-%m-%d') - (datetime.strptime(data_fim, '%Y-%m-%d') - datetime.strptime(data_inicio, '%Y-%m-%d'))).strftime('%Y-%m-%d')
+            dt_fim_anterior = (datetime.strptime(data_inicio, '%Y-%m-%d') - timedelta(days=1)).strftime('%Y-%m-%d')
+
+            query_anterior = f"""
+            SELECT COUNT(*) as total_epicos
+            FROM BI_Jira_Epico_Datas_Grafico
+            WHERE EpicInicioPlanejado IS NOT NULL
+            AND (
+                (EpicInicioPlanejado BETWEEN ? AND ?) OR
+                (EpicDueDate BETWEEN ? AND ?)
+            )
+            """
+            df_anterior = pd.read_sql(query_anterior, conn, params=[dt_inicio_anterior, dt_fim_anterior, dt_inicio_anterior, dt_fim_anterior])
+
+            if not df_anterior.empty:
+                epicos_anterior = convert_numpy_types(df_anterior.iloc[0]['total_epicos'])
+                if epicos_anterior > 0:
+                    tendencia = round(((epicos_atual - epicos_anterior) / epicos_anterior) * 100, 1)
+                else:
+                    tendencia = None
+        else:
+            tendencia = None
+
+        stats['tendencia_epicos'] = tendencia
+
+        
+        #  Adicionar informação do período para o frontend
+        periodo_info = {
+            'periodo_selecionado': periodo_filter,
+            'data_inicio': data_inicio,
+            'data_fim': data_fim,
+            'descricao': get_periodo_description(periodo_filter)
+        }
+        
+        conn.close()
+        
+        return jsonify({
+            'stats': stats,
+            'equipes': equipes,
+            'status_distribution': status_distribution,
+            'periodo_info': periodo_info,
+            'filtros_aplicados': {
+                'equipe': equipe_filter,
+                'produto': produto_filter,
+                'status': status_filter,
+                'periodo': periodo_filter
+            }
+        })
+        
+    except Exception as e:
+        return jsonify({'error': str(e)})
+
+
+# Função auxiliar para descrição do período
+def get_periodo_description(periodo):
+    """Retorna descrição do período selecionado"""
+    today = datetime.now()
+    descriptions = {
+        'ano_atual': f"Ano de {today.year}",
+        '6_meses': "Últimos 6 meses",
+        '3_meses': "Últimos 3 meses",
+        'mes_atual': f"{today.strftime('%B de %Y')}",
+        'todos': "Todos os períodos"
+    }
+    return descriptions.get(periodo, "Período personalizado")
+
+
+@app.route('/api/alertas-detalhes')
+def alertas_detalhes():
+    """API para obter detalhes dos alertas"""
+    try:
+        tipo_alerta = request.args.get('tipo', '')
+        conn = db_manager.get_connection()
+        
+        if tipo_alerta == 'atrasados':
+            # Épicos atrasados
+            query = """
+            SELECT 
+                EpicNumber,
+                EpicSummary,
+                EpicEquipe,
+                EpicStatus,
+                EpicDueDate,
+                DATEDIFF(day, EpicDueDate, GETDATE()) as DiasAtraso,
+                CAST(ISNULL(TasksPercentualMedia, 0) as decimal(5,2)) as PercentualConcluido
+            FROM BI_Jira_Epico_Datas_Grafico
+            WHERE EpicDueDate < GETDATE() 
+            AND EpicStatus NOT IN ('Done', 'Closed')
+            AND EpicInicioPlanejado IS NOT NULL
+            ORDER BY EpicDueDate
+            """
+            
+        elif tipo_alerta == 'proximo_prazo':
+            # Épicos que vencem nos próximos 7 dias
+            query = """
+            SELECT 
+                EpicNumber,
+                EpicSummary,
+                EpicEquipe,
+                EpicStatus,
+                EpicDueDate,
+                DATEDIFF(day, GETDATE(), EpicDueDate) as DiasRestantes,
+                CAST(ISNULL(TasksPercentualMedia, 0) as decimal(5,2)) as PercentualConcluido
+            FROM BI_Jira_Epico_Datas_Grafico
+            WHERE EpicDueDate BETWEEN GETDATE() AND DATEADD(day, 7, GETDATE())
+            AND EpicStatus NOT IN ('Done', 'Closed')
+            AND EpicInicioPlanejado IS NOT NULL
+            ORDER BY EpicDueDate
+            """
+            
+        elif tipo_alerta == 'baixo_progresso':
+            # Épicos com baixo progresso (menos de 30% e iniciados há mais de 15 dias)
+            query = """
+            SELECT 
+                EpicNumber,
+                EpicSummary,
+                EpicEquipe,
+                EpicStatus,
+                EpicInicioPlanejado,
+                EpicDueDate,
+                CAST(ISNULL(TasksPercentualMedia, 0) as decimal(5,2)) as PercentualConcluido,
+                DATEDIFF(day, EpicInicioPlanejado, GETDATE()) as DiasDecorridos
+            FROM BI_Jira_Epico_Datas_Grafico
+            WHERE CAST(ISNULL(TasksPercentualMedia, 0) as decimal(5,2)) < 30
+            AND EpicInicioPlanejado < DATEADD(day, -15, GETDATE())
+            AND EpicStatus NOT IN ('Done', 'Closed')
+            AND EpicInicioPlanejado IS NOT NULL
+            ORDER BY TasksPercentualMedia, EpicInicioPlanejado
+            """
+            
+        else:
+            return jsonify({'error': 'Tipo de alerta não reconhecido'})
+        
+        df = pd.read_sql(query, conn)
+        conn.close()
+        
+        # Converter datas para string
+        date_columns = [col for col in df.columns if 'Date' in col or 'Inicio' in col or 'Fim' in col]
+        for col in date_columns:
+            if col in df.columns and not df[col].empty:
+                df[col] = pd.to_datetime(df[col], errors='coerce').dt.strftime('%d/%m/%Y')
+        
+        registros = convert_numpy_types(df.fillna('').to_dict('records'))
+        
+        return jsonify({
+            'tipo': tipo_alerta,
+            'registros': registros,
+            'total': len(registros)
         })
         
     except Exception as e:
@@ -312,9 +751,9 @@ def view_logs():
 
 @app.route('/api/gantt-data')
 def gantt_data():
-    """API para dados do gráfico de Gantt - VERSÃO CORRIGIDA"""
+    """API para dados do gráfico de Gantt"""
     try:
-        log_message("=== INICIANDO GANTT-DATA CORRIGIDO ===")
+        log_message("=== INICIANDO GANTT-DATA ===")
         
         # Testar conexão primeiro
         log_message("Testando conexão com banco...")
@@ -465,8 +904,8 @@ def gantt_data():
                 'total_epicos': 0
             })
         
-        # Criar gráfico Plotly CORRIGIDO
-        log_message("Criando gráfico Plotly corrigido...")
+        # Criar gráfico Plotly 
+        log_message("Criando gráfico Plotly...")
         
         fig = go.Figure()
         
@@ -519,7 +958,7 @@ def gantt_data():
                 # DEBUG: Log do status para verificar a lógica
                 log_message(f"Item {i}: Status='{item['Status']}', PrazoEstourado={item['PrazoEstourado']}")
                 
-                # LÓGICA CORRIGIDA: Verificar primeiro se está concluído
+                # Verificar primeiro se está concluído
                 status_upper = item['Status'].upper()
                 
                 if status_upper in ['DONE', 'CLOSED', 'CONCLUÍDO', 'FINALIZADO']:
@@ -626,7 +1065,7 @@ def gantt_data():
             borderwidth=2
         )
         
-        # Configurar layout CORRIGIDO - RESPONSIVO E OCUPANDO TODA LARGURA
+        # Configurar layout - RESPONSIVO E OCUPANDO TODA LARGURA
         fig.update_layout(
             title={
                 'text': 'Cronograma de Épicos - Gráfico de Gantt<br><sub>Verde=Concluído | Amarelo=Em Andamento | Vermelho=Atrasado | Cinza=Planejado</sub>',
@@ -734,7 +1173,7 @@ def gantt_data():
         status_list = sorted(df['EpicStatus'].dropna().unique().tolist())
         
         log_message(f"SUCESSO! Retornando {len(df)} épicos")
-        log_message("=== FIM GANTT-DATA CORRIGIDO ===")
+        log_message("=== FIM GANTT-DATA ===")
         
         return jsonify({
             'gantt': graphJSON,
