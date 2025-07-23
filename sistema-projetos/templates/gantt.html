@@ -1,444 +1,205 @@
-{% extends "base.html" %} {% block title %} Gráfico de Gantt - Sistema de
-Projetos{% endblock %} {% block gantt_active %}active{% endblock %} {% block
-page_title %} <i class="fas fa-chart-gantt me-2"></i> Gráfico de Gantt{%
-endblock %} {% block content %}
-<div class="container-fluid mt-4">
-  <!-- Período de Análise -->
-  <div id="periodo-info" class="alert alert-info py-2 mb-3 border-0 shadow-sm">
-    <div class="d-flex align-items-center">
-      <i class="fas fa-calendar-alt me-2 text-primary"></i>
-      <strong>Período de Análise:</strong>
-      <span id="periodo-texto" class="ms-2 badge bg-primary">Ano Atual</span>
-    </div>
-  </div>
+{% extends "base.html" %} 
 
-  <!-- Filtros Modernizados -->
-  <div class="row mb-4">
+{% block title %}Roadmap Agrupado - Sistema de Projetos{% endblock %} 
+{% block gantt_active %}active{% endblock %} 
+{% block page_title %} 
+<i class="fas fa-layer-group me-2"></i> Roadmap Agrupado por Épico
+{% endblock %} 
+
+<!-- Manter os filtros padrão do base.html -->
+{% block filtros %}
+{{ super() }}
+{% endblock %}
+
+{% block content %}
+<!-- Gráfico de Gantt Agrupado -->
+<div class="row">
     <div class="col-12">
-      <div class="card shadow-sm border-0">
-        <div class="card-body bg-light">
-          <div class="row align-items-center mb-3">
-            <div class="col-md-2">
-              <label
-                for="filterEquipe"
-                class="form-label small fw-bold text-dark"
-              >
-                <i class="fas fa-users me-1 text-primary"></i>Equipe
-              </label>
-              <select
-                id="filterEquipe"
-                class="form-select form-select-sm modern-select"
-              >
-                <option value="">Todas as Equipes</option>
-              </select>
-            </div>
-            <div class="col-md-2">
-              <label
-                for="filterStatus"
-                class="form-label small fw-bold text-dark"
-              >
-                <i class="fas fa-flag me-1 text-success"></i>Status
-              </label>
-              <select
-                id="filterStatus"
-                class="form-select form-select-sm modern-select"
-              >
-                <option value="">Todos os Status</option>
-              </select>
-            </div>
-            <div class="col-md-2">
-              <label
-                for="filterPeriodo"
-                class="form-label small fw-bold text-dark"
-              >
-                <i class="fas fa-clock me-1 text-info"></i>Período
-              </label>
-              <select
-                id="filterPeriodo"
-                class="form-select form-select-sm modern-select"
-              >
-                <option value="ano_atual">Ano Atual</option>
-                <option value="q1">Q1 - Jan a Mar</option>
-                <option value="q2">Q2 - Abr a Jun</option>
-                <option value="q3">Q3 - Jul a Set</option>
-                <option value="q4">Q4 - Out a Dez</option>
-                <option value="6_meses">Últimos 6 Meses</option>
-                <option value="3_meses">Últimos 3 Meses</option>
-                <option value="mes_atual">Mês Atual</option>
-                <option value="personalizado">Personalizado</option>
-              </select>
-            </div>
-            <div
-              class="col-md-3"
-              id="datas-personalizadas"
-              style="display: none"
-            >
-              <div class="row">
-                <div class="col-6">
-                  <label
-                    for="filterDataInicio"
-                    class="form-label small fw-bold text-dark"
-                    >Data Início</label
-                  >
-                  <input
-                    type="date"
-                    id="filterDataInicio"
-                    class="form-control form-control-sm modern-input"
-                    value="2025-01-01"
-                  />
+        <div class="card shadow-sm border-0">
+            <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                <div>
+                    <h5 class="card-title mb-0 text-primary">
+                        <i class="fas fa-layer-group me-2"></i>
+                        Roadmap Agrupado
+                    </h5>
+                    <small class="text-primary opacity-75">
+                        📋 Planejado PO | ⏰ Planejado Time | ✅ Realizado (🟢🟡🔴 Indicadores)
+                    </small>
                 </div>
-                <div class="col-6">
-                  <label
-                    for="filterDataFim"
-                    class="form-label small fw-bold text-dark"
-                    >Data Fim</label
-                  >
-                  <input
-                    type="date"
-                    id="filterDataFim"
-                    class="form-control form-control-sm modern-input"
-                    value="2025-12-31"
-                  />
+                <div>
+                    <button id="btnFullscreen" class="btn btn-sm btn-outline-primary modern-btn">
+                        <i class="fas fa-expand me-1"></i>
+                        Tela Cheia
+                    </button>
                 </div>
-              </div>
             </div>
-            <div class="col-md-3 d-flex align-items-end gap-2">
-              <button
-                type="button"
-                id="btnAplicarFiltros"
-                class="btn btn-primary btn-sm modern-btn"
-              >
-                <i class="fas fa-search me-1"></i>
-                Aplicar
-              </button>
-              <button
-                type="button"
-                id="btnLimparFiltros"
-                class="btn btn-outline-secondary btn-sm modern-btn"
-              >
-                <i class="fas fa-times me-1"></i>
-                Limpar
-              </button>
-              <span
-                id="totalEpicos"
-                class="badge bg-gradient-success fs-6 px-3 py-2"
-                >0 épicos</span
-              >
+            <div class="card-body p-0">
+                <!-- Loading -->
+                <div id="loading" class="loading">
+                    <div class="spinner-border text-primary" role="status" style="width: 3rem; height: 3rem">
+                        <span class="visually-hidden">Carregando...</span>
+                    </div>
+                    <div class="mt-3">
+                        <i class="fas fa-layer-group fa-2x text-primary mb-2"></i>
+                        <h5>Carregando Roadmap Agrupado...</h5>
+                        <p class="text-muted">Processando dados dos projetos com indicadores</p>
+                    </div>
+                </div>
+
+                <!-- Mensagem quando não há dados -->
+                <div id="noData" style="display: none" class="text-center py-5">
+                    <div class="mb-4">
+                        <i class="fas fa-layer-group fa-4x text-muted mb-3"></i>
+                        <h5 class="text-muted">Nenhum épico encontrado</h5>
+                        <p class="text-muted">
+                            Tente ajustar os filtros para ver os dados agrupados
+                        </p>
+                    </div>
+                    <button class="btn btn-outline-primary" onclick="clearFilters()">
+                        <i class="fas fa-refresh me-1"></i>
+                        Limpar Filtros
+                    </button>
+                </div>
+
+                <!-- Erro -->
+                <div id="error" style="display: none" class="alert alert-danger m-3 border-0 shadow-sm">
+                    <div class="d-flex align-items-center">
+                        <i class="fas fa-exclamation-triangle me-2 fa-2x text-danger"></i>
+                        <div>
+                            <h6 class="mb-1">Erro ao carregar dados</h6>
+                            <span id="errorMessage"></span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Gráfico -->
+                <div id="ganttChart" class="gantt-container" style="display: none"></div>
             </div>
-          </div>
         </div>
-      </div>
     </div>
-  </div>
-  
-  <!-- Gráfico de Gantt -->
-  <div class="row">
-    <div class="col-12">
-      <div class="card shadow-sm border-0">
-        <div
-          class="card-header bg-white d-flex justify-content-between align-items-center"
-        >
-          <div>
-            <h5 class="card-title mb-0 text-primary">
-              <i class="fas fa-chart-gantt me-2"></i>
-              Cronograma de Épicos
-            </h5>
-            <small class="text-primary opacity-75">
-              Barras claras = Planejado | Barras escuras = Executado
-            </small>
-          </div>
-          <div>
-            <button
-              id="btnFullscreen"
-              class="btn btn-sm btn-outline-gray modern-btn"
-            >
-              <i class="fas fa-expand me-1"></i>
-              Tela Cheia
-            </button>
-          </div>
-        </div>
-        <div class="card-body p-0">
-          <!-- Loading -->
-          <div id="loading" class="loading">
-            <div
-              class="spinner-border text-primary"
-              role="status"
-              style="width: 3rem; height: 3rem"
-            >
-              <span class="visually-hidden">Carregando...</span>
-            </div>
-            <div class="mt-3">
-              <i class="fas fa-chart-gantt fa-2x text-primary mb-2"></i>
-              <h5>Carregando Cronograma...</h5>
-              <p class="text-muted">Processando dados dos projetos</p>
-            </div>
-          </div>
-
-          <!-- Mensagem quando não há dados -->
-          <div id="noData" style="display: none" class="text-center py-5">
-            <div class="mb-4">
-              <i class="fas fa-chart-gantt fa-4x text-muted mb-3"></i>
-              <h5 class="text-muted">Nenhum épico encontrado</h5>
-              <p class="text-muted">
-                Tente ajustar os filtros para ver os dados
-              </p>
-            </div>
-            <button class="btn btn-outline-primary" onclick="clearFilters()">
-              <i class="fas fa-refresh me-1"></i>
-              Limpar Filtros
-            </button>
-          </div>
-
-          <!-- Erro -->
-          <div
-            id="error"
-            style="display: none"
-            class="alert alert-danger m-3 border-0 shadow-sm"
-          >
-            <div class="d-flex align-items-center">
-              <i class="fas fa-exclamation-triangle me-2 fa-2x text-danger"></i>
-              <div>
-                <h6 class="mb-1">Erro ao carregar dados</h6>
-                <span id="errorMessage"></span>
-              </div>
-            </div>
-          </div>
-
-          <!-- Gráfico -->
-          <div
-            id="ganttChart"
-            class="gantt-container"
-            style="display: none"
-          ></div>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- Legenda e Informações  -->
-  <!-- Legenda e Informações Corrigida -->
-  <div class="row mt-4">
-    <div class="col-12">
-      <div class="card shadow-sm border-0">
-        
-        <div class="card-header bg-white border-bottom">
-          <h6 class="card-title mb-0 text-primary">
-            <i class="fas fa-info-circle me-2"></i>
-            Legenda e Guia de Utilização
-          </h6>
-        </div>
-        <div class="card-body">
-          <div class="row">
-            <div class="col-md-6">
-              <h6 class="text-primary mb-3">
-                <i class="fas fa-palette me-2"></i>Status dos Projetos
-              </h6>
-              <div class="d-flex flex-wrap gap-2 mb-4">
-                <!-- Cores corrigidas para corresponder ao gráfico -->
-                <span class="status-legend status-concluido-correto">
-                  <i class="fas fa-check-circle me-1"></i>CONCLUÍDO
-                </span>
-                <span class="status-legend status-andamento-correto">
-                  <i class="fas fa-play-circle me-1"></i>EM ANDAMENTO
-                </span>
-                <span class="status-legend status-atrasado-correto">
-                  <i class="fas fa-exclamation-circle me-1"></i>ATRASADO
-                </span>
-                <span class="status-legend status-planejado-correto">
-                  <i class="fas fa-clock me-1"></i>PLANEJADO
-                </span>
-              </div>
-
-             
-              <div class="alert alert-dashboard-info">
-                <div class="d-flex align-items-start">
-                  <i class="fas fa-lightbulb me-2 mt-1 text-warning"></i>
-                  <div>
-                    <strong>Importante:</strong> As cores das barras representam
-                    o status atual do projeto. Compare as barras claras
-                    (planejado) com as escuras (executado) para identificar
-                    desvios.
-                  </div>
-                </div>
-              </div>
-            </div>
-            <div class="col-md-6">
-              <h6 class="text-success mb-3">
-                <i class="fas fa-mouse me-2"></i>Como Utilizar
-              </h6>
-              <div class="instruction-list">
-                <div class="instruction-item">
-                  <div class="instruction-icon bg-danger">
-                    <i class="fas fa-minus text-white"></i>
-                  </div>
-                  <div class="instruction-text">
-                    <strong>Linha vermelha tracejada</strong> indica a data
-                    atual (Hoje)
-                  </div>
-                </div>
-                <div class="instruction-item">
-                  <div class="instruction-icon bg-primary">
-                    <i class="fas fa-calendar text-white"></i>
-                  </div>
-                  <div class="instruction-text">
-                    <strong>Barras transparentes</strong> mostram as datas
-                    planejadas
-                  </div>
-                </div>
-                <div class="instruction-item">
-                  <div class="instruction-icon bg-success">
-                    <i class="fas fa-calendar-check text-white"></i>
-                  </div>
-                  <div class="instruction-text">
-                    <strong>Barras sólidas</strong> mostram as datas reais de
-                    execução
-                  </div>
-                </div>
-                <div class="instruction-item">
-                  <div class="instruction-icon bg-info">
-                    <i class="fas fa-mouse text-white"></i>
-                  </div>
-                  <div class="instruction-text">
-                    <strong>Passe o mouse</strong> sobre as barras para ver
-                    detalhes
-                  </div>
-                </div>
-                <div class="instruction-item">
-                  <div class="instruction-icon bg-warning">
-                    <i class="fas fa-search-plus text-white"></i>
-                  </div>
-                  <div class="instruction-text">
-                    <strong>Use o scroll</strong> ou ferramentas para fazer zoom
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
 </div>
 
-<!-- Bootstrap JS -->
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
-<!-- jQuery -->
-<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<!-- Legenda e Informações Detalhadas -->
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card shadow-sm border-0">
+            <div class="card-header bg-white border-bottom">
+                <h6 class="card-title mb-0 text-primary">
+                    <i class="fas fa-info-circle me-2"></i>
+                    Legenda do Roadmap Agrupado e Regras de Indicadores
+                </h6>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <!-- Coluna 1: Tipos de Planejamento -->
+                    <div class="col-md-4">
+                        <h6 class="text-primary mb-3">
+                            <i class="fas fa-palette me-2"></i>Tipos de Planejamento
+                        </h6>
+                        <div class="d-flex flex-column gap-2 mb-4">
+                            <span class="status-legend-new" style="background-color: #6c757d; opacity: 0.7;">
+                                <i class="fas fa-clipboard-list me-1"></i>📋 PLANEJADO P.O.
+                            </span>
+                            <span class="status-legend-new" style="background-color: #17a2b8;">
+                                <i class="fas fa-clock me-1"></i>⏰ PLANEJADO TIME
+                            </span>
+                            <span class="status-legend-new" style="background-color: #28a745;">
+                                <i class="fas fa-check-circle me-1"></i>✅ REALIZADO TIME
+                            </span>
+                        </div>
+                    </div>
 
+                    <!-- Coluna 2: Indicadores de Andamento -->
+                    <div class="col-md-4">
+                        <h6 class="text-success mb-3">
+                            <i class="fas fa-traffic-light me-2"></i>Indicadores de Andamento
+                        </h6>
+                        <div class="d-flex flex-column gap-2 mb-4">
+                            <span class="status-legend-new" style="background-color: #28a745;">
+                                <i class="fas fa-circle me-1"></i>🟢 VERDE - No Prazo
+                            </span>
+                            <span class="status-legend-new" style="background-color: #ffc107; color: #212529;">
+                                <i class="fas fa-circle me-1"></i>🟡 AMARELO - Atenção
+                            </span>
+                            <span class="status-legend-new" style="background-color: #dc3545;">
+                                <i class="fas fa-circle me-1"></i>🔴 VERMELHO - Crítico
+                            </span>
+                        </div>
+
+                        <div class="alert alert-warning p-2 mb-3">
+                            <small><strong>Nota:</strong> Indicadores aplicam-se apenas às barras de "✅ Realizado Time"</small>
+                        </div>
+                    </div>
+
+                    <!-- Coluna 3: Como Interpretar -->
+                    <div class="col-md-4">
+                        <h6 class="text-info mb-3">
+                            <i class="fas fa-eye me-2"></i>Como Interpretar
+                        </h6>
+                        <div class="instruction-list-compact">
+                            <div class="instruction-item-compact">
+                                <div class="instruction-icon-compact bg-info">
+                                    <i class="fas fa-layer-group text-white"></i>
+                                </div>
+                                <div class="instruction-text-compact">
+                                    <strong>Agrupamento:</strong> Cada épico tem até 3 barras empilhadas
+                                </div>
+                            </div>
+                            <div class="instruction-item-compact">
+                                <div class="instruction-icon-compact bg-primary">
+                                    <i class="fas fa-mouse text-white"></i>
+                                </div>
+                                <div class="instruction-text-compact">
+                                    <strong>Hover:</strong> Passe o mouse para ver detalhes completos
+                                </div>
+                            </div>
+                            <div class="instruction-item-compact">
+                                <div class="instruction-icon-compact bg-danger">
+                                    <i class="fas fa-exclamation text-white"></i>
+                                </div>
+                                <div class="instruction-text-compact">
+                                    <strong>Linha vermelha:</strong> Marca a data atual
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Comparação Visual -->
+                <div class="row mt-4">
+                    <div class="col-12">
+                        <div class="alert alert-dashboard-info">
+                            <div class="d-flex align-items-start">
+                                <i class="fas fa-lightbulb me-2 mt-1 text-warning"></i>
+                                <div>
+                                    <strong>💡 Dica de Análise:</strong> 
+                                    Compare as três barras de cada épico para identificar:
+                                    <ul class="mb-0 mt-2">
+                                        <li><strong>Precisão de Estimativas:</strong> Quão próximo o planejamento do time ficou do PO</li>
+                                        <li><strong>Execução vs Planejamento:</strong> Se o realizado está alinhado com o planejado</li>
+                                        <li><strong>Padrões de Desvio:</strong> Equipes ou tipos de projeto com maior variação</li>
+                                        <li><strong>Oportunidades de Melhoria:</strong> Onde ajustar processos de estimativa</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
 <script>
-  function getCurrentYear() {
-    return new Date().getFullYear();
-  }
+// Função específica da página Gantt (sobrescreve a função global)
+function loadPageData() {
+    loadGanttData();
+}
 
-  // Função para obter datas padrão baseadas no ano atual
-  function getDefaultDates() {
-    const currentYear = getCurrentYear();
-    return {
-      inicio: `${currentYear}-01-01`,
-      fim: `${currentYear}-12-31`,
-    };
-  }
-
-  // Inicializar filtros com ano dinâmico
-  const defaultDates = getDefaultDates();
-  let currentFilters = {
-    equipe: "",
-    status: "",
-    data_inicio: defaultDates.inicio,
-    data_fim: defaultDates.fim,
-  };
-  // Função para atualizar label do período
-  function updatePeriodLabel() {
-    const periodoSelect = document.getElementById("filterPeriodo");
-    const periodoValue = periodoSelect ? periodoSelect.value : "ano_atual";
-    const periodoTexto = document.getElementById("periodo-texto");
-
-    if (!periodoTexto) return;
-
-    const today = new Date();
-    const currentYear = today.getFullYear();
-
-    const periodoTextos = {
-      ano_atual: `${currentYear}`,
-      q1: `Q1 ${currentYear} (Jan-Mar)`,
-      q2: `Q2 ${currentYear} (Abr-Jun)`,
-      q3: `Q3 ${currentYear} (Jul-Set)`,
-      q4: `Q4 ${currentYear} (Out-Dez)`,
-      "6_meses": "Últimos 6 Meses",
-      "3_meses": "Últimos 3 Meses",
-      mes_atual: today.toLocaleDateString("pt-BR", {
-        month: "long",
-        year: "numeric",
-      }),
-      personalizado: "Período Personalizado",
-    };
-
-    periodoTexto.textContent =
-      periodoTextos[periodoValue] || "Período Selecionado";
-  }
-
-  // Função para calcular datas baseadas no período
-  function calculatePeriodDates(periodo) {
-    const today = new Date();
-    const currentYear = today.getFullYear();
-
-    switch (periodo) {
-      case "ano_atual":
-        return {
-          inicio: `${currentYear}-01-01`,
-          fim: `${currentYear}-12-31`,
-        };
-      case "q1":
-        return {
-          inicio: `${currentYear}-01-01`,
-          fim: `${currentYear}-03-31`,
-        };
-      case "q2":
-        return {
-          inicio: `${currentYear}-04-01`,
-          fim: `${currentYear}-06-30`,
-        };
-      case "q3":
-        return {
-          inicio: `${currentYear}-07-01`,
-          fim: `${currentYear}-09-30`,
-        };
-      case "q4":
-        return {
-          inicio: `${currentYear}-10-01`,
-          fim: `${currentYear}-12-31`,
-        };
-      case "6_meses":
-        const seisMesesAtras = new Date();
-        seisMesesAtras.setMonth(today.getMonth() - 6);
-        return {
-          inicio: seisMesesAtras.toISOString().split("T")[0],
-          fim: today.toISOString().split("T")[0],
-        };
-      case "3_meses":
-        const tresMesesAtras = new Date();
-        tresMesesAtras.setMonth(today.getMonth() - 3);
-        return {
-          inicio: tresMesesAtras.toISOString().split("T")[0],
-          fim: today.toISOString().split("T")[0],
-        };
-      case "mes_atual":
-        const inicioMes = new Date(currentYear, today.getMonth(), 1);
-        const fimMes = new Date(currentYear, today.getMonth() + 1, 0);
-        return {
-          inicio: inicioMes.toISOString().split("T")[0],
-          fim: fimMes.toISOString().split("T")[0],
-        };
-      default:
-        return {
-          inicio: currentFilters.data_inicio,
-          fim: currentFilters.data_fim,
-        };
-    }
-  }
-
-  function loadGanttData() {
-    console.log("Carregando dados do Gantt...");
+function loadGanttData() {
+    console.log("Carregando dados do Gantt agrupado com indicadores...");
 
     document.getElementById("loading").style.display = "block";
     document.getElementById("ganttChart").style.display = "none";
@@ -449,292 +210,129 @@ endblock %} {% block content %}
     console.log("Parâmetros:", currentFilters);
 
     fetch(`/api/gantt-data?${params}`)
-      .then((response) => {
-        console.log("Resposta recebida:", response.status);
-        return response.json();
-      })
-      .then((data) => {
-        console.log("Dados processados:", data);
-        document.getElementById("loading").style.display = "none";
+        .then((response) => {
+            console.log("Resposta recebida:", response.status);
+            return response.json();
+        })
+        .then((data) => {
+            console.log("Dados processados:", data);
+            document.getElementById("loading").style.display = "none";
 
-        if (data.error) {
-          showError(data.error);
-        } else if (data.message) {
-          document.getElementById("noData").style.display = "block";
-          updateTotalEpicos(0);
-        } else {
-          createGanttChart(data.gantt);
-          populateFilterOptions(data.equipes, data.status);
-          updateTotalEpicos(data.total_epicos);
-          document.getElementById("ganttChart").style.display = "block";
-        }
-      })
-      .catch((error) => {
-        console.error("Erro:", error);
-        document.getElementById("loading").style.display = "none";
-        showError("Erro ao carregar dados: " + error.message);
-      });
-  }
+            if (data.error) {
+                showError(data.error);
+            } else if (data.message) {
+                document.getElementById("noData").style.display = "block";
+                updateTotalRegistros(0, "épicos");
+            } else {
+                try {
+                    createGanttChart(data.gantt);
+                    populateFilterOptions(data.equipes, data.status);
+                    updateTotalRegistros(data.total_epicos, "épicos");
+                    document.getElementById("ganttChart").style.display = "block";
+                } catch (chartError) {
+                    console.error("Erro ao criar gráfico:", chartError);
+                    showError(`Erro ao criar gráfico: ${chartError.message}`);
+                }
+            }
+        })
+        .catch((error) => {
+            console.error("Erro:", error);
+            document.getElementById("loading").style.display = "none";
+            showError("Erro ao carregar dados: " + error.message);
+        });
+}
 
-  function createGanttChart(ganttData) {
-    console.log("Criando gráfico...");
+function createGanttChart(ganttData) {
+    console.log("Criando gráfico agrupado com indicadores...");
 
     const graphDiv = document.getElementById("ganttChart");
-    const plotData = JSON.parse(ganttData);
+    
+    let plotData;
+    try {
+        if (typeof ganttData === 'string') {
+            plotData = JSON.parse(ganttData);
+        } else {
+            plotData = ganttData;
+        }
+        
+        if (!plotData.data || !plotData.layout) {
+            throw new Error("Dados do gráfico inválidos: faltando 'data' ou 'layout'");
+        }
+        
+    } catch (parseError) {
+        console.error("Erro ao fazer parse dos dados:", parseError);
+        throw new Error(`Erro ao processar dados do gráfico: ${parseError.message}`);
+    }
 
-    // Aplicar estilo moderno ao layout
+    // Aplicar configurações específicas
     plotData.layout.autosize = true;
     plotData.layout.responsive = true;
-
-    // Cores modernizadas
     plotData.layout.plot_bgcolor = "#fafafa";
     plotData.layout.paper_bgcolor = "white";
-
-    // Grid mais suave
+    
+    if (!plotData.layout.xaxis) plotData.layout.xaxis = {};
+    if (!plotData.layout.yaxis) plotData.layout.yaxis = {};
+    
     plotData.layout.xaxis.gridcolor = "#e0e0e0";
     plotData.layout.yaxis.gridcolor = "#e0e0e0";
 
-    // Fontes modernizadas
     plotData.layout.font = {
-      family:
-        'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-      size: 12,
-      color: "#424242",
+        family: 'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+        size: 10,
+        color: "#424242",
     };
 
-    // Configurar plotly com configurações específicas
     const config = {
-      responsive: true,
-      displayModeBar: true,
-      displaylogo: false,
-      modeBarButtonsToAdd: [
-        {
-          name: "Resetar Zoom",
-          icon: Plotly.Icons.home,
-          click: function (gd) {
-            const originalRange = plotData.layout.xaxis.range;
-            Plotly.relayout(gd, {
-              "xaxis.range": originalRange,
-              "xaxis2.range": originalRange,
-              "yaxis.autorange": "reversed",
-            });
-          },
+        responsive: true,
+        displayModeBar: true,
+        displaylogo: false,
+        toImageButtonOptions: {
+            format: "png",
+            filename: "roadmap_agrupado_com_indicadores",
+            height: 1000,
+            width: 1600,
+            scale: 2,
         },
-      ],
-      modeBarButtonsToRemove: ["pan2d", "lasso2d", "select2d"],
-      toImageButtonOptions: {
-        format: "png",
-        filename: "gantt_chart_modernizado",
-        height: 800,
-        width: 1400,
-        scale: 2,
-      },
     };
 
-    // Usar newPlot para garantir configurações corretas
     Plotly.newPlot(graphDiv, plotData.data, plotData.layout, config)
-      .then(function () {
-        console.log("Gráfico criado com sucesso!");
+        .then(function () {
+            console.log("Gráfico agrupado com indicadores criado com sucesso!");
+            setTimeout(() => {
+                Plotly.Plots.resize(graphDiv);
+            }, 200);
 
-        setTimeout(() => {
-          Plotly.Plots.resize(graphDiv);
-          console.log("Gráfico redimensionado");
-        }, 200);
-
-        window.addEventListener("resize", function () {
-          Plotly.Plots.resize(graphDiv);
+            window.addEventListener("resize", function () {
+                Plotly.Plots.resize(graphDiv);
+            });
+        })
+        .catch(function (error) {
+            console.error("Erro ao criar gráfico Plotly:", error);
+            throw new Error("Erro ao renderizar o gráfico: " + error.message);
         });
-      })
-      .catch(function (error) {
-        console.error("Erro ao criar gráfico:", error);
-        showError("Erro ao renderizar o gráfico: " + error.message);
-      });
-  }
+}
 
-  function populateFilterOptions(equipes, status) {
-    const equipeSelect = document.getElementById("filterEquipe");
-    if (equipeSelect.children.length === 1) {
-      equipes.forEach((equipe) => {
-        const option = document.createElement("option");
-        option.value = equipe;
-        option.textContent = equipe;
-        equipeSelect.appendChild(option);
-      });
-    }
-
-    const statusSelect = document.getElementById("filterStatus");
-    if (statusSelect.children.length === 1) {
-      status.forEach((st) => {
-        const option = document.createElement("option");
-        option.value = st;
-        option.textContent = st;
-        statusSelect.appendChild(option);
-      });
-    }
-  }
-
-  function updateTotalEpicos(total) {
-    document.getElementById("totalEpicos").textContent = `${total} épicos`;
-  }
-
-  function showError(message) {
+function showError(message) {
     document.getElementById("errorMessage").textContent = message;
     document.getElementById("error").style.display = "block";
-  }
+}
 
-  function applyFilters() {
-    const periodoSelect = document.getElementById("filterPeriodo");
-    const periodo = periodoSelect.value;
-
-    if (periodo === "personalizado") {
-      currentFilters.data_inicio =
-        document.getElementById("filterDataInicio").value;
-      currentFilters.data_fim = document.getElementById("filterDataFim").value;
-    } else {
-      const dates = calculatePeriodDates(periodo);
-      currentFilters.data_inicio = dates.inicio;
-      currentFilters.data_fim = dates.fim;
-
-      // Atualizar campos de data para mostrar as datas calculadas
-      document.getElementById("filterDataInicio").value = dates.inicio;
-      document.getElementById("filterDataFim").value = dates.fim;
-    }
-
-    currentFilters.equipe = document.getElementById("filterEquipe").value;
-    currentFilters.status = document.getElementById("filterStatus").value;
-
-    // Validação de datas
-    if (currentFilters.data_inicio && currentFilters.data_fim) {
-      if (
-        new Date(currentFilters.data_inicio) > new Date(currentFilters.data_fim)
-      ) {
-        alert("Data de início deve ser anterior à data de fim!");
-        return;
-      }
-    }
-
-    updatePeriodLabel();
-    console.log("Aplicando filtros:", currentFilters);
-    loadGanttData();
-  }
-
-  function clearFilters() {
-    document.getElementById("filterEquipe").value = "";
-    document.getElementById("filterStatus").value = "";
-    document.getElementById("filterPeriodo").value = "ano_atual";
-    document.getElementById("filterDataInicio").value = "2025-01-01";
-    document.getElementById("filterDataFim").value = "2025-12-31";
-    document.getElementById("datas-personalizadas").style.display = "none";
-
-    currentFilters = {
-      equipe: "",
-      status: "",
-      data_inicio: "2025-01-01",
-      data_fim: "2025-12-31",
-    };
-
-    updatePeriodLabel();
-    loadGanttData();
-  }
-
-  function resetToCurrentYear() {
-    const currentYear = getCurrentYear();
-    const dates = {
-      inicio: `${currentYear}-01-01`,
-      fim: `${currentYear}-12-31`,
-    };
-
-    // Atualizar campos se existirem
-    const dataInicioField = document.getElementById("filterDataInicio");
-    const dataFimField = document.getElementById("filterDataFim");
-
-    if (dataInicioField) dataInicioField.value = dates.inicio;
-    if (dataFimField) dataFimField.value = dates.fim;
-
-    // Atualizar filtros globais
-    currentFilters.data_inicio = dates.inicio;
-    currentFilters.data_fim = dates.fim;
-
-    return dates;
-  }
-
-  // Event Listeners
-  document.addEventListener("DOMContentLoaded", function () {
-    console.log("Página carregada, iniciando Gantt modernizado...");
-
-    // Event listeners para filtros
-    document
-      .getElementById("btnAplicarFiltros")
-      .addEventListener("click", applyFilters);
-    document
-      .getElementById("btnLimparFiltros")
-      .addEventListener("click", clearFilters);
-
-    // Event listener para período
-    document
-      .getElementById("filterPeriodo")
-      .addEventListener("change", function () {
-        const periodo = this.value;
-        const datasPersonalizadas = document.getElementById(
-          "datas-personalizadas"
-        );
-
-        if (periodo === "personalizado") {
-          datasPersonalizadas.style.display = "block";
-        } else {
-          datasPersonalizadas.style.display = "none";
-          // Aplicar automaticamente quando não for personalizado
-          applyFilters();
-        }
-      });
-
+// Inicializar a página
+document.addEventListener("DOMContentLoaded", function () {
     // Event listener para tela cheia
-    document
-      .getElementById("btnFullscreen")
-      .addEventListener("click", function () {
+    document.getElementById("btnFullscreen").addEventListener("click", function () {
         const chartDiv = document.getElementById("ganttChart");
         if (chartDiv.requestFullscreen) {
-          chartDiv.requestFullscreen();
+            chartDiv.requestFullscreen();
         } else if (chartDiv.webkitRequestFullscreen) {
-          chartDiv.webkitRequestFullscreen();
+            chartDiv.webkitRequestFullscreen();
         } else if (chartDiv.msRequestFullscreen) {
-          chartDiv.msRequestFullscreen();
+            chartDiv.msRequestFullscreen();
         }
-      });
+    });
 
-    // Aplicar filtros ao pressionar Enter nos campos de data
-    document
-      .getElementById("filterDataInicio")
-      .addEventListener("keypress", function (e) {
-        if (e.key === "Enter") applyFilters();
-      });
-
-    document
-      .getElementById("filterDataFim")
-      .addEventListener("keypress", function (e) {
-        if (e.key === "Enter") applyFilters();
-      });
-
-    const currentYear = getCurrentYear();
-
-    // Atualizar campos de data se existirem
-    const dataInicioField = document.getElementById("filterDataInicio");
-    const dataFimField = document.getElementById("filterDataFim");
-
-    if (dataInicioField && !dataInicioField.value) {
-      dataInicioField.value = `${currentYear}-01-01`;
-    }
-
-    if (dataFimField && !dataFimField.value) {
-      dataFimField.value = `${currentYear}-12-31`;
-    }
-
-    // Atualizar filtros globais
-    currentFilters.data_inicio = `${currentYear}-01-01`;
-    currentFilters.data_fim = `${currentYear}-12-31`;
-    // Inicializar
-    updatePeriodLabel();
+    // Carregar dados iniciais
     loadGanttData();
-  });
+});
 </script>
 {% endblock %}

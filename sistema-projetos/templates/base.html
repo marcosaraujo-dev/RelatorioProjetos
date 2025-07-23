@@ -1,1128 +1,988 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}Gerenciamento de Projetos{% endblock %}</title>
 
     <!-- Bootstrap CSS -->
-    <link
-      href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css"
-      rel="stylesheet"
-    />
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <!-- Font Awesome -->
-    <link
-      rel="stylesheet"
-      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"
-    />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <!-- Plotly.js -->
     <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
 
     <style>
-      .navbar-brand {
-        font-weight: bold;
-      }
-      .sidebar {
-        min-height: 100vh;
-        background-color: #f8f9fa;
-      }
-      .main-content {
-        min-height: 100vh;
-      }
-
-      .font-primary {
-        color: #184194;
-      }
-
-      /* Estilos adicionais para o Dashboard */
-
-      /* Estilo para o label do período */
-      #periodo-label {
-        font-style: italic;
-        color: #6c757d !important;
-        font-size: 0.75rem !important;
-        margin-top: 0.25rem;
-      }
-
-      /* Cards com animações */
-      .card {
-        transition: all 0.3s ease;
-        border: none !important;
-        box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
-      }
-
-      .card:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
-      }
-
-      /* Ícones circulares */
-      .icon-circle {
-        height: 3rem;
-        width: 3rem;
-        border-radius: 100%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 1.25rem;
-      }
-
-      /* Alertas interativos */
-      .alert-dashboard {
-        border-left: 4px solid;
-        border-radius: 0.35rem;
-        margin-bottom: 1rem;
-        cursor: pointer;
-        transition: all 0.2s ease;
-        position: relative;
-        overflow: hidden;
-      }
-
-      .alert-dashboard::before {
-        content: "";
-        position: absolute;
-        top: 0;
-        left: -100%;
-        width: 100%;
-        height: 100%;
-        background: linear-gradient(
-          90deg,
-          transparent,
-          rgba(255, 255, 255, 0.2),
-          transparent
-        );
-        transition: left 0.5s;
-      }
-
-      .alert-dashboard:hover {
-        background-color: rgba(0, 0, 0, 0.05);
-        transform: translateX(3px);
-        box-shadow: 0 0.25rem 0.5rem rgba(0, 0, 0, 0.1);
-      }
-
-      .alert-dashboard:hover::before {
-        left: 100%;
-      }
-
-      .alert-high {
-        border-left-color: #dc3545;
-        background-color: rgba(220, 53, 69, 0.05);
-      }
-
-      .alert-medium {
-        border-left-color: #ffc107;
-        background-color: rgba(255, 193, 7, 0.05);
-      }
-
-      .alert-low {
-        border-left-color: #17a2b8;
-        background-color: rgba(23, 162, 184, 0.05);
-      }
-
-      /* Progresso animado */
-      .progress {
-        overflow: hidden;
-        background-color: #e9ecef;
-      }
-
-      .progress-bar {
-        transition: width 0.6s ease;
-      }
-
-      .progress-mini {
-        height: 0.5rem;
-        border-radius: 0.25rem;
-      }
-
-      /* Badges customizados */
-      .badge-status {
-        font-size: 0.75rem;
-        padding: 0.375rem 0.75rem;
-        border-radius: 0.375rem;
-      }
-
-      /* Loading states */
-      .spinner-border-sm {
-        width: 1rem;
-        height: 1rem;
-      }
-
-      /* Modal customizado */
-
-      /* Modal com barra de rolagem */
-      #modalDetalhesAlerta .modal-content {
-        border-radius: 0.75rem;
-        overflow: hidden;
-        max-height: 90vh; /* Limitar altura máxima */
-      }
-
-      #modalDetalhesAlerta .modal-body {
-        padding: 0;
-        max-height: 70vh; /* Altura máxima do corpo do modal */
-        overflow-y: auto; /* Sempre mostrar barra de rolagem vertical */
-        overflow-x: hidden; /* Ocultar rolagem horizontal */
-      }
-
-      /* Melhorar a barra de rolagem do modal */
-      #modalDetalhesAlerta .modal-body::-webkit-scrollbar {
-        width: 8px;
-      }
-
-      #modalDetalhesAlerta .modal-body::-webkit-scrollbar-track {
-        background: #f1f1f1;
-        border-radius: 4px;
-      }
-
-      #modalDetalhesAlerta .modal-body::-webkit-scrollbar-thumb {
-        background: #c1c1c1;
-        border-radius: 4px;
-      }
-
-      #modalDetalhesAlerta .modal-body::-webkit-scrollbar-thumb:hover {
-        background: #a8a8a8;
-      }
-
-      /* Tabela responsiva com rolagem interna */
-      #modalDetalhesAlerta .table-responsive {
-        max-height: 400px;
-        overflow-y: auto;
-        overflow-x: auto;
-        border-radius: 0.375rem;
-        box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
-        margin: 0; /* Remover margens */
-      }
-
-      /* Cabeçalho fixo da tabela */
-      #modalDetalhesAlerta .table thead th {
-        position: sticky;
-        top: 0;
-        z-index: 10;
-        background-color: #343a40 !important;
-        border-top: none;
-      }
-
-      .modal-xl {
-        max-width: 90%;
-      }
-
-      .modal-content {
-        border-radius: 0.5rem;
-        border: none;
-        box-shadow: 0 1rem 3rem rgba(0, 0, 0, 0.175);
-      }
-
-      .modal-header {
-        border-bottom: 1px solid #dee2e6;
-        background-color: #f8f9fa;
-      }
-
-      .modal-footer {
-        border-top: 1px solid #dee2e6;
-        background-color: #f8f9fa;
-      }
-
-      /* Tabela responsiva */
-      .table-responsive {
-        border-radius: 0.375rem;
-        box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
-      }
-
-      .table {
-        margin-bottom: 0;
-      }
-
-      .table th {
-        background-color: #343a40;
-        color: white;
-        border: none;
-        font-weight: 600;
-        text-transform: uppercase;
-        font-size: 0.875rem;
-        padding: 1rem 0.75rem;
-      }
-
-      .table td {
-        padding: 0.75rem;
-        vertical-align: middle;
-        border-top: 1px solid #dee2e6;
-      }
-
-      .table-striped tbody tr:nth-of-type(odd) {
-        background-color: rgba(0, 0, 0, 0.025);
-      }
-
-      .table-hover tbody tr:hover {
-        background-color: rgba(0, 0, 0, 0.075);
-      }
-
-      /* Texto truncado */
-      .text-truncate {
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-      }
-
-      /* Filtros superiores */
-      .form-select {
-        border: 1px solid #ced4da;
-        transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
-      }
-
-      .form-select:focus {
-        border-color: #86b7fe;
-        outline: 0;
-        box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
-      }
-
-      /* Botões com efeitos */
-      .btn {
-        transition: all 0.2s ease;
-      }
-
-      .btn:hover {
-        transform: translateY(-1px);
-      }
-
-      .btn-primary {
-        background: linear-gradient(180deg, #4e73df 10%, #224abe 100%);
-        border: none;
-      }
-
-      .btn-success {
-        background: linear-gradient(180deg, #1cc88a 10%, #13855c 100%);
-        border: none;
-      }
-
-      .btn-info {
-        background: linear-gradient(180deg, #36b9cc 10%, #258391 100%);
-        border: none;
-      }
-
-      .btn-warning {
-        background: linear-gradient(180deg, #f6c23e 10%, #dda20a 100%);
-        border: none;
-      }
-
-      /* Gráficos */
-      .plotly-graph-div {
-        border-radius: 0.375rem;
-      }
-
-      /* Responsividade */
-
-      @media (max-width: 576px) {
-        .h4 {
-          font-size: 1.1rem;
+        /* ===================================
+           VARIÁVEIS CSS GLOBAIS
+        =================================== */
+        :root {
+            --primary-color: #184194;
+            --secondary-color: #6c757d;
+            --success-color: #28a745;
+            --warning-color: #ffc107;
+            --danger-color: #dc3545;
+            --info-color: #17a2b8;
+            --light-bg: #f8f9fa;
+            --border-radius: 12px;
+            --box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+            --box-shadow-hover: 0 8px 25px rgba(0,0,0,0.15);
+            --transition: all 0.3s ease;
         }
 
-        .card-body {
-          padding: 0.75rem;
+        /* ===================================
+           ESTILOS GLOBAIS
+        =================================== */
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
         }
 
-        .icon-circle {
-          height: 2rem;
-          width: 2rem;
-          font-size: 0.875rem;
+        .navbar-brand {
+            font-weight: bold;
         }
 
-        .text-xs {
-          font-size: 0.65rem;
-        }
-      }
-      @media (max-width: 768px) {
-        .modal-xl {
-          max-width: 95%;
-          margin: 0.5rem;
+        .sidebar {
+            min-height: 100vh;
+            background-color: var(--light-bg);
         }
 
-        .icon-circle {
-          height: 2.5rem;
-          width: 2.5rem;
-          font-size: 1rem;
+        .main-content {
+            min-height: 100vh;
         }
 
-        .h4 {
-          font-size: 1.25rem;
+        .font-primary {
+            color: var(--primary-color);
         }
 
-        .card-body {
-          padding: 1rem;
-        }
-      }
-
-      /* Animações */
-      @keyframes fadeIn {
-        from {
-          opacity: 0;
-          transform: translateY(20px);
-        }
-        to {
-          opacity: 1;
-          transform: translateY(0);
-        }
-      }
-
-      .fade-in {
-        animation: fadeIn 0.5s ease-out;
-      }
-
-      @keyframes shimmer {
-        0% {
-          transform: translateX(-100%);
-        }
-        100% {
-          transform: translateX(100%);
-        }
-      }
-
-      @keyframes pulse {
-        0% {
-          transform: scale(1);
-        }
-        50% {
-          transform: scale(1.05);
-        }
-        100% {
-          transform: scale(1);
-        }
-      }
-
-      .pulse {
-        animation: pulse 2s infinite;
-      }
-
-      /* Indicador de filtro ativo */
-      .filter-active::after {
-        content: " •";
-        color: #007bff;
-        font-weight: bold;
-      }
-
-      /* Animação para cards atualizando */
-      .card-updating {
-        opacity: 0.7;
-        transform: scale(0.98);
-        transition: all 0.3s ease;
-      }
-
-      .card-updating .card-body {
-        position: relative;
-      }
-
-      .card-updating .card-body::after {
-        content: "";
-        position: absolute;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        background: linear-gradient(
-          90deg,
-          transparent,
-          rgba(255, 255, 255, 0.4),
-          transparent
-        );
-        animation: shimmer 1.5s infinite;
-      }
-
-      /* Estados de loading */
-      .loading-overlay {
-        position: absolute;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        background-color: rgba(255, 255, 255, 0.8);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        border-radius: 0.375rem;
-        z-index: 10;
-      }
-
-      /* Cores customizadas */
-      .text-primary-custom {
-        color: #4e73df !important;
-      }
-
-      .text-success-custom {
-        color: #1cc88a !important;
-      }
-
-      .text-info-custom {
-        color: #36b9cc !important;
-      }
-
-      .text-warning-custom {
-        color: #f6c23e !important;
-      }
-
-      .text-danger-custom {
-        color: #e74a3b !important;
-      }
-
-      /* Footer customizado */
-      .footer-info {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        color: white;
-      }
-
-      .footer-info .text-muted {
-        color: rgba(255, 255, 255, 0.7) !important;
-      }
-
-      /* Estilos para impressão */
-      @media print {
-        .btn,
-        .dropdown,
-        .modal {
-          display: none !important;
-        }
-
+        /* ===================================
+           SISTEMA DE CARDS E COMPONENTES
+        =================================== */
         .card {
-          box-shadow: none !important;
-          border: 1px solid #dee2e6 !important;
+            border-radius: var(--border-radius) !important;
+            border: none !important;
+            box-shadow: var(--box-shadow);
+            margin-bottom: 20px;
+            transition: var(--transition);
+            overflow: hidden;
         }
 
-        .alert-dashboard {
-          border: 1px solid #dee2e6 !important;
-          box-shadow: none !important;
-        }
-      }
-
-      /* Utilitários */
-      .cursor-pointer {
-        cursor: pointer;
-      }
-
-      .user-select-none {
-        user-select: none;
-      }
-
-      .overflow-hidden {
-        overflow: hidden;
-      }
-
-      .position-relative {
-        position: relative;
-      }
-
-      /* Scrollbar customizada */
-      ::-webkit-scrollbar {
-        width: 8px;
-        height: 8px;
-      }
-
-      ::-webkit-scrollbar-track {
-        background: #f1f1f1;
-        border-radius: 4px;
-      }
-
-      ::-webkit-scrollbar-thumb {
-        background: #c1c1c1;
-        border-radius: 4px;
-      }
-
-      ::-webkit-scrollbar-thumb:hover {
-        background: #a8a8a8;
-      }
-
-      .nav-link.active {
-        background-color: #184194;
-        color: white !important;
-      }
-      .loading {
-        text-align: center;
-        padding: 50px;
-      }
-      .bg-primary {
-        background-color: #184194 !important;
-      }
-
-      .card {
-        box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
-        margin-bottom: 20px;
-      }
-      .gantt-container {
-        width: 100%;
-        height: auto;
-        min-height: 600px;
-        border: 1px solid #dee2e6;
-        border-radius: 0.375rem;
-        overflow: hidden; /* Evita scroll desnecessário */
-      }
-      .loading {
-        text-align: center;
-        padding: 50px;
-      }
-      .legend-color {
-        width: 20px;
-        height: 4px;
-        display: inline-block;
-        margin-right: 8px;
-      }
-
-      .filter-section {
-        background: #f8f9fa;
-        padding: 20px;
-        border-radius: 8px;
-        margin-bottom: 20px;
-      }
-      .status-legend {
-        display: inline-block;
-        padding: 4px 8px;
-        border-radius: 4px;
-        color: white;
-        font-weight: bold;
-        margin-right: 10px;
-        margin-bottom: 5px;
-      }
-
-      /* Estilos personalizados para o Gantt agrupado */
-      .gantt-container {
-        width: 100%;
-        min-height: 600px;
-        border: 1px solid #dee2e6;
-        border-radius: 8px;
-        background: white;
-      }
-
-      .status-legend {
-        display: inline-flex;
-        align-items: center;
-        padding: 4px 12px;
-        border-radius: 20px;
-        font-size: 0.85rem;
-        font-weight: 600;
-        margin: 2px;
-        border: 2px solid transparent;
-      }
-
-      /* Cores correspondentes ao gráfico */
-      .status-planejado-po {
-        background-color: #6c757d;
-        color: white;
-        opacity: 0.8;
-      }
-
-      .status-planejado-time {
-        background-color: #17a2b8;
-        color: white;
-      }
-
-      .status-realizado-time {
-        background-color: #28a745;
-        color: white;
-      }
-
-      .loading {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        min-height: 400px;
-        color: #6c757d;
-      }
-
-      .alert-dashboard-info {
-        background: linear-gradient(135deg, #e3f2fd 0%, #f3e5f5 100%);
-        border: 1px solid #2196f3;
-        border-radius: 12px;
-        padding: 15px;
-      }
-
-      .instruction-list {
-        display: flex;
-        flex-direction: column;
-        gap: 12px;
-      }
-
-      .instruction-item {
-        display: flex;
-        align-items: center;
-        gap: 12px;
-        padding: 8px;
-        background: rgba(0, 123, 255, 0.05);
-        border-radius: 8px;
-        border-left: 4px solid #007bff;
-      }
-
-      .instruction-icon {
-        width: 32px;
-        height: 32px;
-        border-radius: 50%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        flex-shrink: 0;
-      }
-
-      .instruction-text {
-        font-size: 0.9rem;
-        line-height: 1.4;
-      }
-
-      .modern-select,
-      .modern-input,
-      .modern-btn {
-        border-radius: 8px;
-        border: 1px solid #ced4da;
-        transition: all 0.2s ease;
-      }
-
-      .modern-select:focus,
-      .modern-input:focus {
-        border-color: #007bff;
-        box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
-      }
-
-      .modern-btn {
-        font-weight: 500;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-      }
-
-      .card {
-        border-radius: 12px;
-        transition: all 0.3s ease;
-      }
-
-      .card:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
-      }
-      /* ===================================
-   ESTILOS CORRIGIDOS PARA LEGENDA
-   ================================== */
-
-      /* Header do card - fundo branco com texto azul (padrão dashboard) */
-      .card-header.bg-white {
-        background-color: #ffffff !important;
-        border-bottom: 1px solid #dee2e6;
-      }
-
-      .card-header .text-primary {
-        color: rgba(var(--bs-primary-rgb), var(--bs-text-opacity)) !important;
-      }
-
-      /* Status Legend - Cores corretas conforme o gráfico */
-      .status-legend {
-        display: inline-flex;
-        align-items: center;
-        padding: 8px 16px;
-        border-radius: 25px;
-        color: white;
-        font-weight: 600;
-        font-size: 0.875rem;
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-        transition: transform 0.2s ease;
-      }
-
-      .status-legend:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
-      }
-
-      /* CORES CORRETAS - Baseadas no que realmente aparece no gráfico */
-      .status-concluido-correto {
-        background-color: #28a745 !important; /* Verde - projetos Done/Closed */
-      }
-
-      .status-andamento-correto {
-        background-color: #ffc107 !important; /* Amarelo - projetos em andamento */
-        color: #000 !important; /* Texto preto para melhor contraste */
-      }
-
-      .status-atrasado-correto {
-        background-color: #dc3545 !important; /* Vermelho - projetos atrasados */
-      }
-
-      .status-planejado-correto {
-        background-color: #6c757d !important; /* Cinza - barras planejadas */
-        opacity: 0.8;
-      }
-
-      /* Alert customizado - fundo branco com borda azul (padrão dashboard) */
-      .alert-dashboard-info {
-        background-color: #ffffff;
-        border: 2px solid #4e73df;
-        border-left: 4px solid #4e73df;
-        border-radius: 12px;
-        color: #495057;
-        padding: 1rem 1.25rem;
-        box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
-      }
-
-      /* Instruction items - mantém o estilo existente */
-      .instruction-list {
-        display: flex;
-        flex-direction: column;
-        gap: 12px;
-      }
-
-      .instruction-item {
-        display: flex;
-        align-items: center;
-        gap: 12px;
-        padding: 8px 0;
-      }
-
-      .instruction-icon {
-        width: 32px;
-        height: 32px;
-        border-radius: 50%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-      }
-
-      .instruction-text {
-        flex: 1;
-        font-size: 0.9rem;
-        line-height: 1.4;
-        color: #495057;
-      }
-
-      /* Cores dos ícones de instrução - usando as cores padrão do sistema */
-      .bg-danger {
-        background-color: #dc3545 !important;
-      }
-
-      .bg-primary {
-        background-color: #4e73df !important;
-      }
-
-      .bg-success {
-        background-color: #28a745 !important;
-      }
-
-      .bg-info {
-        background-color: #17a2b8 !important;
-      }
-
-      .bg-warning {
-        background-color: #ffc107 !important;
-      }
-
-      /* Responsividade */
-      @media (max-width: 768px) {
-        .status-legend {
-          font-size: 0.75rem;
-          padding: 6px 12px;
-          margin-bottom: 8px;
+        .card:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--box-shadow-hover);
         }
 
-        .instruction-item {
-          flex-direction: column;
-          text-align: center;
-          gap: 8px;
+        .card-header {
+            border: none;
+            background-color: #ffffff !important;
+            border-bottom: 1px solid #dee2e6;
         }
 
-        .instruction-text {
-          text-align: center;
+        .card-header .text-primary {
+            color: var(--primary-color) !important;
         }
-      }
 
-      /* Animação suave ao hover */
-      .card {
-        transition: all 0.3s ease;
-      }
-
-      .instruction-icon {
-        transition: transform 0.2s ease;
-      }
-
-      .instruction-icon:hover {
-        transform: scale(1.1);
-      }
-
-      /* Estilos  */
-      .modern-select,
-      .modern-input {
-        border: 2px solid #e3f2fd;
-        border-radius: 12px;
-        transition: all 0.3s ease;
-        background: white;
-      }
-
-      .modern-select:focus,
-      .modern-input:focus {
-        border-color: #2196f3;
-        box-shadow: 0 0 0 0.2rem rgba(33, 150, 243, 0.15);
-        background: #fafafa;
-      }
-
-      .modern-btn {
-        border-radius: 10px;
-        padding: 8px 16px;
-        font-weight: 600;
-        transition: all 0.3s ease;
-        border: 2px solid transparent;
-      }
-
-      .modern-btn:hover {
-        transform: translateY(-1px);
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-      }
-
-      .bg-gradient-primary {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-      }
-
-      .bg-gradient-success {
-        background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
-      }
-
-      .bg-gradient-info {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-      }
-
-      .card {
-        border-radius: 16px !important;
-        overflow: hidden;
-      }
-
-      .card-header {
-        border: none;
-        border-radius: 16px 16px 0 0 !important;
-      }
-
-      .gantt-container {
-        border-radius: 0 0 16px 16px;
-        min-height: 600px;
-        overflow: hidden;
-      }
-
-      .status-legend {
-        display: inline-flex;
-        align-items: center;
-        padding: 8px 16px;
-        border-radius: 25px;
-        color: white;
-        font-weight: 600;
-        font-size: 0.875rem;
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-        transition: transform 0.2s ease;
-      }
-
-      .status-legend:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
-      }
-
-      .status-concluido {
-        background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
-      }
-
-      .status-andamento {
-        background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
-      }
-
-      .status-atrasado {
-        background: linear-gradient(135deg, #fc466b 0%, #3f5efb 100%);
-      }
-
-      .status-planejado {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        opacity: 0.8;
-      }
-
-      .instruction-list {
-        display: flex;
-        flex-direction: column;
-        gap: 12px;
-      }
-
-      .instruction-item {
-        display: flex;
-        align-items: center;
-        gap: 12px;
-        padding: 8px 0;
-      }
-
-      .instruction-icon {
-        width: 32px;
-        height: 32px;
-        border-radius: 50%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-      }
-
-      .instruction-text {
-        flex: 1;
-        font-size: 0.9rem;
-        line-height: 1.4;
-      }
-
-      #periodo-info {
-        border-radius: 12px;
-        background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
-        border: none;
-      }
-
-      #periodo-texto {
-        border-radius: 8px;
-        padding: 4px 12px;
-        font-weight: 600;
-      }
-
-      .loading {
-        padding: 60px 20px;
-        text-align: center;
-      }
-
-      .loading h5 {
-        color: #2196f3;
-        font-weight: 600;
-      }
-
-      /* Animações suaves */
-      @keyframes fadeInUp {
-        from {
-          opacity: 0;
-          transform: translateY(20px);
+        .bg-primary {
+            background: linear-gradient(180deg, var(--primary-color) 10%, #0f2557 100%);
+            color: white !important;
         }
-        to {
-          opacity: 1;
-          transform: translateY(0);
+
+        /* ===================================
+           SISTEMA DE FILTROS REUTILIZÁVEL
+        =================================== */
+        .filtros-container {
+            background: linear-gradient(135deg, var(--light-bg) 0%, #e9ecef 100%);
+            border-radius: var(--border-radius);
+            padding: 20px;
+            margin-bottom: 20px;
+            border: 1px solid #dee2e6;
+            box-shadow: var(--box-shadow);
         }
-      }
 
-      .card {
-        animation: fadeInUp 0.6s ease-out;
-      }
+        .periodo-info {
+            border-radius: var(--border-radius);
+            background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
+            border: none;
+        }
 
-      /* Responsividade */
-      @media (max-width: 768px) {
+        .periodo-badge {
+            background: linear-gradient(45deg, var(--primary-color), var(--info-color));
+            color: white;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .modern-select, .modern-input, .modern-btn {
+            border-radius: 8px;
+            border: 1px solid #ced4da;
+            transition: var(--transition);
+        }
+
+        .modern-select:focus, .modern-input:focus {
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 0.2rem rgba(24, 65, 148, 0.25);
+        }
+
         .modern-btn {
-          width: 100%;
-          margin-bottom: 8px;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
         }
 
-        .status-legend {
-          font-size: 0.75rem;
-          padding: 6px 12px;
+        .modern-btn:hover {
+            transform: translateY(-1px);
         }
 
-        .instruction-item {
-          flex-direction: column;
-          text-align: center;
-          gap: 8px;
+        /* Novo badge de registros - MAIS VISÍVEL */
+        .badge-contador {
+            min-width: 120px;
+            text-align: center;
         }
-      }
 
-      .status-concluido {
-        background-color: #28a745;
-      }
-      .status-andamento {
-        background-color: #ffc107;
-        color: #000;
-      }
-      .status-atrasado {
-        background-color: #dc3545;
-      }
-      .status-planejado {
-        background-color: #6c757d;
-        opacity: 0.6;
-      }
+        .badge-registros {
+            background: linear-gradient(135deg, var(--primary-color) 0%, var(--info-color) 100%);
+            color: white !important;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-weight: 700;
+            font-size: 0.875rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            transition: var(--transition);
+            display: inline-block;
+            min-width: 100px;
+            text-align: center;
+        }
+
+        .badge-registros:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
+        }
+
+        /* Container dos botões - Alinhamento sem label oculta */
+        .botoes-filtros {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+
+        /* Alinhamento da coluna de botões */
+        .col-md-3 .h-100 {
+            min-height: 58px; /* Altura aproximada de um campo + label */
+        }
+
+        .col-md-3 .d-flex.align-items-end {
+            padding-top: 24px; /* Compensa a altura do label dos outros campos */
+        }
+
+        /* Responsividade para os filtros */
+        @media (max-width: 768px) {
+            .filtros-container .row > div {
+                margin-bottom: 15px;
+            }
+            
+            .badge-contador {
+                margin-top: 10px;
+                width: 100%;
+            }
+            
+            .badge-registros {
+                width: 100%;
+                margin-top: 5px;
+            }
+        }
+
+        /* ===================================
+           NAVEGAÇÃO E SIDEBAR
+        =================================== */
+        .nav-link.active {
+            background-color: var(--primary-color);
+            color: white !important;
+            border-radius: 8px;
+        }
+
+        .nav-link {
+            border-radius: 8px;
+            transition: var(--transition);
+        }
+
+        .nav-link:hover {
+            background-color: rgba(24, 65, 148, 0.1);
+        }
+
+        /* ===================================
+           SISTEMA DE GRÁFICOS
+        =================================== */
+        .gantt-container {
+            width: 100%;
+            min-height: 600px;
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+            background: white;
+        }
+
+        .plotly-graph-div {
+            border-radius: 8px;
+        }
+
+        /* ===================================
+           SISTEMA DE LOADING E ESTADOS
+        =================================== */
+        .loading {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 400px;
+            color: var(--secondary-color);
+        }
+
+        .card-updating {
+            opacity: 0.7;
+            transform: scale(0.98);
+            transition: var(--transition);
+        }
+
+        /* ===================================
+           SISTEMA DE ALERTAS E INDICADORES
+        =================================== */
+        .alert-dashboard {
+            border-left: 4px solid;
+            border-radius: 8px;
+            margin-bottom: 1rem;
+            cursor: pointer;
+            transition: var(--transition);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .alert-dashboard:hover {
+            background-color: rgba(0, 0, 0, 0.05);
+            transform: translateX(3px);
+            box-shadow: var(--box-shadow);
+        }
+
+        .alert-dashboard-info {
+            background-color: #ffffff;
+            border: 2px solid var(--primary-color);
+            border-left: 4px solid var(--primary-color);
+            border-radius: var(--border-radius);
+            color: #495057;
+            padding: 1rem 1.25rem;
+            box-shadow: var(--box-shadow);
+        }
+
+        .alert-high { border-left-color: var(--danger-color); background-color: rgba(220, 53, 69, 0.05); }
+        .alert-medium { border-left-color: var(--warning-color); background-color: rgba(255, 193, 7, 0.05); }
+        .alert-low { border-left-color: var(--info-color); background-color: rgba(23, 162, 184, 0.05); }
+
+        /* ===================================
+           SISTEMA DE LEGENDAS E STATUS
+        =================================== */
+        .status-legend, .status-legend-new {
+            display: inline-flex;
+            align-items: center;
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            margin: 2px 0;
+            border: 2px solid transparent;
+            color: white;
+            min-width: 180px;
+            transition: var(--transition);
+        }
+
+        .status-legend:hover, .status-legend-new:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+        }
+
+        /* Cores dos status baseadas no sistema */
+        .status-concluido, .status-concluido-correto { background-color: var(--success-color) !important; }
+        .status-andamento, .status-andamento-correto { background-color: var(--warning-color) !important; color: #000 !important; }
+        .status-atrasado, .status-atrasado-correto { background-color: var(--danger-color) !important; }
+        .status-planejado, .status-planejado-correto { background-color: var(--secondary-color) !important; opacity: 0.8; }
+
+        .bg-success-light { background-color: rgba(40, 167, 69, 0.1); }
+        .bg-warning-light { background-color: rgba(255, 193, 7, 0.1); }
+        .bg-danger-light { background-color: rgba(220, 53, 69, 0.1); }
+
+        /* ===================================
+           SISTEMA DE INSTRUÇÕES E REGRAS
+        =================================== */
+        .instruction-list, .instruction-list-compact {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .instruction-item, .instruction-item-compact {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 6px;
+            background: rgba(0,123,255,0.05);
+            border-radius: 6px;
+            border-left: 3px solid var(--primary-color);
+        }
+
+        .instruction-icon, .instruction-icon-compact {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            font-size: 0.8rem;
+            transition: var(--transition);
+        }
+
+        .instruction-icon:hover, .instruction-icon-compact:hover {
+            transform: scale(1.1);
+        }
+
+        .instruction-text, .instruction-text-compact {
+            font-size: 0.8rem;
+            line-height: 1.3;
+            color: #495057;
+        }
+
+        .regra-card {
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 15px;
+            border: 1px solid rgba(0,0,0,0.1);
+        }
+
+        .regra-header {
+            font-weight: 600;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+        }
+
+        .regra-list {
+            font-size: 0.9rem;
+            margin-bottom: 0;
+            padding-left: 20px;
+        }
+
+        .regra-list li {
+            margin-bottom: 5px;
+        }
+
+        /* ===================================
+           SISTEMA DE ÍCONES E BADGES
+        =================================== */
+        .icon-circle {
+            height: 3rem;
+            width: 3rem;
+            border-radius: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.25rem;
+        }
+
+        .badge-status {
+            font-size: 0.75rem;
+            padding: 0.375rem 0.75rem;
+            border-radius: 0.375rem;
+        }
+
+        /* ===================================
+           SISTEMA DE BOTÕES
+        =================================== */
+        .btn {
+            transition: var(--transition);
+            border-radius: 8px;
+        }
+
+        .btn:hover {
+            transform: translateY(-1px);
+        }
+
+        .btn-primary {
+            background: linear-gradient(180deg, var(--primary-color) 10%, #0f2557 100%);
+            border: none;
+        }
+
+        .btn-success {
+            background: linear-gradient(180deg, var(--success-color) 10%, #1e7e34 100%);
+            border: none;
+        }
+
+        .btn-info {
+            background: linear-gradient(180deg, var(--info-color) 10%, #117a8b 100%);
+            border: none;
+        }
+
+        .btn-warning {
+            background: linear-gradient(180deg, var(--warning-color) 10%, #d39e00 100%);
+            border: none;
+        }
+
+        /* ===================================
+           SISTEMA DE PROGRESSO E ANIMAÇÕES
+        =================================== */
+        .progress {
+            overflow: hidden;
+            background-color: #e9ecef;
+            border-radius: 0.25rem;
+        }
+
+        .progress-bar {
+            transition: width 0.6s ease;
+        }
+
+        .progress-mini {
+            height: 0.5rem;
+            border-radius: 0.25rem;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .fade-in {
+            animation: fadeIn 0.5s ease-out;
+        }
+
+        @keyframes shimmer {
+            0% { transform: translateX(-100%); }
+            100% { transform: translateX(100%); }
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+
+        .pulse {
+            animation: pulse 2s infinite;
+        }
+
+        /* ===================================
+           SISTEMA DE MODAIS E TABELAS
+        =================================== */
+        .modal-xl {
+            max-width: 90%;
+        }
+
+        .modal-content {
+            border-radius: var(--border-radius);
+            border: none;
+            box-shadow: 0 1rem 3rem rgba(0, 0, 0, 0.175);
+        }
+
+        .modal-header, .modal-footer {
+            background-color: var(--light-bg);
+            border-color: #dee2e6;
+        }
+
+        .table-responsive {
+            border-radius: 8px;
+            box-shadow: var(--box-shadow);
+        }
+
+        .table th {
+            background-color: #343a40;
+            color: white;
+            border: none;
+            font-weight: 600;
+            text-transform: uppercase;
+            font-size: 0.875rem;
+            padding: 1rem 0.75rem;
+        }
+
+        .table td {
+            padding: 0.75rem;
+            vertical-align: middle;
+            border-top: 1px solid #dee2e6;
+        }
+
+        .table-striped tbody tr:nth-of-type(odd) {
+            background-color: rgba(0, 0, 0, 0.025);
+        }
+
+        .table-hover tbody tr:hover {
+            background-color: rgba(0, 0, 0, 0.075);
+        }
+
+        /* ===================================
+           RESPONSIVIDADE
+        =================================== */
+        @media (max-width: 576px) {
+            .h4 { font-size: 1.1rem; }
+            .card-body { padding: 0.75rem; }
+            .icon-circle { height: 2rem; width: 2rem; font-size: 0.875rem; }
+            .text-xs { font-size: 0.65rem; }
+        }
+
+        @media (max-width: 768px) {
+            .modal-xl { max-width: 95%; margin: 0.5rem; }
+            .icon-circle { height: 2.5rem; width: 2.5rem; font-size: 1rem; }
+            .h4 { font-size: 1.25rem; }
+            .card-body { padding: 1rem; }
+            .modern-btn { width: 100%; margin-bottom: 8px; }
+            .status-legend, .status-legend-new { font-size: 0.75rem; padding: 6px 12px; }
+            .instruction-item, .instruction-item-compact { flex-direction: column; text-align: center; gap: 8px; }
+            .filtros-container .row > div { margin-bottom: 15px; }
+        }
+
+        /* ===================================
+           SCROLLBAR CUSTOMIZADA
+        =================================== */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #c1c1c1;
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #a8a8a8;
+        }
+
+        /* ===================================
+           UTILITÁRIOS
+        =================================== */
+        .cursor-pointer { cursor: pointer; }
+        .user-select-none { user-select: none; }
+        .text-truncate { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .filter-active::after { content: " •"; color: var(--primary-color); font-weight: bold; }
+
+        /* Cores customizadas */
+        .text-primary-custom { color: var(--primary-color) !important; }
+        .text-success-custom { color: var(--success-color) !important; }
+        .text-info-custom { color: var(--info-color) !important; }
+        .text-warning-custom { color: var(--warning-color) !important; }
+        .text-danger-custom { color: var(--danger-color) !important; }
+
+        /* ===================================
+           IMPRESSÃO
+        =================================== */
+        @media print {
+            .btn, .dropdown, .modal { display: none !important; }
+            .card { box-shadow: none !important; border: 1px solid #dee2e6 !important; }
+            .alert-dashboard { border: 1px solid #dee2e6 !important; box-shadow: none !important; }
+        }
     </style>
 
     {% block head %}{% endblock %}
-  </head>
-  <body>
+</head>
+<body>
     <!-- Navbar -->
     <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
-      <div class="container-fluid">
-        <a class="navbar-brand" href="/">
-          <i class="fas fa-project-diagram me-2"></i>
-          Sistema de Projetos
-        </a>
-        <button
-          class="navbar-toggler"
-          type="button"
-          data-bs-toggle="collapse"
-          data-bs-target="#navbarNav"
-        >
-          <span class="navbar-toggler-icon"></span>
-        </button>
-        <div class="collapse navbar-collapse" id="navbarNav">
-          <ul class="navbar-nav ms-auto">
-            <li class="nav-item">
-              <span class="navbar-text">
-                <i class="fas fa-user me-1"></i>
-                Sistema Interno
-              </span>
-            </li>
-          </ul>
+        <div class="container-fluid">
+            <a class="navbar-brand" href="/">
+                <i class="fas fa-project-diagram me-2"></i>
+                Sistema de Projetos
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item">
+                        <span class="navbar-text">
+                            <i class="fas fa-user me-1"></i>
+                            Sistema Interno
+                        </span>
+                    </li>
+                </ul>
+            </div>
         </div>
-      </div>
     </nav>
 
     <div class="container-fluid">
-      <div class="row">
-        <!-- Sidebar -->
-        <nav class="col-md-3 col-lg-2 d-md-block sidebar collapse">
-          <div class="position-sticky pt-3">
-            <ul class="nav flex-column">
-              <li class="nav-item">
-                <a
-                  class="nav-link {% block dashboard_active %}{% endblock %}"
-                  href="/"
-                >
-                  <i class="fas fa-tachometer-alt me-2"></i>
-                  Dashboard
-                </a>
-              </li>
-              <li class="nav-item">
-                <a
-                  class="nav-link {% block gantt_active %}{% endblock %}"
-                  href="/gantt"
-                >
-                  <i class="fas fa-chart-gantt me-2"></i>
-                  Gráfico de Gantt
-                </a>
-              </li>
-              <li class="nav-item">
-                <a
-                  class="nav-link {% block epicos_active %}{% endblock %}"
-                  href="/relatorio-epicos"
-                >
-                  <i class="fas fa-list-alt me-2"></i>
-                  Relatório Épicos
-                </a>
-              </li>
-              <li class="nav-item">
-                <a
-                  class="nav-link {% block subtasks_active %}{% endblock %}"
-                  href="/relatorio-subtasks"
-                >
-                  <i class="fas fa-tasks me-2"></i>
-                  Relatório SubTasks
-                </a>
-              </li>
-            </ul>
-          </div>
-        </nav>
+        <div class="row">
+            <!-- Sidebar -->
+            <nav class="col-md-3 col-lg-2 d-md-block sidebar collapse">
+                <div class="position-sticky pt-3">
+                    <ul class="nav flex-column">
+                        <li class="nav-item">
+                            <a class="nav-link {% block dashboard_active %}{% endblock %}" href="/">
+                                <i class="fas fa-tachometer-alt me-2"></i>
+                                Dashboard
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link {% block gantt_active %}{% endblock %}" href="/gantt">
+                                <i class="fas fa-chart-gantt me-2"></i>
+                                Gráfico de Gantt
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link {% block epicos_active %}{% endblock %}" href="/relatorio-epicos">
+                                <i class="fas fa-list-alt me-2"></i>
+                                Relatório Épicos
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link {% block subtasks_active %}{% endblock %}" href="/relatorio-subtasks">
+                                <i class="fas fa-tasks me-2"></i>
+                                Relatório SubTasks
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+            </nav>
 
-        <!-- Main content -->
-        <main class="col-md-9 ms-sm-auto col-lg-10 px-md-4 main-content">
-          <div class="pt-3 pb-2 mb-3 border-bottom">
-            <h1 class="h2">{% block page_title %}{% endblock %}</h1>
-          </div>
+            <!-- Main content -->
+            <main class="col-md-9 ms-sm-auto col-lg-10 px-md-4 main-content">
+                <div class="pt-3 pb-2 mb-3 border-bottom">
+                    <h1 class="h2">{% block page_title %}{% endblock %}</h1>
+                </div>
 
-          {% block content %}{% endblock %}
-        </main>
-      </div>
+                <!-- Sistema de Filtros Reutilizável -->
+                {% block filtros %}
+                <!-- Este bloco pode ser sobrescrito pelas páginas filhas se precisar de filtros customizados -->
+                <div id="sistema-filtros" class="filtros-container" style="{% block filtros_display %}display: block;{% endblock %}">
+                    <!-- Período de Análise -->
+                    <div id="periodo-info" class="alert periodo-info py-2 mb-3 border-0 shadow-sm">
+                        <div class="d-flex align-items-center">
+                            <i class="fas fa-calendar-alt me-2 text-primary"></i>
+                            <strong>Período de Análise:</strong>
+                            <span id="periodo-texto" class="ms-2 periodo-badge">Ano Atual</span>
+                        </div>
+                    </div>
+
+                    <!-- Filtros -->
+                    <div class="row mb-3">
+                        <div class="col-md-2">
+                            <label for="filterEquipe" class="form-label small fw-bold text-dark">
+                                <i class="fas fa-users me-1 text-primary"></i>Equipe
+                            </label>
+                            <select id="filterEquipe" class="form-select form-select-sm modern-select">
+                                <option value="">Todas as Equipes</option>
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <label for="filterStatus" class="form-label small fw-bold text-dark">
+                                <i class="fas fa-flag me-1 text-success"></i>Status
+                            </label>
+                            <select id="filterStatus" class="form-select form-select-sm modern-select">
+                                <option value="">Todos os Status</option>
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <label for="filterPeriodo" class="form-label small fw-bold text-dark">
+                                <i class="fas fa-clock me-1 text-info"></i>Período
+                            </label>
+                            <select id="filterPeriodo" class="form-select form-select-sm modern-select">
+                                <option value="ano_atual">Ano Atual</option>
+                                <option value="q1">Q1 - Jan a Mar</option>
+                                <option value="q2">Q2 - Abr a Jun</option>
+                                <option value="q3">Q3 - Jul a Set</option>
+                                <option value="q4">Q4 - Out a Dez</option>
+                                <option value="6_meses">Últimos 6 Meses</option>
+                                <option value="3_meses">Últimos 3 Meses</option>
+                                <option value="mes_atual">Mês Atual</option>
+                                <option value="personalizado">Personalizado</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3" id="datas-personalizadas" style="display: none">
+                            <div class="row">
+                                <div class="col-6">
+                                    <label for="filterDataInicio" class="form-label small fw-bold text-dark">Data Início</label>
+                                    <input type="date" id="filterDataInicio" class="form-control form-control-sm modern-input" value="2025-01-01">
+                                </div>
+                                <div class="col-6">
+                                    <label for="filterDataFim" class="form-label small fw-bold text-dark">Data Fim</label>
+                                    <input type="date" id="filterDataFim" class="form-control form-control-sm modern-input" value="2025-12-31">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="d-flex align-items-end gap-2 h-100">
+                                <div class="botoes-filtros">
+                                    <button type="button" id="btnAplicarFiltros" class="btn btn-primary btn-sm modern-btn">
+                                        <i class="fas fa-search me-1"></i>
+                                        APLICAR
+                                    </button>
+                                    <button type="button" id="btnLimparFiltros" class="btn btn-outline-secondary btn-sm modern-btn">
+                                        <i class="fas fa-times me-1"></i>
+                                        LIMPAR
+                                    </button>
+                                </div>
+                                <div class="badge-contador">
+                                    <span id="totalRegistros" class="badge-registros">0 registros</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endblock %}
+
+                <!-- Conteúdo da página -->
+                {% block content %}{% endblock %}
+            </main>
+        </div>
     </div>
 
-    <!-- Bootstrap JS -->
+    <!-- Scripts Globais -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
-    <!-- jQuery -->
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 
+    <!-- Sistema de Filtros JavaScript Reutilizável -->
+    <script>
+        // Configurações globais dos filtros
+        let currentFilters = {
+            equipe: "",
+            status: "",
+            data_inicio: "2025-01-01",
+            data_fim: "2025-12-31"
+        };
+
+        function getCurrentYear() {
+            return new Date().getFullYear();
+        }
+
+        function updatePeriodLabel() {
+            const periodoSelect = document.getElementById("filterPeriodo");
+            const periodoValue = periodoSelect ? periodoSelect.value : "ano_atual";
+            const periodoTexto = document.getElementById("periodo-texto");
+
+            if (!periodoTexto) return;
+
+            const today = new Date();
+            const currentYear = today.getFullYear();
+
+            const periodoTextos = {
+                ano_atual: `${currentYear}`,
+                q1: `Q1 ${currentYear} (Jan-Mar)`,
+                q2: `Q2 ${currentYear} (Abr-Jun)`,
+                q3: `Q3 ${currentYear} (Jul-Set)`,
+                q4: `Q4 ${currentYear} (Out-Dez)`,
+                "6_meses": "Últimos 6 Meses",
+                "3_meses": "Últimos 3 Meses",
+                mes_atual: today.toLocaleDateString("pt-BR", {
+                    month: "long",
+                    year: "numeric",
+                }),
+                personalizado: "Período Personalizado",
+            };
+
+            periodoTexto.textContent = periodoTextos[periodoValue] || "Período Selecionado";
+        }
+
+        function calculatePeriodDates(periodo) {
+            const today = new Date();
+            const currentYear = today.getFullYear();
+
+            switch (periodo) {
+                case "ano_atual":
+                    return { inicio: `${currentYear}-01-01`, fim: `${currentYear}-12-31` };
+                case "q1":
+                    return { inicio: `${currentYear}-01-01`, fim: `${currentYear}-03-31` };
+                case "q2":
+                    return { inicio: `${currentYear}-04-01`, fim: `${currentYear}-06-30` };
+                case "q3":
+                    return { inicio: `${currentYear}-07-01`, fim: `${currentYear}-09-30` };
+                case "q4":
+                    return { inicio: `${currentYear}-10-01`, fim: `${currentYear}-12-31` };
+                case "6_meses":
+                    const seisMesesAtras = new Date();
+                    seisMesesAtras.setMonth(today.getMonth() - 6);
+                    return {
+                        inicio: seisMesesAtras.toISOString().split("T")[0],
+                        fim: today.toISOString().split("T")[0],
+                    };
+                case "3_meses":
+                    const tresMesesAtras = new Date();
+                    tresMesesAtras.setMonth(today.getMonth() - 3);
+                    return {
+                        inicio: tresMesesAtras.toISOString().split("T")[0],
+                        fim: today.toISOString().split("T")[0],
+                    };
+                case "mes_atual":
+                    const inicioMes = new Date(currentYear, today.getMonth(), 1);
+                    const fimMes = new Date(currentYear, today.getMonth() + 1, 0);
+                    return {
+                        inicio: inicioMes.toISOString().split("T")[0],
+                        fim: fimMes.toISOString().split("T")[0],
+                    };
+                default:
+                    return {
+                        inicio: currentFilters.data_inicio,
+                        fim: currentFilters.data_fim,
+                    };
+            }
+        }
+
+        function applyFilters() {
+            const periodoSelect = document.getElementById("filterPeriodo");
+            const periodo = periodoSelect.value;
+
+            if (periodo === "personalizado") {
+                currentFilters.data_inicio = document.getElementById("filterDataInicio").value;
+                currentFilters.data_fim = document.getElementById("filterDataFim").value;
+            } else {
+                const dates = calculatePeriodDates(periodo);
+                currentFilters.data_inicio = dates.inicio;
+                currentFilters.data_fim = dates.fim;
+
+                document.getElementById("filterDataInicio").value = dates.inicio;
+                document.getElementById("filterDataFim").value = dates.fim;
+            }
+
+            currentFilters.equipe = document.getElementById("filterEquipe").value;
+            currentFilters.status = document.getElementById("filterStatus").value;
+
+            if (currentFilters.data_inicio && currentFilters.data_fim) {
+                if (new Date(currentFilters.data_inicio) > new Date(currentFilters.data_fim)) {
+                    alert("Data de início deve ser anterior à data de fim!");
+                    return;
+                }
+            }
+
+            updatePeriodLabel();
+            console.log("Aplicando filtros:", currentFilters);
+            
+            // Chamar função específica da página (deve ser implementada em cada página)
+            if (typeof loadPageData === 'function') {
+                loadPageData();
+            }
+        }
+
+        function clearFilters() {
+            const currentYear = getCurrentYear();
+            
+            document.getElementById("filterEquipe").value = "";
+            document.getElementById("filterStatus").value = "";
+            document.getElementById("filterPeriodo").value = "ano_atual";
+            document.getElementById("filterDataInicio").value = `${currentYear}-01-01`;
+            document.getElementById("filterDataFim").value = `${currentYear}-12-31`;
+            document.getElementById("datas-personalizadas").style.display = "none";
+
+            currentFilters = {
+                equipe: "",
+                status: "",
+                data_inicio: `${currentYear}-01-01`,
+                data_fim: `${currentYear}-12-31`,
+            };
+
+            updatePeriodLabel();
+            
+            // Chamar função específica da página
+            if (typeof loadPageData === 'function') {
+                loadPageData();
+            }
+        }
+
+        function populateFilterOptions(equipes, status) {
+            const equipeSelect = document.getElementById("filterEquipe");
+            const statusSelect = document.getElementById("filterStatus");
+            
+            if (equipeSelect && equipes) {
+                // Limpar opções existentes (exceto a primeira)
+                while (equipeSelect.children.length > 1) {
+                    equipeSelect.removeChild(equipeSelect.lastChild);
+                }
+                
+                equipes.forEach((equipe) => {
+                    const option = document.createElement("option");
+                    option.value = equipe;
+                    option.textContent = equipe;
+                    equipeSelect.appendChild(option);
+                });
+            }
+
+            if (statusSelect && status) {
+                // Limpar opções existentes (exceto a primeira)
+                while (statusSelect.children.length > 1) {
+                    statusSelect.removeChild(statusSelect.lastChild);
+                }
+                
+                status.forEach((st) => {
+                    const option = document.createElement("option");
+                    option.value = st;
+                    option.textContent = st;
+                    statusSelect.appendChild(option);
+                });
+            }
+        }
+
+        function updateTotalRegistros(total, tipo = "registros") {
+            const totalElement = document.getElementById("totalRegistros");
+            if (totalElement) {
+                totalElement.textContent = `${total} ${tipo || "registros"}`;
+            }
+        }
+
+        // Event Listeners Globais
+        document.addEventListener("DOMContentLoaded", function () {
+            console.log("Sistema de filtros inicializado...");
+
+            // Event listeners para filtros (se existirem na página)
+            const btnAplicar = document.getElementById("btnAplicarFiltros");
+            const btnLimpar = document.getElementById("btnLimparFiltros");
+            const filterPeriodo = document.getElementById("filterPeriodo");
+            const filterDataInicio = document.getElementById("filterDataInicio");
+            const filterDataFim = document.getElementById("filterDataFim");
+
+            if (btnAplicar) {
+                btnAplicar.addEventListener("click", applyFilters);
+            }
+
+            if (btnLimpar) {
+                btnLimpar.addEventListener("click", clearFilters);
+            }
+
+            if (filterPeriodo) {
+                filterPeriodo.addEventListener("change", function () {
+                    const periodo = this.value;
+                    const datasPersonalizadas = document.getElementById("datas-personalizadas");
+
+                    if (datasPersonalizadas) {
+                        if (periodo === "personalizado") {
+                            datasPersonalizadas.style.display = "block";
+                        } else {
+                            datasPersonalizadas.style.display = "none";
+                            applyFilters();
+                        }
+                    }
+                });
+            }
+
+            if (filterDataInicio) {
+                filterDataInicio.addEventListener("keypress", function (e) {
+                    if (e.key === "Enter") applyFilters();
+                });
+            }
+
+            if (filterDataFim) {
+                filterDataFim.addEventListener("keypress", function (e) {
+                    if (e.key === "Enter") applyFilters();
+                });
+            }
+
+            // Inicializar com ano atual
+            const currentYear = getCurrentYear();
+            currentFilters.data_inicio = `${currentYear}-01-01`;
+            currentFilters.data_fim = `${currentYear}-12-31`;
+            
+            updatePeriodLabel();
+        });
+    </script>
+
     {% block scripts %}{% endblock %}
-  </body>
+</body>
 </html>

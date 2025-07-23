@@ -773,35 +773,21 @@ def alertas_detalhes():
 # ===============================
 # ROTAS DO GANTT
 # ===============================
+
 @app.route('/gantt')
 def gantt():
     """Página do gráfico de Gantt"""
     return render_template('gantt.html')
 
-@app.route('/logs')
-def view_logs():
-    """Visualizar logs da aplicação"""
-    logs_html = "<h2>Logs da Aplicação</h2>"
-    logs_html += "<div style='background: #f8f9fa; padding: 15px; border: 1px solid #ddd; max-height: 500px; overflow-y: scroll;'>"
-    
-    if app_logs:
-        for log in app_logs[-50:]:
-            logs_html += f"<div style='font-family: monospace; margin: 2px 0;'>{log}</div>"
-    else:
-        logs_html += "<div>Nenhum log ainda. Acesse o Gantt para gerar logs.</div>"
-    
-    logs_html += "</div>"
-    logs_html += "<br><a href='/gantt'>← Voltar ao Gantt</a>"
-    logs_html += "<br><a href='/logs'>🔄 Atualizar Logs</a>"
-    
-    return logs_html
+@app.route('/api/gantt')
+def gantt_redirect():
+    return gantt_data()  
 
 @app.route('/api/gantt-data')
-@app.route('/api/gantt-data')
 def gantt_data():
-    """API para dados do gráfico de Gantt AGRUPADO POR ÉPICO"""
+    """API para dados do gráfico de Gantt AGRUPADO POR ÉPICO com Indicadores """
     try:
-        log_message("=== INICIANDO GANTT-DATA AGRUPADO ===")
+        log_message("=== INICIANDO GANTT AGRUPADO COM INDICADORES  ===")
         
         # Testar conexão primeiro
         log_message("Testando conexão com banco...")
@@ -841,20 +827,21 @@ def gantt_data():
         
         log_message(f"Filtros: equipe='{equipe_filter}', status='{status_filter}', periodo='{periodo_filter}', inicio='{data_inicio}', fim='{data_fim}'")
         
-        # Query MODIFICADA para buscar todos os tipos de registro por épico
+        # Query ATUALIZADA para usar a estrutura real da tabela
         query = """
         SELECT 
             CAST(ISNULL(EpicNumber, 'Epic-0') AS VARCHAR(50)) as EpicNumber,
             CAST(ISNULL(EpicSummary, 'Sem resumo') AS VARCHAR(500)) as EpicSummary,
             CAST(ISNULL(EpicEquipe, 'Sem Equipe') AS VARCHAR(100)) as EpicEquipe,
             CAST(ISNULL(EpicStatus, 'Indefinido') AS VARCHAR(50)) as EpicStatus,
+            CAST(ISNULL(EpicProduto, 'Sem Produto') AS VARCHAR(100)) as EpicProduto,
             EpicInicioPlanejado,
             EpicDueDate,
             TasksDataInicial,
             TasksDataFim,
-            CAST(ISNULL(TasksPercentualMedia, 0) AS DECIMAL(5,2)) as TasksPercentualMedia,
-            CAST(ISNULL(IndicadorAndamentoEpico, '') AS VARCHAR(100)) as IndicadorAndamentoEpico,
-            CAST(ISNULL(TipoRegistroCalculo, 'Indefinido') AS VARCHAR(50)) as TipoRegistroCalculo
+            CAST(ISNULL(TasksPercentualMedia, 0) AS DECIMAL(7,2)) as TasksPercentualMedia,
+            CAST(ISNULL(TipoRegistroCalculo, 'Indefinido') AS VARCHAR(100)) as TipoRegistroCalculo,
+            CAST(ISNULL(IndicadorAndamentoEpico, 'Verde') AS VARCHAR(100)) as IndicadorAndamentoEpico
         FROM BI_Jira_Epico_Datas_Grafico
         WHERE EpicInicioPlanejado IS NOT NULL 
         AND EpicDueDate IS NOT NULL
@@ -907,60 +894,57 @@ def gantt_data():
                 log_message(f"Processando épico {epic_number}")
                 
                 epic_number_str = str(epic_number) if epic_number is not None else "Epic-0"
+                # CORRIGIR: Remover caracteres especiais que podem quebrar JSON
                 epic_summary_str = str(epic_summary) if epic_summary is not None else "Sem resumo"
+                epic_summary_str = epic_summary_str.replace('"', "'").replace('\n', ' ').replace('\r', ' ')
                 epic_equipe_str = str(epic_equipe) if epic_equipe is not None else "Sem Equipe"
                 
+                # Truncar resumo se muito longo
                 if len(epic_summary_str) > 60:
                     epic_summary_str = epic_summary_str[:60] + "..."
                 
                 # Base do nome da task (épico)
                 task_base_name = f"{epic_number_str} - {epic_summary_str}"
                 
-                # Determinar se está atrasado (comparando data atual com data planejada)
-                hoje = datetime.now().date()
-                prazo_estourado = False
-                
-                # Pegar a data de término do planejamento do PO (primeira linha do grupo)
-                primeira_linha = grupo.iloc[0]
-                planned_finish = primeira_linha['EpicDueDate']
-                
-                if pd.notna(planned_finish):
-                    if isinstance(planned_finish, str):
-                        planned_finish_date = datetime.strptime(planned_finish, '%Y-%m-%d').date()
-                    else:
-                        planned_finish_date = planned_finish.date()
-                    
-                    if hoje > planned_finish_date and epic_status not in ['Done', 'Closed']:
-                        prazo_estourado = True
-                
                 # Processar cada tipo de registro (Planejado P.O., Planejado Time, Realizado Time)
                 for index, row in grupo.iterrows():
                     tipo_registro = row['TipoRegistroCalculo']
+                    indicador_andamento = row['IndicadorAndamentoEpico']
                     
-                    # Definir o nome da subtask baseado no tipo
+                    # Definir configurações baseadas no tipo de registro
                     if tipo_registro == 'Planejado P.O.':
-                        task_name = f"  📋 PO: {task_base_name}"
-                        color = '#6c757d'  # Cinza - Planejamento do PO
-                        opacity = 0.6
-                        width = 15
+                        task_prefix = "📋 PO"
+                        base_color = '#6c757d'  # Cinza base
+                        opacity = 0.7
+                        width = 18
+                        tipo_display = "PLANEJADO P.O."
                     elif tipo_registro == 'Planejado Time':
-                        task_name = f"  ⏰ Time: {task_base_name}"
-                        color = '#17a2b8'  # Azul - Planejamento do Time
-                        opacity = 0.8
-                        width = 20
+                        task_prefix = "⏰ Time"
+                        base_color = '#17a2b8'  # Azul base
+                        opacity = 0.85
+                        width = 22
+                        tipo_display = "PLANEJADO TIME"
                     elif tipo_registro == 'Realizado Time':
-                        task_name = f"  ✅ Real: {task_base_name}"
-                        # Cor baseada no status
-                        if epic_status.upper() in ['DONE', 'CLOSED', 'CONCLUÍDO', 'FINALIZADO']:
-                            color = '#28a745'  # Verde - Concluído
-                        elif prazo_estourado:
-                            color = '#dc3545'  # Vermelho - Atrasado
+                        task_prefix = "✅ Real"
+                        # Para o realizado, usar a cor baseada no indicador
+                        if indicador_andamento == 'Verde':
+                            base_color = '#28a745'  # Verde
+                        elif indicador_andamento == 'Amarelo':
+                            base_color = '#ffc107'  # Amarelo
+                        elif indicador_andamento == 'Vermelho':
+                            base_color = '#dc3545'  # Vermelho
                         else:
-                            color = '#ffc107'  # Amarelo - Em Andamento
+                            base_color = '#6c757d'  # Cinza padrão
+                        
                         opacity = 1.0
-                        width = 25
+                        width = 26
+                        tipo_display = "REALIZADO TIME"
                     else:
+                        log_message(f"  Tipo de registro não reconhecido: {tipo_registro}")
                         continue  # Pular tipos não reconhecidos
+                    
+                    # Nome completo da task - REMOVENDO EMOJIS QUE PODEM QUEBRAR JSON
+                    task_name = f"  {task_prefix}: {task_base_name}"
                     
                     # Datas de início e fim
                     task_start = row['TasksDataInicial']
@@ -970,6 +954,14 @@ def gantt_data():
                         log_message(f"  Pulando {tipo_registro} - datas inválidas")
                         continue
                     
+                    # Descrição do indicador para hover - SEM EMOJIS
+                    indicador_descricao_map = {
+                        'Verde': 'Dentro do Prazo/Concluido',
+                        'Amarelo': 'Proximo do Prazo (<=5 dias)',
+                        'Vermelho': 'Atrasado/Critico'
+                    }
+                    indicador_descricao = indicador_descricao_map.get(indicador_andamento, 'Indefinido')
+                    
                     gantt_data.append({
                         'Task': task_name,
                         'Start': task_start.strftime('%Y-%m-%d') if pd.notna(task_start) else None,
@@ -978,9 +970,11 @@ def gantt_data():
                         'Complete': float(row['TasksPercentualMedia']) if pd.notna(row['TasksPercentualMedia']) else 0.0,
                         'Status': str(epic_status),
                         'TipoRegistro': tipo_registro,
+                        'TipoDisplay': tipo_display,
                         'EpicNumber': epic_number_str,
-                        'PrazoEstourado': prazo_estourado,
-                        'Color': color,
+                        'IndicadorAndamento': indicador_andamento,
+                        'IndicadorDescricao': indicador_descricao,
+                        'Color': base_color,
                         'Opacity': opacity,
                         'Width': width
                     })
@@ -1001,8 +995,8 @@ def gantt_data():
                 'total_epicos': 0
             })
         
-        # Criar gráfico Plotly com AGRUPAMENTO
-        log_message("Criando gráfico Plotly agrupado...")
+        # Criar gráfico Plotly com AGRUPAMENTO e INDICADORES
+        log_message("Criando gráfico Plotly agrupado com indicadores...")
         
         fig = go.Figure()
         
@@ -1022,12 +1016,24 @@ def gantt_data():
             show_legend = not legendas_mostradas[tipo_registro]
             legendas_mostradas[tipo_registro] = True
             
-            # Nome para a legenda
-            legend_name = {
+            # Nome para a legenda - SEM EMOJIS
+            legend_names = {
                 'Planejado P.O.': 'Planejado P.O.',
                 'Planejado Time': 'Planejado Time',
                 'Realizado Time': 'Realizado Time'
-            }.get(tipo_registro, tipo_registro)
+            }
+            legend_name = legend_names.get(tipo_registro, tipo_registro)
+            
+            # CORRIGIR: Remover caracteres especiais do hovertemplate
+            hover_text = f"""<b>{item["TipoDisplay"]}</b><br>
+<b>{item["Task"]}</b><br>
+Equipe: {item["Resource"]}<br>
+Inicio: {item["Start"]}<br>
+Fim: {item["Finish"]}<br>
+Progresso: {item["Complete"]}%<br>
+Status: {item["Status"]}<br>
+Indicador: {item["IndicadorDescricao"]}<br>
+<extra></extra>"""
             
             fig.add_trace(go.Scatter(
                 x=[item['Start'], item['Finish']],
@@ -1041,16 +1047,7 @@ def gantt_data():
                 name=legend_name,
                 showlegend=show_legend,
                 legendgroup=tipo_registro.lower().replace(' ', '_').replace('.', ''),
-                hovertemplate=(
-                    f'<b>{tipo_registro.upper()}</b><br>' +
-                    '<b>%{text}</b><br>' +
-                    'Equipe: ' + str(item["Resource"]) + '<br>' +
-                    'Início: ' + str(item["Start"]) + '<br>' +
-                    'Fim: ' + str(item["Finish"]) + '<br>' +
-                    'Progresso: ' + str(item["Complete"]) + '%<br>' +
-                    'Status: ' + str(item["Status"]) + '<br>' +
-                    '<extra></extra>'
-                ),
+                hovertemplate=hover_text,
                 text=[item['Task'], item['Task']],
                 hoverinfo='text'
             ))
@@ -1113,14 +1110,14 @@ def gantt_data():
         # Configurar layout - AGRUPADO E RESPONSIVO
         fig.update_layout(
             title={
-                'text': 'Roadmap de Épicos - Gráfico de Gantt Agrupado<br><sub>📋 PO=Planejado PO | ⏰ Time=Planejado Time | ✅ Real=Realizado Time</sub>',
+                'text': 'Roadmap de Epicos - Grafico de Gantt Agrupado<br><sub>Planejado PO | Planejado Time | Realizado (Indicadores por Cor)</sub>',
                 'x': 0.5,
                 'xanchor': 'center',
                 'font': {'size': 16}
             },
             
             # Altura baseada no número de itens (considerando agrupamento)
-            height=max(800, len(gantt_data) * 35 + 200),
+            height=max(800, len(gantt_data) * 30 + 200),
             
             # EIXO X PRINCIPAL (inferior)
             xaxis=dict(
@@ -1176,11 +1173,11 @@ def gantt_data():
                 showline=True,
                 linewidth=2,
                 linecolor='black',
-                title=dict(text='Épicos por Tipo', font=dict(size=14))
+                title=dict(text='Epicos por Tipo', font=dict(size=14))
             ),
             
             # MARGENS OTIMIZADAS para agrupamento
-            margin=dict(l=450, r=50, t=180, b=120),
+            margin=dict(l=480, r=50, t=180, b=120),
             
             # CORES E FONTES
             plot_bgcolor='white',
@@ -1207,7 +1204,8 @@ def gantt_data():
         
         log_message("Layout configurado! Convertendo para JSON...")
         
-        graphJSON = json.dumps(fig, cls=PlotlyJSONEncoder)
+        # CORRIGIR: Usar ensure_ascii=False para manter caracteres especiais, mas remover emojis problemáticos
+        graphJSON = json.dumps(fig, cls=PlotlyJSONEncoder, ensure_ascii=False)
         
         # Obter listas para filtros (únicas)
         equipes_list = sorted(df['EpicEquipe'].dropna().unique().tolist())
@@ -1217,7 +1215,7 @@ def gantt_data():
         total_epicos_unicos = df['EpicNumber'].nunique()
         
         log_message(f"SUCESSO! Retornando {total_epicos_unicos} épicos únicos com {len(gantt_data)} registros")
-        log_message("=== FIM GANTT-DATA AGRUPADO ===")
+        log_message("=== FIM GANTT-DATA AGRUPADO COM INDICADORES (CORRIGIDO) ===")
         
         return jsonify({
             'gantt': graphJSON,
@@ -1234,7 +1232,8 @@ def gantt_data():
         log_message(f"Traceback: {traceback_msg}")
         return jsonify({'error': error_msg})
 
-    
+
+ 
 @app.route('/relatorio-epicos')
 def relatorio_epicos():
     """Página do relatório de épicos"""

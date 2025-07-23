@@ -4,61 +4,12 @@
 {% block dashboard_active %}active{% endblock %}
 {% block page_title %}Dashboard Executivo{% endblock %}
 
+<!-- Usar os filtros padrão do base.html -->
+{% block filtros %}
+{{ super() }}
+{% endblock %}
+
 {% block content %}
-<div id="periodo-info" class="alert alert-info py-2 mb-3">
-    <i class="fas fa-calendar-alt me-2"></i>
-    <strong>Período de Análise:</strong> 
-    <span id="periodo-texto">Ano Atual</span>
-</div>
-<!-- Filtros Superiores -->
-<div class="row mb-4">
-    <div class="col-12">
-        <div class="card shadow-sm border-0">
-            <div class="card-body bg-light">
-                <div class="row align-items-center">
-                    <div class="col-md-2">
-                        <label for="filterEquipeDash" class="form-label small fw-bold">Equipe</label>
-                        <select id="filterEquipeDash" class="form-select form-select-sm">
-                            <option value="">Todas as Equipes</option>
-                        </select>
-                    </div>
-                    <div class="col-md-2">
-                        <label for="filterProdutoDash" class="form-label small fw-bold">Produto</label>
-                        <select id="filterProdutoDash" class="form-select form-select-sm">
-                            <option value="">Todos os Produtos</option>
-                        </select>
-                    </div>
-                    <div class="col-md-2">
-                        <label for="filterPeriodoDash" class="form-label small fw-bold">Período</label>
-                        <select id="filterPeriodoDash" class="form-select form-select-sm">
-                            <option value="ano_atual">Ano Atual</option>
-                            <option value="6_meses">Últimos 6 Meses</option>
-                            <option value="3_meses">Últimos 3 Meses</option>
-                            <option value="mes_atual">Mês Atual</option>
-                            <option value="todos">Todos</option>
-                        </select>
-                    </div>
-                    <div class="col-md-3">
-                        <label for="filterStatusDash" class="form-label small fw-bold">Status</label>
-                        <select id="filterStatusDash" class="form-select form-select-sm">
-                            <option value="">Todos os Status</option>
-                        </select>
-                    </div>
-                    <div class="col-md-3 d-flex align-items-end">
-                        <button id="btnAtualizarDash" class="btn btn-primary btn-sm me-2">
-                            <i class="fas fa-sync-alt me-1"></i>
-                            Atualizar
-                        </button>
-                        <button id="btnExportDash" class="btn btn-outline-success btn-sm">
-                            <i class="fas fa-download me-1"></i>
-                            Exportar
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
 
 <!-- Indicadores Principais -->
 <div class="row mb-4">
@@ -184,7 +135,7 @@
     <!-- Performance por Equipe -->
     <div class="col-xl-4 col-lg-6 mb-4">
         <div class="card border-0 shadow-sm h-100">
-            <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+            <div class="card-header bg-white py-2 d-flex justify-content-between align-items-center">
                 <h6 class="m-0 font-weight-bold text-primary">
                     <i class="fas fa-users me-2"></i>Performance por Equipe
                 </h6>
@@ -266,10 +217,10 @@
                             <small class="text-white-50">Visualização de cronograma</small>
                         </div>
                     </a>
-                    <a href="/relatorio-epicos" class="btn btn-info d-flex align-items-center">
-                        <i class="fas fa-list-alt me-3"></i>
+                    <a href="/relatorio-epicos" class="btn btn-warning d-flex align-items-center">
+                        <i class="fas fa-list-alt me-3 text-white"></i>
                         <div class="text-start">
-                            <div class="fw-bold">Relatório de Épicos</div>
+                            <div class="fw-bold text-white">Relatório de Épicos</div>
                             <small class="text-white-50">Análise detalhada</small>
                         </div>
                     </a>
@@ -387,22 +338,6 @@
     transform: translateY(-1px);
 }
 
-.bg-gradient-primary {
-    background: linear-gradient(180deg, #4e73df 10%, #224abe 100%);
-}
-
-.bg-gradient-success {
-    background: linear-gradient(180deg, #1cc88a 10%, #13855c 100%);
-}
-
-.bg-gradient-info {
-    background: linear-gradient(180deg, #36b9cc 10%, #258391 100%);
-}
-
-.bg-gradient-warning {
-    background: linear-gradient(180deg, #f6c23e 10%, #dda20a 100%);
-}
-
 .alert-dashboard {
     border-left: 4px solid;
     border-radius: 0.35rem;
@@ -469,23 +404,10 @@ const colors = {
     secondary: '#858796'
 };
 
-
-
-function setupEventListeners() {
-    // Filtros com atualização do período
-    document.getElementById('filterEquipeDash').addEventListener('change', applyDashboardFilters);
-    document.getElementById('filterProdutoDash').addEventListener('change', applyDashboardFilters);
-    document.getElementById('filterPeriodoDash').addEventListener('change', function() {
-        updatePeriodLabel();
-        applyDashboardFilters();
-    });
-    document.getElementById('filterStatusDash').addEventListener('change', applyDashboardFilters);
-    
-    // Botões de ação
-    document.getElementById('btnAtualizarDash').addEventListener('click', refreshDashboard);
-    document.getElementById('btnExportDash').addEventListener('click', function() {
-        window.open('/export/dashboard-completo', '_blank');
-    });
+// Função específica da página Dashboard (sobrescreve a função global)
+function loadPageData() {
+    console.log('Dashboard: loadPageData chamada');
+    refreshDashboard();
 }
 
 // Inicialização do Dashboard
@@ -497,14 +419,12 @@ document.addEventListener('DOMContentLoaded', function() {
     initializeDashboard();
     generateAlerts();
     updateTimestamp();
-    setupEventListeners();
-
 
     // 2. GARANTIR loading em todos os gráficos ANTES de qualquer coisa
     console.log('Aplicando loading inicial em todos os gráficos...');
     showLoadingInCharts();
 
-     // 3. Carregar opções de filtros (em paralelo)
+    // 3. Carregar opções de filtros (em paralelo)
     loadFilterOptions();
    
     // 4. Carregar dados principais APÓS um pequeno delay para mostrar loading
@@ -519,39 +439,7 @@ document.addEventListener('DOMContentLoaded', function() {
     console.log('=== DASHBOARD INICIALIZADO ===');
 });
 
-// Mostrar erro nos gráficos
-function showErrorInCharts(errorMessage) {
-    const charts = [
-        { id: 'performanceEquipes', title: 'Performance por Equipe' },
-        { id: 'statusDistribution', title: 'Distribuição por Status' },
-        { id: 'timelineEntregas', title: 'Timeline de Entregas' }
-    ];
-    
-    charts.forEach(chart => {
-        const element = document.getElementById(chart.id);
-        if (element) {
-            element.innerHTML = `
-                <div class="text-center text-danger p-4">
-                    <i class="fas fa-exclamation-triangle fa-3x mb-3 text-danger"></i>
-                    <br>
-                    <strong>Erro ao carregar</strong>
-                    <br>
-                    <small class="text-muted">${errorMessage}</small>
-                    <br>
-                    <button class="btn btn-sm btn-outline-danger mt-2" onclick="location.reload()">
-                        <i class="fas fa-redo"></i> Tentar Novamente
-                    </button>
-                </div>
-            `;
-        }
-    });
-}
-
-
-
-// ==============================================
 // initializeDashboard
-// ==============================================
 function initializeDashboard() {
     console.log('Dashboard inicializado com dados:', dashboardData);
     
@@ -586,10 +474,7 @@ function initializeDashboard() {
     }
 }
 
-// ==============================================
 // loadInitialData 
-// ==============================================
-
 function loadInitialData() {
     console.log('Carregando dados iniciais...');
     
@@ -652,8 +537,6 @@ function loadInitialData() {
         });
 }
 
-
-
 function atualizarTendenciaEpicos() {
     const tendencia = dashboardData.stats?.tendencia_epicos;
     const tendenciaSpan = document.getElementById('epicosTendencia');
@@ -685,65 +568,14 @@ function loadFilterOptions() {
             if (data.error) {
                 console.error('Erro ao carregar filtros:', data.error);
             } else {
-                populateFilterSelects(data);
+                // Usar a função global do base.html
+                populateFilterOptions(data.equipes, data.status);
             }
         })
         .catch(error => {
             console.error('Erro na requisição de filtros:', error);
-            populateFilterSelects({equipes: [], produtos: [], status: []});
+            populateFilterOptions([], []);
         });
-}
-
-function populateFilterSelects(data) {
-    console.log('Populando selects com:', data);
-    
-    // Popular select de equipes
-    const equipeSelect = document.getElementById('filterEquipeDash');
-    if (equipeSelect && data.equipes) {
-        while (equipeSelect.children.length > 1) {
-            equipeSelect.removeChild(equipeSelect.lastChild);
-        }
-        
-        data.equipes.forEach(equipe => {
-            const option = document.createElement('option');
-            option.value = equipe;
-            option.textContent = equipe;
-            equipeSelect.appendChild(option);
-        });
-        console.log(`Adicionadas ${data.equipes.length} equipes`);
-    }
-
-    // Popular select de produtos
-    const produtoSelect = document.getElementById('filterProdutoDash');
-    if (produtoSelect && data.produtos) {
-        while (produtoSelect.children.length > 1) {
-            produtoSelect.removeChild(produtoSelect.lastChild);
-        }
-        
-        data.produtos.forEach(produto => {
-            const option = document.createElement('option');
-            option.value = produto;
-            option.textContent = produto;
-            produtoSelect.appendChild(option);
-        });
-        console.log(`Adicionados ${data.produtos.length} produtos`);
-    }
-
-    // Popular select de status (sem multiple)
-    const statusSelect = document.getElementById('filterStatusDash');
-    if (statusSelect && data.status) {
-        while (statusSelect.children.length > 1) {
-            statusSelect.removeChild(statusSelect.lastChild);
-        }
-        
-        data.status.forEach(status => {
-            const option = document.createElement('option');
-            option.value = status;
-            option.textContent = status;
-            statusSelect.appendChild(option);
-        });
-        console.log(`Adicionados ${data.status.length} status`);
-    }
 }
 
 function createCharts() {
@@ -769,7 +601,6 @@ function createPerformanceChart() {
     console.log('Criando gráfico de performance...');
     console.log('Dados equipes:', dashboardData.equipes);
     
-    // Declarar a variável corretamente
     const performanceElement = document.getElementById('performanceEquipes');
     
     if (!performanceElement) {
@@ -777,7 +608,6 @@ function createPerformanceChart() {
         return;
     }
     
-    // Limpar conteúdo primeiro
     performanceElement.innerHTML = '';
     
     if (!dashboardData.equipes || dashboardData.equipes.length === 0) {
@@ -820,7 +650,6 @@ function createPerformanceChart() {
             font: { size: 11 }
         };
 
-        // Usar Plotly.newPlot para garantir criação limpa
         Plotly.newPlot('performanceEquipes', data, layout, {
             responsive: true,
             displayModeBar: false
@@ -839,7 +668,6 @@ function createStatusChart() {
     console.log('Criando gráfico de status...');
     console.log('Dados stats:', dashboardData.stats);
     
-    // Declarar a variável corretamente
     const statusElement = document.getElementById('statusDistribution');
     
     if (!statusElement) {
@@ -847,7 +675,6 @@ function createStatusChart() {
         return;
     }
     
-    // Limpar conteúdo primeiro
     statusElement.innerHTML = '';
     
     if (!dashboardData.stats || dashboardData.stats.error) {
@@ -888,7 +715,6 @@ function createStatusChart() {
             font: { size: 11 }
         };
 
-        // Usar Plotly.newPlot para garantir criação limpa
         Plotly.newPlot('statusDistribution', data, layout, {
             responsive: true,
             displayModeBar: false
@@ -903,14 +729,9 @@ function createStatusChart() {
     }
 }
 
-// ==============================================
-// createTimelineChart
-// ==============================================
-
 function createTimelineChart() {
     console.log('Criando gráfico de timeline...');
     
-    // Declarar a variável corretamente
     const timelineElement = document.getElementById('timelineEntregas');
     
     if (!timelineElement) {
@@ -918,16 +739,13 @@ function createTimelineChart() {
         return;
     }
     
-    //  Limpar o conteúdo primeiro SEMPRE
     console.log('Limpando elemento timeline...');
     timelineElement.innerHTML = '';
     
-    // Verificar se existe timeline nos dados globais
     let timeline = dashboardData.timeline;
     
     console.log('Timeline data:', timeline);
     
-    // Validação dados timeline
     if (!timeline || !timeline.meses || !Array.isArray(timeline.meses) || timeline.meses.length === 0) {
         console.log('Timeline vazio ou sem dados válidos');
         timelineElement.innerHTML = '<div class="text-center text-muted p-4"><i class="fas fa-calendar-alt fa-2x mb-2"></i><br>Sem dados de entregas</div>';
@@ -986,7 +804,6 @@ function createTimelineChart() {
 
         console.log('Criando gráfico Plotly com dados:', data);
 
-        // Usar Plotly.newPlot para garantir criação limpa
         Plotly.newPlot('timelineEntregas', data, layout, {
             responsive: true,
             displayModeBar: false
@@ -1000,12 +817,10 @@ function createTimelineChart() {
     }
 }
 
-//Função generateAlerts atualizada para usar dados reais
 function generateAlerts() {
     const alertsContainer = document.getElementById('alertas-container');
     const stats = dashboardData.stats || {};
     
-    // Usar dados reais dos stats, incluindo os novos campos
     const epicosAtrasados = stats.epicos_atrasados || 0;
     const epicosProximoPrazo = stats.epicos_proximo_prazo || 0;
     const epicosBaixoProgresso = stats.epicos_baixo_progresso || 0;
@@ -1060,68 +875,21 @@ function generateAlerts() {
     }
 }
 
-// Função para adicionar label do período
-function updatePeriodLabel() {
-    const periodoSelect = document.getElementById('filterPeriodoDash');
-    const periodoValue = periodoSelect ? periodoSelect.value : 'ano_atual';
-    
-    // Pegar o elemento que JÁ EXISTE no HTML
-    const periodoTexto = document.getElementById('periodo-texto');
-    if (!periodoTexto) return; // Se não existir, não faz nada
-    
-    // Equivalente ao datetime.now() do Python
-    const today = new Date();
-    
-    // Função auxiliar para subtrair dias
-    function subtractDays(days) {
-        const result = new Date(today);
-        result.setDate(result.getDate() - days);
-        return result.toLocaleDateString('pt-BR');
-    }
-    
-    // Função auxiliar para formatar data brasileira
-    function formatBR(date) {
-        return date.toLocaleDateString('pt-BR');
-    }
-    
-    // Definir texto do período
-    const periodoTextos = {
-        'ano_atual': `01/01/${today.getFullYear()} até 31/12/${today.getFullYear()}`,
-        '6_meses': `${subtractDays(180)} até ${formatBR(today)}`,
-        '3_meses': `${subtractDays(90)} até ${formatBR(today)}`,
-        'mes_atual': (() => {
-            const inicioMes = new Date(today.getFullYear(), today.getMonth(), 1);
-            const fimMes = new Date(today.getFullYear(), today.getMonth() + 1, 0);
-            return `${formatBR(inicioMes)} até ${formatBR(fimMes)}`;
-        })(),
-        'todos': 'Todos os registros'
-    };
-    
-    // APENAS ATUALIZAR O TEXTO
-    periodoTexto.textContent = periodoTextos[periodoValue] || 'Período selecionado';
-    
-    console.log(`Período atualizado: ${periodoTextos[periodoValue]}`);
-}
-
 function mostrarDetalhesAlerta(tipo, titulo) {
     console.log('Mostrando detalhes do alerta:', tipo);
     
-    // Configurar o modal
     document.getElementById('modalDetalhesAlertaLabel').innerHTML = `
         <i class="fas fa-exclamation-triangle me-2"></i>
         ${titulo}
     `;
     
-    // Mostrar loading
     document.getElementById('loadingDetalhes').style.display = 'block';
     document.getElementById('conteudoDetalhes').style.display = 'none';
     document.getElementById('erroDetalhes').style.display = 'none';
     
-    // Abrir modal
     const modal = new bootstrap.Modal(document.getElementById('modalDetalhesAlerta'));
     modal.show();
     
-    // Buscar dados
     fetch(`/api/alertas-detalhes?tipo=${tipo}`)
         .then(response => response.json())
         .then(data => {
@@ -1162,7 +930,6 @@ function mostrarTabelaDetalhes(data, tipo) {
         return;
     }
     
-    // Configurar cabeçalho da tabela baseado no tipo
     let cabecalho = '';
     if (tipo === 'atrasados') {
         cabecalho = `
@@ -1198,7 +965,6 @@ function mostrarTabelaDetalhes(data, tipo) {
     
     document.getElementById('cabecalhoTabela').innerHTML = cabecalho;
     
-    // Preencher corpo da tabela
     let corpoHTML = '';
     registros.forEach(registro => {
         let linha = '<tr>';
@@ -1256,7 +1022,6 @@ function mostrarTabelaDetalhes(data, tipo) {
     
     document.getElementById('corpoTabela').innerHTML = corpoHTML;
     
-    // Mostrar resumo
     const resumo = `
         <h6><i class="fas fa-chart-bar me-2"></i>Resumo</h6>
         <div class="row">
@@ -1274,14 +1039,12 @@ function mostrarTabelaDetalhes(data, tipo) {
     
     document.getElementById('resumoDetalhes').innerHTML = resumo;
     
-    // Configurar botão de exportar
     document.getElementById('btnExportarDetalhes').onclick = function() {
         exportarDetalhes(tipo, registros);
     };
 }
 
 function exportarDetalhes(tipo, registros) {
-    // Converter para CSV e fazer download
     if (registros.length === 0) return;
     
     const headers = Object.keys(registros[0]);
@@ -1323,46 +1086,12 @@ function updateTimestamp() {
         'às ' + proxima.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
 }
 
-
-// ==============================================
-// refreshDashboard
-// ==============================================
-
 function refreshDashboard() {
     console.log('Atualizando dashboard...');
     
-    // Mostrar loading de refresh
     showRefreshLoading();
     
-    // Verificar se os elementos existem antes de acessar .value
-    let equipe = '';
-    let produto = '';
-    let periodo = 'ano_atual'; // valor padrão
-    let status = '';
-    
-    try {
-        const equipeElement = document.getElementById('filterEquipeDash');
-        const produtoElement = document.getElementById('filterProdutoDash');
-        const periodoElement = document.getElementById('filterPeriodoDash');
-        const statusElement = document.getElementById('filterStatusDash');
-        
-        if (equipeElement) equipe = equipeElement.value || '';
-        if (produtoElement) produto = produtoElement.value || '';
-        if (periodoElement) periodo = periodoElement.value || 'ano_atual';
-        if (statusElement) status = statusElement.value || '';
-        
-        console.log('Filtros obtidos:', { equipe, produto, periodo, status });
-        
-    } catch (error) {
-        console.error('Erro ao obter valores dos filtros:', error);
-        // Usar valores padrão em caso de erro
-        equipe = '';
-        produto = '';
-        periodo = 'ano_atual';
-        status = '';
-    }
-
-    const params = new URLSearchParams({ equipe, produto, periodo, status });
+    const params = new URLSearchParams(currentFilters);
 
     fetch(`/api/dashboard-data?${params.toString()}`)
         .then(response => {
@@ -1379,12 +1108,10 @@ function refreshDashboard() {
                 throw new Error(data.error);
             }
             
-            // Atualizar dados globais
             dashboardData.stats = data.stats || {};
             dashboardData.equipes = data.equipes || [];
             dashboardData.timeline = data.timeline || { meses: [], planejado: [], realizado: [] };
             
-            // Atualizar interface
             updateDashboardCards(data.stats || {});
             createCharts();
             generateAlerts();
@@ -1396,7 +1123,6 @@ function refreshDashboard() {
             console.error('Erro ao atualizar dashboard:', error);
             showErrorInCharts(`Erro ao atualizar: ${error.message}`);
             
-            // Tentar criar gráficos com dados existentes após erro
             setTimeout(() => {
                 try {
                     createCharts();
@@ -1407,14 +1133,11 @@ function refreshDashboard() {
         });
 }
 
-// Loading específico para refresh
 function showRefreshLoading() {
     console.log('Mostrando loading de refresh...');
     
-    // Loading nos cards
     showLoadingInCards();
     
-    // Loading específico para refresh nos gráficos
     const charts = [
         { id: 'performanceEquipes', title: 'Performance por Equipe', icon: 'fa-chart-bar' },
         { id: 'statusDistribution', title: 'Distribuição por Status', icon: 'fa-chart-pie' },
@@ -1424,9 +1147,6 @@ function showRefreshLoading() {
     charts.forEach(chart => {
         const element = document.getElementById(chart.id);
         if (element) {
-         //   console.log(`Aplicando refresh loading em: ${chart.id}`);
-         //   console.log(`Título: ${chart.title}, Ícone: ${chart.icon}`);
-        //    console.log(`icone:`, chart.icon);
             element.innerHTML = `
                 <div class="text-center text-muted p-4">
                     <div class="spinner-border text-primary  mb-3" role="status" style="width: 2.5rem; height: 2.5rem;">
@@ -1441,130 +1161,12 @@ function showRefreshLoading() {
                     </div>
                 </div>
             `;
-        } else {
-            console.warn(`Elemento ${chart.id} não encontrado para refresh loading`);
         }
     });
 }
 
 function exportEquipeData() {
     window.open('/export/dashboard-equipes', '_blank');
-}
-
-// Event Listeners
-document.getElementById('btnAtualizarDash').addEventListener('click', refreshDashboard);
-document.getElementById('btnExportDash').addEventListener('click', function() {
-    window.open('/export/dashboard-completo', '_blank');
-});
-
-// Filtros
-document.getElementById('filterEquipeDash').addEventListener('change', applyDashboardFilters);
-document.getElementById('filterProdutoDash').addEventListener('change', applyDashboardFilters);
-document.getElementById('filterPeriodoDash').addEventListener('change', applyDashboardFilters);
-document.getElementById('filterStatusDash').addEventListener('change', applyDashboardFilters);
-
-
-function applyDashboardFilters() {
-    console.log('Aplicando filtros do dashboard...');
-    
-
-    showFilterLoading();
-    
-    const equipe = document.getElementById('filterEquipeDash').value;
-    const produto = document.getElementById('filterProdutoDash').value;
-    const periodo = document.getElementById('filterPeriodoDash').value;
-    const status = document.getElementById('filterStatusDash').value;
-    
-    console.log('Filtros selecionados:', { equipe, produto, periodo, status });
-    
-    const params = new URLSearchParams({
-        equipe: equipe,
-        produto: produto,
-        periodo: periodo,
-        status: status
-    });
-    
-    fetch(`/api/dashboard-data?${params.toString()}`)
-        .then(response => {
-            console.log('Resposta dashboard-data:', response.status);
-            return response.json();
-        })
-        .then(data => {
-            console.log('Dados dashboard recebidos:', data);
-            
-            if (data.error) {
-                console.error('Erro nos dados:', data.error);
-                hideLoadingInCards();
-                showErrorMessage('Erro ao carregar dados: ' + data.error);
-            } else {
-                // Atualizar todos os dados globais
-                dashboardData.stats = data.stats || {};
-                dashboardData.equipes = data.equipes || [];
-                
-                //  Validar e atualizar timeline
-                if (data.timeline && data.timeline.meses && Array.isArray(data.timeline.meses)) {
-                    console.log('Timeline recebido nos filtros:', data.timeline);
-                    dashboardData.timeline = data.timeline;
-                } else {
-                    console.log('Timeline vazio nos filtros, mantendo dados anteriores ou vazios');
-                    if (!dashboardData.timeline || !dashboardData.timeline.meses) {
-                        dashboardData.timeline = { meses: [], planejado: [], realizado: [] };
-                    }
-                }
-                
-                // Atualizar cards primeiro
-                updateDashboardCards(data.stats);
-                
-                // Criar gráficos diretamente
-                createCharts();
-              
-                // Gerar alertas
-                generateAlerts();
-                
-                hideLoadingInCards();
-                
-                console.log('Dashboard atualizado com sucesso');
-            }
-        })
-        .catch(error => {
-            console.error('Erro na requisição dashboard-data:', error);
-            hideLoadingInCards();
-            showErrorMessage('Erro ao conectar com o servidor');
-        });
-}
-
-function showFilterLoading() {
-    console.log('Aplicando filtros - mostrando loading...');
-    
-    // Mostrar loading nos cards de números
-    showLoadingInCards();
-    
-    // Mostrar mensagem específica de filtros nos gráficos
-    const charts = [
-        { id: 'performanceEquipes', title: 'Performance por Equipe' },
-        { id: 'statusDistribution', title: 'Distribuição por Status' },
-        { id: 'timelineEntregas', title: 'Timeline de Entregas' }
-    ];
-    
-    charts.forEach(chart => {
-        const element = document.getElementById(chart.id);
-        if (element) {
-            element.innerHTML = `
-                <div class="text-center text-primary p-4">
-                    <div class="spinner-border text-primary mb-3" role="status" style="width: 2.5rem; height: 2.5rem;">
-                        <span class="visually-hidden">Aplicando filtros...</span>
-                    </div>
-                    <div>
-                        <i class="fas fa-filter fa-2x mb-2 text-primary"></i>
-                        <br>
-                        <strong>Aplicando filtros...</strong>
-                        <br>
-                        <small class="text-muted">Atualizando ${chart.title}</small>
-                    </div>
-                </div>
-            `;
-        }
-    });
 }
 
 function showLoadingInCards() {
@@ -1605,27 +1207,45 @@ function showLoadingInCharts() {
                     </div>
                 </div>
             `;
-        } else {
-            console.warn(`Elemento ${chart.id} não encontrado para loading`);
         }
     });
 }
 
-function hideLoadingInCards() {
-    console.log('Loading nos cards removido automaticamente por updateDashboardCards()');
-    // O loading será removido quando updateDashboardCards() for chamada
+function showErrorInCharts(errorMessage) {
+    const charts = [
+        { id: 'performanceEquipes', title: 'Performance por Equipe' },
+        { id: 'statusDistribution', title: 'Distribuição por Status' },
+        { id: 'timelineEntregas', title: 'Timeline de Entregas' }
+    ];
+    
+    charts.forEach(chart => {
+        const element = document.getElementById(chart.id);
+        if (element) {
+            element.innerHTML = `
+                <div class="text-center text-danger p-4">
+                    <i class="fas fa-exclamation-triangle fa-3x mb-3 text-danger"></i>
+                    <br>
+                    <strong>Erro ao carregar</strong>
+                    <br>
+                    <small class="text-muted">${errorMessage}</small>
+                    <br>
+                    <button class="btn btn-sm btn-outline-danger mt-2" onclick="location.reload()">
+                        <i class="fas fa-redo"></i> Tentar Novamente
+                    </button>
+                </div>
+            `;
+        }
+    });
 }
 
 function updateDashboardCards(stats) {
     console.log('Atualizando cards com:', stats);
     
-    // Atualizar Total de Épicos
     const totalEpicos = document.getElementById('totalEpicos');
     if (totalEpicos) {
         totalEpicos.textContent = stats.total_epicos || 0;
     }
     
-    // 
     const tendencia = dashboardData.stats?.tendencia_epicos;
     const tendenciaSpan = document.getElementById('epicosTendencia');
 
@@ -1642,7 +1262,6 @@ function updateDashboardCards(stats) {
         tendenciaSpan.className = 'text-muted small fw-bold';
     }
         
-    // Atualizar Taxa de Conclusão
     const taxaConclusao = document.getElementById('taxaConclusao');
     const progressConclusao = document.getElementById('progressConclusao');
     if (taxaConclusao) {
@@ -1656,13 +1275,11 @@ function updateDashboardCards(stats) {
         }
     }
     
-    // Atualizar Progresso Médio
     const progressoMedio = document.getElementById('progressoMedio');
     if (progressoMedio) {
         const progresso = (stats.percentual_medio || 0).toFixed(1);
         progressoMedio.textContent = progresso + '%';
         
-        // Atualizar badge de status
         const statusProgresso = document.getElementById('statusProgresso');
         if (statusProgresso) {
             if (progresso >= 80) {
@@ -1681,13 +1298,11 @@ function updateDashboardCards(stats) {
         }
     }
     
-    // Atualizar Épicos Atrasados
     const epicosAtrasados = document.getElementById('epicosAtrasados');
     if (epicosAtrasados) {
         epicosAtrasados.textContent = stats.epicos_atrasados || 0;
     }
     
-    // Atualizar percentual de atrasados
     const percentualAtrasados = document.getElementById('percentualAtrasados');
     if (percentualAtrasados) {
         const percentual = stats.total_epicos > 0 ? 
@@ -1699,66 +1314,12 @@ function updateDashboardCards(stats) {
         `;
     }
     
-    // Atualizar total de registros no footer
     const totalRegistros = document.getElementById('totalRegistros');
     if (totalRegistros) {
         totalRegistros.textContent = (stats.total_epicos || 0) + (stats.total_subtasks || 0);
     }
     
-    // Atualizar período label
     updatePeriodLabel();
-}
-
-// Função para obter filtros atuais
-function getCurrentFilters() {
-    return {
-        equipe: document.getElementById('filterEquipeDash').value,
-        produto: document.getElementById('filterProdutoDash').value,
-        periodo: document.getElementById('filterPeriodoDash').value,
-        status: document.getElementById('filterStatusDash').value
-    };
-}
-
-//Adicionar event listener para mudança de período
-function setupEventListeners() {
-    // Filtros existentes
-    document.getElementById('filterEquipeDash').addEventListener('change', applyDashboardFilters);
-    document.getElementById('filterProdutoDash').addEventListener('change', applyDashboardFilters);
-    document.getElementById('filterPeriodoDash').addEventListener('change', function() {
-        updatePeriodLabel();
-        applyDashboardFilters();
-    });
-    document.getElementById('filterStatusDash').addEventListener('change', applyDashboardFilters);
-     
-    // Botões de ação
-    document.getElementById('btnAtualizarDash').addEventListener('click', refreshDashboard);
-    document.getElementById('btnExportDash').addEventListener('click', function() {
-        window.open('/export/dashboard-completo', '_blank');
-    });
-}
-
-function showErrorMessage(message) {
-    let errorDiv = document.getElementById('dashboard-error');
-    if (!errorDiv) {
-        errorDiv = document.createElement('div');
-        errorDiv.id = 'dashboard-error';
-        errorDiv.className = 'alert alert-danger alert-dismissible mt-3';
-        document.querySelector('.container-fluid').insertBefore(errorDiv, document.querySelector('.row'));
-    }
-    
-    errorDiv.innerHTML = `
-        <i class="fas fa-exclamation-triangle me-2"></i>
-        ${message}
-        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-    `;
-    errorDiv.style.display = 'block';
-    
-    // Auto-hide após 5 segundos
-    setTimeout(() => {
-        if (errorDiv) {
-            errorDiv.style.display = 'none';
-        }
-    }, 5000);
 }
 </script>
 {% endblock %}
