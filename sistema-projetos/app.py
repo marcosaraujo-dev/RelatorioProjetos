@@ -797,10 +797,11 @@ def view_logs():
     return logs_html
 
 @app.route('/api/gantt-data')
+@app.route('/api/gantt-data')
 def gantt_data():
-    """API para dados do gráfico de Gantt"""
+    """API para dados do gráfico de Gantt AGRUPADO POR ÉPICO"""
     try:
-        log_message("=== INICIANDO GANTT-DATA ===")
+        log_message("=== INICIANDO GANTT-DATA AGRUPADO ===")
         
         # Testar conexão primeiro
         log_message("Testando conexão com banco...")
@@ -840,8 +841,7 @@ def gantt_data():
         
         log_message(f"Filtros: equipe='{equipe_filter}', status='{status_filter}', periodo='{periodo_filter}', inicio='{data_inicio}', fim='{data_fim}'")
         
-        
-        # Query com lógica correta de filtro de período
+        # Query MODIFICADA para buscar todos os tipos de registro por épico
         query = """
         SELECT 
             CAST(ISNULL(EpicNumber, 'Epic-0') AS VARCHAR(50)) as EpicNumber,
@@ -853,10 +853,12 @@ def gantt_data():
             TasksDataInicial,
             TasksDataFim,
             CAST(ISNULL(TasksPercentualMedia, 0) AS DECIMAL(5,2)) as TasksPercentualMedia,
-            CAST(ISNULL(IndicadorAndamentoEpico, '') AS VARCHAR(100)) as IndicadorAndamentoEpico
+            CAST(ISNULL(IndicadorAndamentoEpico, '') AS VARCHAR(100)) as IndicadorAndamentoEpico,
+            CAST(ISNULL(TipoRegistroCalculo, 'Indefinido') AS VARCHAR(50)) as TipoRegistroCalculo
         FROM BI_Jira_Epico_Datas_Grafico
         WHERE EpicInicioPlanejado IS NOT NULL 
         AND EpicDueDate IS NOT NULL
+        AND TipoRegistroCalculo IS NOT NULL
         AND (
             -- Épicos que começam OU terminam no período especificado
             (EpicDueDate >= ? AND EpicDueDate <= ?) OR
@@ -876,7 +878,7 @@ def gantt_data():
             query += " AND ISNULL(EpicStatus, '') = ?"
             params.append(status_filter)
             
-        query += " ORDER BY EpicEquipe, EpicInicioPlanejado"
+        query += " ORDER BY EpicEquipe, EpicNumber, TipoRegistroCalculo"
         
         log_message(f"Executando query com {len(params)} parâmetros...")
         
@@ -894,39 +896,33 @@ def gantt_data():
                 'total_epicos': 0
             })
         
-        # Processar dados para o Gantt
+        # NOVA LÓGICA: Agrupar por épico e criar subgrupos
         gantt_data = []
+        epicos_agrupados = df.groupby(['EpicNumber', 'EpicSummary', 'EpicEquipe', 'EpicStatus'])
         
-        log_message("Processando dados...")
+        log_message("Processando dados agrupados por épico...")
         
-        for index, row in df.iterrows():
+        for (epic_number, epic_summary, epic_equipe, epic_status), grupo in epicos_agrupados:
             try:
-                log_message(f"Processando linha {index + 1}/{len(df)}")
+                log_message(f"Processando épico {epic_number}")
                 
-                epic_number = str(row['EpicNumber']) if row['EpicNumber'] is not None else f"Epic-{index}"
-                epic_summary = str(row['EpicSummary']) if row['EpicSummary'] is not None else "Sem resumo"
-                epic_equipe = str(row['EpicEquipe']) if row['EpicEquipe'] is not None else "Sem Equipe"
+                epic_number_str = str(epic_number) if epic_number is not None else "Epic-0"
+                epic_summary_str = str(epic_summary) if epic_summary is not None else "Sem resumo"
+                epic_equipe_str = str(epic_equipe) if epic_equipe is not None else "Sem Equipe"
                 
-                if len(epic_summary) > 60:
-                    epic_summary = epic_summary[:60] + "..."
+                if len(epic_summary_str) > 60:
+                    epic_summary_str = epic_summary_str[:60] + "..."
                 
-                # Datas planejadas (Epic)
-                planned_start = row['EpicInicioPlanejado']
-                planned_finish = row['EpicDueDate']
-                
-                # Datas executadas (Tasks)
-                actual_start = row['TasksDataInicial'] if pd.notna(row['TasksDataInicial']) else planned_start
-                actual_finish = row['TasksDataFim'] if pd.notna(row['TasksDataFim']) else planned_finish
-                
-                if pd.isna(planned_start) or pd.isna(planned_finish):
-                    log_message(f"  Pulando linha {index} - datas planejadas inválidas")
-                    continue
-                
-                task_name = f"{epic_number} - {epic_summary}"
+                # Base do nome da task (épico)
+                task_base_name = f"{epic_number_str} - {epic_summary_str}"
                 
                 # Determinar se está atrasado (comparando data atual com data planejada)
                 hoje = datetime.now().date()
                 prazo_estourado = False
+                
+                # Pegar a data de término do planejamento do PO (primeira linha do grupo)
+                primeira_linha = grupo.iloc[0]
+                planned_finish = primeira_linha['EpicDueDate']
                 
                 if pd.notna(planned_finish):
                     if isinstance(planned_finish, str):
@@ -934,25 +930,65 @@ def gantt_data():
                     else:
                         planned_finish_date = planned_finish.date()
                     
-                    if hoje > planned_finish_date and row['EpicStatus'] not in ['Done', 'Closed']:
+                    if hoje > planned_finish_date and epic_status not in ['Done', 'Closed']:
                         prazo_estourado = True
                 
-                gantt_data.append({
-                    'Task': task_name,
-                    'PlannedStart': planned_start.strftime('%Y-%m-%d') if pd.notna(planned_start) else None,
-                    'PlannedFinish': planned_finish.strftime('%Y-%m-%d') if pd.notna(planned_finish) else None,
-                    'ActualStart': actual_start.strftime('%Y-%m-%d') if pd.notna(actual_start) else None,
-                    'ActualFinish': actual_finish.strftime('%Y-%m-%d') if pd.notna(actual_finish) else None,
-                    'Resource': epic_equipe,
-                    'Complete': float(row['TasksPercentualMedia']) if pd.notna(row['TasksPercentualMedia']) else 0.0,
-                    'Status': str(row['EpicStatus']),
-                    'PrazoEstourado': prazo_estourado
-                })
+                # Processar cada tipo de registro (Planejado P.O., Planejado Time, Realizado Time)
+                for index, row in grupo.iterrows():
+                    tipo_registro = row['TipoRegistroCalculo']
+                    
+                    # Definir o nome da subtask baseado no tipo
+                    if tipo_registro == 'Planejado P.O.':
+                        task_name = f"  📋 PO: {task_base_name}"
+                        color = '#6c757d'  # Cinza - Planejamento do PO
+                        opacity = 0.6
+                        width = 15
+                    elif tipo_registro == 'Planejado Time':
+                        task_name = f"  ⏰ Time: {task_base_name}"
+                        color = '#17a2b8'  # Azul - Planejamento do Time
+                        opacity = 0.8
+                        width = 20
+                    elif tipo_registro == 'Realizado Time':
+                        task_name = f"  ✅ Real: {task_base_name}"
+                        # Cor baseada no status
+                        if epic_status.upper() in ['DONE', 'CLOSED', 'CONCLUÍDO', 'FINALIZADO']:
+                            color = '#28a745'  # Verde - Concluído
+                        elif prazo_estourado:
+                            color = '#dc3545'  # Vermelho - Atrasado
+                        else:
+                            color = '#ffc107'  # Amarelo - Em Andamento
+                        opacity = 1.0
+                        width = 25
+                    else:
+                        continue  # Pular tipos não reconhecidos
+                    
+                    # Datas de início e fim
+                    task_start = row['TasksDataInicial']
+                    task_finish = row['TasksDataFim']
+                    
+                    if pd.isna(task_start) or pd.isna(task_finish):
+                        log_message(f"  Pulando {tipo_registro} - datas inválidas")
+                        continue
+                    
+                    gantt_data.append({
+                        'Task': task_name,
+                        'Start': task_start.strftime('%Y-%m-%d') if pd.notna(task_start) else None,
+                        'Finish': task_finish.strftime('%Y-%m-%d') if pd.notna(task_finish) else None,
+                        'Resource': epic_equipe_str,
+                        'Complete': float(row['TasksPercentualMedia']) if pd.notna(row['TasksPercentualMedia']) else 0.0,
+                        'Status': str(epic_status),
+                        'TipoRegistro': tipo_registro,
+                        'EpicNumber': epic_number_str,
+                        'PrazoEstourado': prazo_estourado,
+                        'Color': color,
+                        'Opacity': opacity,
+                        'Width': width
+                    })
                 
-                log_message(f"  Linha {index + 1} processada com sucesso")
+                log_message(f"  Épico {epic_number_str} processado com {len(grupo)} registros")
                 
             except Exception as e:
-                log_message(f"ERRO na linha {index}: {e}")
+                log_message(f"ERRO no épico {epic_number}: {e}")
                 continue
         
         log_message(f"Total processado: {len(gantt_data)} itens")
@@ -965,121 +1001,69 @@ def gantt_data():
                 'total_epicos': 0
             })
         
-        # Criar gráfico Plotly 
-        log_message("Criando gráfico Plotly...")
+        # Criar gráfico Plotly com AGRUPAMENTO
+        log_message("Criando gráfico Plotly agrupado...")
         
         fig = go.Figure()
         
-        log_message(f"Total de itens no gantt_data: {len(gantt_data)}")
-        
-        # Controle de legendas por status
+        # Controle de legendas por tipo de registro
         legendas_mostradas = {
-            'Planejado': False,
-            'Concluído': False,
-            'Em Andamento': False,
-            'Atrasado': False
+            'Planejado P.O.': False,
+            'Planejado Time': False,
+            'Realizado Time': False
         }
         
         # Criar traces para cada item
         for i, item in enumerate(gantt_data):
             
-            # === BARRA PLANEJADA (cinza transparente) ===
-            if item['PlannedStart'] and item['PlannedFinish']:
-                show_legend = not legendas_mostradas['Planejado']
-                legendas_mostradas['Planejado'] = True
-                
-                fig.add_trace(go.Scatter(
-                    x=[item['PlannedStart'], item['PlannedFinish']],
-                    y=[item['Task'], item['Task']],
-                    mode='lines',
-                    line=dict(
-                        color='#6c757d',  # Cinza
-                        width=20
-                    ),
-                    opacity=0.4,
-                    name='Planejado',
-                    showlegend=show_legend,
-                    legendgroup='planejado',
-                    hovertemplate=(
-                        '<b>PLANEJADO</b><br>' +
-                        '<b>%{text}</b><br>' +
-                        'Equipe: ' + str(item["Resource"]) + '<br>' +
-                        'Início Planejado: ' + str(item["PlannedStart"]) + '<br>' +
-                        'Fim Planejado: ' + str(item["PlannedFinish"]) + '<br>' +
-                        'Status: ' + str(item["Status"]) + '<br>' +
-                        '<extra></extra>'
-                    ),
-                    text=[item['Task'], item['Task']],
-                    hoverinfo='text'
-                ))
+            tipo_registro = item['TipoRegistro']
             
-            # === BARRA EXECUTADA/REAL (cores por status) ===
-            if item['ActualStart'] and item['ActualFinish']:
-                
-                # DEBUG: Log do status para verificar a lógica
-                log_message(f"Item {i}: Status='{item['Status']}', PrazoEstourado={item['PrazoEstourado']}")
-                
-                # Verificar primeiro se está concluído
-                status_upper = item['Status'].upper()
-                
-                if status_upper in ['DONE', 'CLOSED', 'CONCLUÍDO', 'FINALIZADO']:
-                    color = '#28a745'  # Verde - Concluído
-                    status_label = 'Concluído'
-                    status_text = "CONCLUÍDO"
-                elif item['PrazoEstourado']:
-                    color = '#dc3545'  # Vermelho - Atrasado
-                    status_label = 'Atrasado'
-                    status_text = "ATRASADO"
-                else:
-                    # Todos os outros casos: em andamento
-                    color = '#ffc107'  # Amarelo - Em Andamento
-                    status_label = 'Em Andamento'
-                    status_text = "EM ANDAMENTO"
-                
-                log_message(f"  -> Cor escolhida: {color} ({status_label})")
-                
-                show_legend = not legendas_mostradas[status_label]
-                legendas_mostradas[status_label] = True
-                
-                fig.add_trace(go.Scatter(
-                    x=[item['ActualStart'], item['ActualFinish']],
-                    y=[item['Task'], item['Task']],
-                    mode='lines',
-                    line=dict(
-                        color=color,
-                        width=30  # Mais grossa
-                    ),
-                    opacity=1.0,
-                    name=status_label,
-                    showlegend=show_legend,
-                    legendgroup=status_label.lower().replace(' ', '_'),
-                    hovertemplate=(
-                        f'<b>{status_text}</b><br>' +
-                        '<b>%{text}</b><br>' +
-                        'Equipe: ' + str(item["Resource"]) + '<br>' +
-                        'Início Real: ' + str(item["ActualStart"]) + '<br>' +
-                        'Fim Real: ' + str(item["ActualFinish"]) + '<br>' +
-                        'Progresso: ' + str(item["Complete"]) + '%<br>' +
-                        'Status Original: ' + str(item["Status"]) + '<br>' +
-                        '<extra></extra>'
-                    ),
-                    text=[item['Task'], item['Task']],
-                    hoverinfo='text'
-                ))
+            # Mostrar legenda apenas uma vez por tipo
+            show_legend = not legendas_mostradas[tipo_registro]
+            legendas_mostradas[tipo_registro] = True
+            
+            # Nome para a legenda
+            legend_name = {
+                'Planejado P.O.': 'Planejado P.O.',
+                'Planejado Time': 'Planejado Time',
+                'Realizado Time': 'Realizado Time'
+            }.get(tipo_registro, tipo_registro)
+            
+            fig.add_trace(go.Scatter(
+                x=[item['Start'], item['Finish']],
+                y=[item['Task'], item['Task']],
+                mode='lines',
+                line=dict(
+                    color=item['Color'],
+                    width=item['Width']
+                ),
+                opacity=item['Opacity'],
+                name=legend_name,
+                showlegend=show_legend,
+                legendgroup=tipo_registro.lower().replace(' ', '_').replace('.', ''),
+                hovertemplate=(
+                    f'<b>{tipo_registro.upper()}</b><br>' +
+                    '<b>%{text}</b><br>' +
+                    'Equipe: ' + str(item["Resource"]) + '<br>' +
+                    'Início: ' + str(item["Start"]) + '<br>' +
+                    'Fim: ' + str(item["Finish"]) + '<br>' +
+                    'Progresso: ' + str(item["Complete"]) + '%<br>' +
+                    'Status: ' + str(item["Status"]) + '<br>' +
+                    '<extra></extra>'
+                ),
+                text=[item['Task'], item['Task']],
+                hoverinfo='text'
+            ))
         
         log_message(f"Total de traces adicionadas: {len(fig.data)}")
         
         # Calcular range de datas para zoom inicial correto
         all_dates = []
         for item in gantt_data:
-            if item['PlannedStart']:
-                all_dates.append(datetime.strptime(item['PlannedStart'], '%Y-%m-%d'))
-            if item['PlannedFinish']:
-                all_dates.append(datetime.strptime(item['PlannedFinish'], '%Y-%m-%d'))
-            if item['ActualStart']:
-                all_dates.append(datetime.strptime(item['ActualStart'], '%Y-%m-%d'))
-            if item['ActualFinish']:
-                all_dates.append(datetime.strptime(item['ActualFinish'], '%Y-%m-%d'))
+            if item['Start']:
+                all_dates.append(datetime.strptime(item['Start'], '%Y-%m-%d'))
+            if item['Finish']:
+                all_dates.append(datetime.strptime(item['Finish'], '%Y-%m-%d'))
         
         # Definir range de visualização
         if all_dates:
@@ -1096,7 +1080,7 @@ def gantt_data():
             range_end = datetime.strptime(data_fim, '%Y-%m-%d')
             log_message(f"Range padrão: {range_start.strftime('%Y-%m-%d')} até {range_end.strftime('%Y-%m-%d')}")
         
-        # Adicionar linha vertical "HOJE" usando add_shape
+        # Adicionar linha vertical "HOJE"
         hoje_str = datetime.now().strftime('%Y-%m-%d')
         
         fig.add_shape(
@@ -1126,20 +1110,19 @@ def gantt_data():
             borderwidth=2
         )
         
-        # Configurar layout - RESPONSIVO E OCUPANDO TODA LARGURA
+        # Configurar layout - AGRUPADO E RESPONSIVO
         fig.update_layout(
             title={
-                'text': 'Cronograma de Épicos - Gráfico de Gantt<br><sub>Verde=Concluído | Amarelo=Em Andamento | Vermelho=Atrasado | Cinza=Planejado</sub>',
+                'text': 'Roadmap de Épicos - Gráfico de Gantt Agrupado<br><sub>📋 PO=Planejado PO | ⏰ Time=Planejado Time | ✅ Real=Realizado Time</sub>',
                 'x': 0.5,
                 'xanchor': 'center',
                 'font': {'size': 16}
             },
             
-            # Altura baseada no número de itens
-            height=max(700, len(gantt_data) * 60 + 200),
-            # REMOVER WIDTH FIXO para ocupar toda div
+            # Altura baseada no número de itens (considerando agrupamento)
+            height=max(800, len(gantt_data) * 35 + 200),
             
-            # EIXO X PRINCIPAL (inferior) - SEM AUTORANGE
+            # EIXO X PRINCIPAL (inferior)
             xaxis=dict(
                 type='date',
                 tickformat='%d/%m/%Y',
@@ -1155,7 +1138,6 @@ def gantt_data():
                 linewidth=2,
                 linecolor='black',
                 title=dict(text='Data', font=dict(size=14)),
-                # FORÇAR RANGE AQUI
                 autorange=False,
                 range=[range_start, range_end]
             ),
@@ -1183,27 +1165,27 @@ def gantt_data():
                 range=[range_start, range_end]
             ),
             
-            # EIXO Y
+            # EIXO Y - Agrupado
             yaxis=dict(
                 autorange='reversed',
                 showgrid=True,
                 gridcolor='lightgray',
                 gridwidth=1,
-                tickfont=dict(size=10),
+                tickfont=dict(size=9),  # Fonte menor para comportar mais itens
                 side='left',
                 showline=True,
                 linewidth=2,
                 linecolor='black',
-                title=dict(text='Épicos', font=dict(size=14))
+                title=dict(text='Épicos por Tipo', font=dict(size=14))
             ),
             
-            # MARGENS OTIMIZADAS
-            margin=dict(l=400, r=50, t=180, b=120),
+            # MARGENS OTIMIZADAS para agrupamento
+            margin=dict(l=450, r=50, t=180, b=120),
             
             # CORES E FONTES
             plot_bgcolor='white',
             paper_bgcolor='white',
-            font=dict(family="Arial, sans-serif", size=12),
+            font=dict(family="Arial, sans-serif", size=11),
             
             # LEGENDA HORIZONTAL
             legend=dict(
@@ -1220,27 +1202,28 @@ def gantt_data():
             
             showlegend=True,
             hovermode='closest',
-            
-            # CONFIGURAÇÕES RESPONSIVAS CORRETAS
-            autosize=True  # Mudança principal: TRUE para ocupar toda div
+            autosize=True
         )
         
         log_message("Layout configurado! Convertendo para JSON...")
         
         graphJSON = json.dumps(fig, cls=PlotlyJSONEncoder)
         
-        # Obter listas para filtros
+        # Obter listas para filtros (únicas)
         equipes_list = sorted(df['EpicEquipe'].dropna().unique().tolist())
         status_list = sorted(df['EpicStatus'].dropna().unique().tolist())
         
-        log_message(f"SUCESSO! Retornando {len(df)} épicos")
-        log_message("=== FIM GANTT-DATA ===")
+        # Contar épicos únicos
+        total_epicos_unicos = df['EpicNumber'].nunique()
+        
+        log_message(f"SUCESSO! Retornando {total_epicos_unicos} épicos únicos com {len(gantt_data)} registros")
+        log_message("=== FIM GANTT-DATA AGRUPADO ===")
         
         return jsonify({
             'gantt': graphJSON,
             'equipes': equipes_list,
             'status': status_list,
-            'total_epicos': len(df)
+            'total_epicos': total_epicos_unicos
         })
         
     except Exception as e:
