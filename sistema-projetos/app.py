@@ -174,24 +174,27 @@ def dashboard_data():
         status_filter = request.args.get('status', '').strip()
         periodo_filter = request.args.get('periodo', 'ano_atual')
         
-        # Construir filtros de data baseado no período
-        today = datetime.now()
-        if periodo_filter == 'ano_atual':
-            data_inicio = f"{today.year}-01-01"
-            data_fim = f"{today.year}-12-31"
-        elif periodo_filter == '6_meses':
-            data_inicio = (today - timedelta(days=180)).strftime('%Y-%m-%d')
-            data_fim = today.strftime('%Y-%m-%d')
-        elif periodo_filter == '3_meses':
-            data_inicio = (today - timedelta(days=90)).strftime('%Y-%m-%d')
-            data_fim = today.strftime('%Y-%m-%d')
-        elif periodo_filter == 'mes_atual':
-            data_inicio = f"{today.year}-{today.month:02d}-01"
-            data_fim = today.strftime('%Y-%m-%d')
-        else:  # todos
-            data_inicio = None
-            data_fim = None
         
+        # Construir filtros de data baseado no período
+      #  today = datetime.now()
+      #  if periodo_filter == 'ano_atual':
+      #      data_inicio = f"{today.year}-01-01"
+      #      data_fim = f"{today.year}-12-31"
+      #  elif periodo_filter == '6_meses':
+      #      data_inicio = (today - timedelta(days=180)).strftime('%Y-%m-%d')
+      #      data_fim = today.strftime('%Y-%m-%d')
+      #  elif periodo_filter == '3_meses':
+      #      data_inicio = (today - timedelta(days=90)).strftime('%Y-%m-%d')
+      #      data_fim = today.strftime('%Y-%m-%d')
+      #  elif periodo_filter == 'mes_atual':
+      #      data_inicio = f"{today.year}-{today.month:02d}-01"
+      #      data_fim = today.strftime('%Y-%m-%d')
+      #  else:  # todos
+      #      data_inicio = None
+      #      data_fim = None
+        
+        data_inicio, data_fim = calculate_period_dates(periodo_filter)
+         
         # Query base com filtros
         where_conditions = ["EpicInicioPlanejado IS NOT NULL"]
         params = []
@@ -623,19 +626,63 @@ def dashboard_data():
         return jsonify({'error': str(e)})
 
 
+
 # Função auxiliar para descrição do período
+
 def get_periodo_description(periodo):
-    """Retorna descrição do período selecionado"""
+    """Retorna descrição do período selecionado - ATUALIZADA"""
     today = datetime.now()
+    current_year = today.year
+    
     descriptions = {
-        'ano_atual': f"Ano de {today.year}",
+        'ano_atual': f"Ano de {current_year}",
+        'q1': f"Q1 {current_year} (Janeiro a Março)",
+        'q2': f"Q2 {current_year} (Abril a Junho)", 
+        'q3': f"Q3 {current_year} (Julho a Setembro)",
+        'q4': f"Q4 {current_year} (Outubro a Dezembro)",
         '6_meses': "Últimos 6 meses",
         '3_meses': "Últimos 3 meses",
-        'mes_atual': f"{today.strftime('%B de %Y')}",
-        'todos': "Todos os períodos"
+        'mes_atual': today.strftime('%B de %Y'),
+        'todos': "Todos os períodos",
+        'personalizado': "Período personalizado"
     }
     return descriptions.get(periodo, "Período personalizado")
 
+# Atualização para as funções de filtro de período - NOVA LÓGICA
+def calculate_period_dates(periodo_filter):
+    """Calcula datas de início e fim baseado no período selecionado"""
+    today = datetime.now()
+    current_year = today.year
+    
+    if periodo_filter == 'ano_atual':
+        data_inicio = f"{current_year}-01-01"
+        data_fim = f"{current_year}-12-31"
+    elif periodo_filter == 'q1':
+        data_inicio = f"{current_year}-01-01"
+        data_fim = f"{current_year}-03-31"
+    elif periodo_filter == 'q2':
+        data_inicio = f"{current_year}-04-01"
+        data_fim = f"{current_year}-06-30"
+    elif periodo_filter == 'q3':
+        data_inicio = f"{current_year}-07-01"
+        data_fim = f"{current_year}-09-30"
+    elif periodo_filter == 'q4':
+        data_inicio = f"{current_year}-10-01"
+        data_fim = f"{current_year}-12-31"
+    elif periodo_filter == '6_meses':
+        data_inicio = (today - timedelta(days=180)).strftime('%Y-%m-%d')
+        data_fim = today.strftime('%Y-%m-%d')
+    elif periodo_filter == '3_meses':
+        data_inicio = (today - timedelta(days=90)).strftime('%Y-%m-%d')
+        data_fim = today.strftime('%Y-%m-%d')
+    elif periodo_filter == 'mes_atual':
+        data_inicio = f"{current_year}-{today.month:02d}-01"
+        data_fim = today.strftime('%Y-%m-%d')
+    else:  # 'todos' ou 'personalizado'
+        data_inicio = None
+        data_fim = None
+        
+    return data_inicio, data_fim
 
 @app.route('/api/alertas-detalhes')
 def alertas_detalhes():
@@ -770,15 +817,29 @@ def gantt_data():
         # Obter filtros da requisição
         equipe_filter = request.args.get('equipe', '').strip()
         status_filter = request.args.get('status', '').strip()
-        data_inicio = request.args.get('data_inicio', '2025-01-01')
-        data_fim = request.args.get('data_fim', '2025-12-31')
         
-        if not data_inicio:
-            data_inicio = '2025-01-01'
-        if not data_fim:
-            data_fim = '2025-12-31'
+        # verificar se são datas personalizadas ou período pré-definido
+        periodo_filter = request.args.get('periodo', 'ano_atual')
+        data_inicio_custom = request.args.get('data_inicio', '').strip()
+        data_fim_custom = request.args.get('data_fim', '').strip()
         
-        log_message(f"Filtros: equipe='{equipe_filter}', status='{status_filter}', inicio='{data_inicio}', fim='{data_fim}'")
+        today = datetime.now()
+        current_year = today.year
+        
+        # Se há datas customizadas, usar elas. Senão, calcular pelo período
+        if data_inicio_custom and data_fim_custom:
+            data_inicio = data_inicio_custom
+            data_fim = data_fim_custom
+        else:
+            data_inicio, data_fim = calculate_period_dates(periodo_filter)
+            # Se ainda não tiver datas (período 'todos'), usar padrão
+            if not data_inicio:
+                data_inicio = f"{current_year}-01-01"
+            if not data_fim:
+                data_fim = f"{current_year}-12-31"
+        
+        log_message(f"Filtros: equipe='{equipe_filter}', status='{status_filter}', periodo='{periodo_filter}', inicio='{data_inicio}', fim='{data_fim}'")
+        
         
         # Query com lógica correta de filtro de período
         query = """

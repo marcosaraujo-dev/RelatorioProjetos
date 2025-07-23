@@ -1,435 +1,739 @@
-{% extends "base.html" %}
-
-{% block title %}  Gráfico de Gantt - Sistema de Projetos{% endblock %}
-{% block gantt_active %}active{% endblock %}
-{% block page_title %} <i class="fas fa-chart-gantt me-2"></i> Gráfico de Gantt{% endblock %}
-
-{% block content %}
+{% extends "base.html" %} {% block title %} Gráfico de Gantt - Sistema de
+Projetos{% endblock %} {% block gantt_active %}active{% endblock %} {% block
+page_title %} <i class="fas fa-chart-gantt me-2"></i> Gráfico de Gantt{%
+endblock %} {% block content %}
 <div class="container-fluid mt-4">
-       
-
-        <!-- Filtros -->
-        <div class="row">
-            <div class="col-12">
-                <div class="filter-section">
-                    <h5 class="mb-3">
-                        <i class="fas fa-filter me-2"></i>
-                        Filtros
-                    </h5>
-                    <form id="filtrosForm">
-                        <div class="row g-3">
-                            <div class="col-md-3">
-                                <label for="filterEquipe" class="form-label">Equipe</label>
-                                <select id="filterEquipe" class="form-select">
-                                    <option value="">Todas as Equipes</option>
-                                </select>
-                            </div>
-                            <div class="col-md-3">
-                                <label for="filterStatus" class="form-label">Status</label>
-                                <select id="filterStatus" class="form-select">
-                                    <option value="">Todos os Status</option>
-                                </select>
-                            </div>
-                            <div class="col-md-3">
-                                <label for="filterDataInicio" class="form-label">Data Início</label>
-                                <input type="date" id="filterDataInicio" class="form-control" value="2025-01-01">
-                            </div>
-                            <div class="col-md-3">
-                                <label for="filterDataFim" class="form-label">Data Fim</label>
-                                <input type="date" id="filterDataFim" class="form-control" value="2025-12-31">
-                            </div>
-                        </div>
-                        <div class="row mt-3">
-                            <div class="col-12">
-                               
-                                <button type="button" id="btnLimparFiltros" class="btn btn-secondary me-2">
-                                    <i class="fas fa-times me-2"></i>
-                                    Limpar
-                                </button>
-                                <button type="button" id="btnAnoAtual" class="btn btn-info me-2">
-                                    <i class="fas fa-calendar me-2"></i>
-                                    Ano Atual
-                                </button>
-                                <button type="button" id="btnUltimos6Meses" class="btn btn-warning me-2">
-                                    <i class="fas fa-calendar-alt me-2"></i>
-                                    Últimos 6 Meses
-                                </button>
-                                 <button type="button" id="btnAplicarFiltros" class="btn btn-primary me-2">
-                                    <i class="fas fa-search me-2"></i>
-                                    Aplicar Filtros
-                                </button>
-                                <span id="totalEpicos" class="badge bg-success ms-3 fs-6">0 épicos</span>
-                            </div>
-                        </div>
-                    </form>
-                </div>
-            </div>
-        </div>
-
-        <!-- Gráfico de Gantt -->
-        <div class="row">
-            <div class="col-12">
-                <div class="card">
-                    <div class="card-header d-flex justify-content-between align-items-center">
-                        <h5 class="card-title mb-0">
-                            <i class="fas fa-chart-gantt me-2"></i>
-                            Cronograma de Épicos
-                            <small class="text-muted">
-                                (Barras Claras = Planejado | Barras Escuras = Executado)
-                            </small>
-                        </h5>
-                        <div>
-                            <button id="btnFullscreen" class="btn btn-sm btn-outline-secondary">
-                                <i class="fas fa-expand me-1"></i>
-                                Tela Cheia
-                            </button>
-                        </div>
-                    </div>
-                    <div class="card-body p-0">
-                        <!-- Loading -->
-                        <div id="loading" class="loading">
-                            <div class="spinner-border text-primary" role="status">
-                                <span class="visually-hidden">Carregando...</span>
-                            </div>
-                            <p class="mt-2">Carregando gráfico de Gantt...</p>
-                        </div>
-                        
-                        <!-- Mensagem quando não há dados -->
-                        <div id="noData" style="display: none;" class="text-center py-5">
-                            <i class="fas fa-chart-gantt fa-4x text-muted mb-3"></i>
-                            <h5 class="text-muted">Nenhum épico encontrado</h5>
-                            <p class="text-muted">Tente ajustar os filtros para ver os dados</p>
-                        </div>
-                        
-                        <!-- Erro -->
-                        <div id="error" style="display: none;" class="alert alert-danger m-3">
-                            <i class="fas fa-exclamation-triangle me-2"></i>
-                            <span id="errorMessage"></span>
-                        </div>
-                        
-                        <!-- Gráfico -->
-                        <div id="ganttChart" class="gantt-container" style="display: none;"></div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Legenda Melhorada -->
-        <div class="row">
-            <div class="col-12">
-                <div class="card">
-                    <div class="card-header">
-                        <h6 class="card-title mb-0">
-                            <i class="fas fa-info-circle me-2"></i>
-                            Legenda e Informações
-                        </h6>
-                    </div>
-                    <div class="card-body">
-                        <div class="row">
-                            <div class="col-md-6">
-                                <h6>Status dos Projetos:</h6>
-                                <div class="mb-3">
-                                    <span class="status-legend status-concluido">CONCLUÍDO</span>
-                                    <span class="status-legend status-andamento">EM ANDAMENTO</span>
-                                    <span class="status-legend status-atrasado">ATRASADO</span>
-                                    <span class="status-legend status-planejado">PLANEJADO</span>
-                                </div>
-                                
-                                <div class="alert alert-info small">
-                                    <i class="fas fa-info-circle me-2"></i>
-                                    <strong>Importante:</strong> As cores das barras representam o status do projeto, não mais as equipes.
-                                </div>
-                            </div>
-                            <div class="col-md-6">
-                                <h6>Instruções:</h6>
-                                <ul class="list-unstyled small">
-                                    <li><i class="fas fa-minus text-danger me-2"></i><strong>Linha vermelha tracejada</strong> = Data atual (Hoje)</li>
-                                    <li><i class="fas fa-calendar me-2 text-primary"></i><strong>Barras claras (transparentes)</strong> = Datas planejadas originalmente</li>
-                                    <li><i class="fas fa-calendar-check me-2 text-success"></i><strong>Barras escuras</strong> = Datas reais de execução</li>
-                                    <li><i class="fas fa-mouse me-2 text-info"></i><strong>Hover</strong> = Passe o mouse para ver detalhes</li>
-                                    <li><i class="fas fa-search-plus me-2 text-warning"></i><strong>Zoom</strong> = Use scroll do mouse ou ferramentas</li>
-                                    <li><i class="fas fa-calendar-times me-2 text-danger"></i><strong>Vermelho</strong> = Projetos que estouraram o prazo</li>
-                                    <li><i class="fas fa-calendar-check me-2 text-success"></i><strong>Verde</strong> = Projetos concluídos</li>
-                                    <li><i class="fas fa-calendar-alt me-2 text-warning"></i><strong>Amarelo</strong> = Projetos em andamento</li>
-                                </ul>
-                                
-                                <div class="alert alert-info small">
-                                    <i class="fas fa-lightbulb me-2"></i>
-                                    <strong>Dica:</strong> O eixo superior mostra o timeline principal. Compare as barras claras (planejado) com as escuras (executado) para ver desvios no cronograma.
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
+  <!-- Período de Análise -->
+  <div id="periodo-info" class="alert alert-info py-2 mb-3 border-0 shadow-sm">
+    <div class="d-flex align-items-center">
+      <i class="fas fa-calendar-alt me-2 text-primary"></i>
+      <strong>Período de Análise:</strong>
+      <span id="periodo-texto" class="ms-2 badge bg-primary">Ano Atual</span>
     </div>
+  </div>
 
-    <!-- Bootstrap JS -->
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
-    <!-- jQuery -->
-    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+  <!-- Filtros Modernizados -->
+  <div class="row mb-4">
+    <div class="col-12">
+      <div class="card shadow-sm border-0">
+        <div class="card-body bg-light">
+          <div class="row align-items-center mb-3">
+            <div class="col-md-2">
+              <label
+                for="filterEquipe"
+                class="form-label small fw-bold text-dark"
+              >
+                <i class="fas fa-users me-1 text-primary"></i>Equipe
+              </label>
+              <select
+                id="filterEquipe"
+                class="form-select form-select-sm modern-select"
+              >
+                <option value="">Todas as Equipes</option>
+              </select>
+            </div>
+            <div class="col-md-2">
+              <label
+                for="filterStatus"
+                class="form-label small fw-bold text-dark"
+              >
+                <i class="fas fa-flag me-1 text-success"></i>Status
+              </label>
+              <select
+                id="filterStatus"
+                class="form-select form-select-sm modern-select"
+              >
+                <option value="">Todos os Status</option>
+              </select>
+            </div>
+            <div class="col-md-2">
+              <label
+                for="filterPeriodo"
+                class="form-label small fw-bold text-dark"
+              >
+                <i class="fas fa-clock me-1 text-info"></i>Período
+              </label>
+              <select
+                id="filterPeriodo"
+                class="form-select form-select-sm modern-select"
+              >
+                <option value="ano_atual">Ano Atual</option>
+                <option value="q1">Q1 - Jan a Mar</option>
+                <option value="q2">Q2 - Abr a Jun</option>
+                <option value="q3">Q3 - Jul a Set</option>
+                <option value="q4">Q4 - Out a Dez</option>
+                <option value="6_meses">Últimos 6 Meses</option>
+                <option value="3_meses">Últimos 3 Meses</option>
+                <option value="mes_atual">Mês Atual</option>
+                <option value="personalizado">Personalizado</option>
+              </select>
+            </div>
+            <div
+              class="col-md-3"
+              id="datas-personalizadas"
+              style="display: none"
+            >
+              <div class="row">
+                <div class="col-6">
+                  <label
+                    for="filterDataInicio"
+                    class="form-label small fw-bold text-dark"
+                    >Data Início</label
+                  >
+                  <input
+                    type="date"
+                    id="filterDataInicio"
+                    class="form-control form-control-sm modern-input"
+                    value="2025-01-01"
+                  />
+                </div>
+                <div class="col-6">
+                  <label
+                    for="filterDataFim"
+                    class="form-label small fw-bold text-dark"
+                    >Data Fim</label
+                  >
+                  <input
+                    type="date"
+                    id="filterDataFim"
+                    class="form-control form-control-sm modern-input"
+                    value="2025-12-31"
+                  />
+                </div>
+              </div>
+            </div>
+            <div class="col-md-3 d-flex align-items-end gap-2">
+              <button
+                type="button"
+                id="btnAplicarFiltros"
+                class="btn btn-primary btn-sm modern-btn"
+              >
+                <i class="fas fa-search me-1"></i>
+                Aplicar
+              </button>
+              <button
+                type="button"
+                id="btnLimparFiltros"
+                class="btn btn-outline-secondary btn-sm modern-btn"
+              >
+                <i class="fas fa-times me-1"></i>
+                Limpar
+              </button>
+              <span
+                id="totalEpicos"
+                class="badge bg-gradient-success fs-6 px-3 py-2"
+                >0 épicos</span
+              >
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <!-- Gráfico de Gantt -->
+  <div class="row">
+    <div class="col-12">
+      <div class="card shadow-sm border-0">
+        <div
+          class="card-header bg-white d-flex justify-content-between align-items-center"
+        >
+          <div>
+            <h5 class="card-title mb-0 text-primary">
+              <i class="fas fa-chart-gantt me-2"></i>
+              Cronograma de Épicos
+            </h5>
+            <small class="text-primary opacity-75">
+              Barras claras = Planejado | Barras escuras = Executado
+            </small>
+          </div>
+          <div>
+            <button
+              id="btnFullscreen"
+              class="btn btn-sm btn-outline-gray modern-btn"
+            >
+              <i class="fas fa-expand me-1"></i>
+              Tela Cheia
+            </button>
+          </div>
+        </div>
+        <div class="card-body p-0">
+          <!-- Loading -->
+          <div id="loading" class="loading">
+            <div
+              class="spinner-border text-primary"
+              role="status"
+              style="width: 3rem; height: 3rem"
+            >
+              <span class="visually-hidden">Carregando...</span>
+            </div>
+            <div class="mt-3">
+              <i class="fas fa-chart-gantt fa-2x text-primary mb-2"></i>
+              <h5>Carregando Cronograma...</h5>
+              <p class="text-muted">Processando dados dos projetos</p>
+            </div>
+          </div>
 
-    <script>
-        let currentFilters = {
-            equipe: '',
-            status: '',
-            data_inicio: '2025-01-01',
-            data_fim: '2025-12-31'
+          <!-- Mensagem quando não há dados -->
+          <div id="noData" style="display: none" class="text-center py-5">
+            <div class="mb-4">
+              <i class="fas fa-chart-gantt fa-4x text-muted mb-3"></i>
+              <h5 class="text-muted">Nenhum épico encontrado</h5>
+              <p class="text-muted">
+                Tente ajustar os filtros para ver os dados
+              </p>
+            </div>
+            <button class="btn btn-outline-primary" onclick="clearFilters()">
+              <i class="fas fa-refresh me-1"></i>
+              Limpar Filtros
+            </button>
+          </div>
+
+          <!-- Erro -->
+          <div
+            id="error"
+            style="display: none"
+            class="alert alert-danger m-3 border-0 shadow-sm"
+          >
+            <div class="d-flex align-items-center">
+              <i class="fas fa-exclamation-triangle me-2 fa-2x text-danger"></i>
+              <div>
+                <h6 class="mb-1">Erro ao carregar dados</h6>
+                <span id="errorMessage"></span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Gráfico -->
+          <div
+            id="ganttChart"
+            class="gantt-container"
+            style="display: none"
+          ></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Legenda e Informações  -->
+  <!-- Legenda e Informações Corrigida -->
+  <div class="row mt-4">
+    <div class="col-12">
+      <div class="card shadow-sm border-0">
+        
+        <div class="card-header bg-white border-bottom">
+          <h6 class="card-title mb-0 text-primary">
+            <i class="fas fa-info-circle me-2"></i>
+            Legenda e Guia de Utilização
+          </h6>
+        </div>
+        <div class="card-body">
+          <div class="row">
+            <div class="col-md-6">
+              <h6 class="text-primary mb-3">
+                <i class="fas fa-palette me-2"></i>Status dos Projetos
+              </h6>
+              <div class="d-flex flex-wrap gap-2 mb-4">
+                <!-- Cores corrigidas para corresponder ao gráfico -->
+                <span class="status-legend status-concluido-correto">
+                  <i class="fas fa-check-circle me-1"></i>CONCLUÍDO
+                </span>
+                <span class="status-legend status-andamento-correto">
+                  <i class="fas fa-play-circle me-1"></i>EM ANDAMENTO
+                </span>
+                <span class="status-legend status-atrasado-correto">
+                  <i class="fas fa-exclamation-circle me-1"></i>ATRASADO
+                </span>
+                <span class="status-legend status-planejado-correto">
+                  <i class="fas fa-clock me-1"></i>PLANEJADO
+                </span>
+              </div>
+
+             
+              <div class="alert alert-dashboard-info">
+                <div class="d-flex align-items-start">
+                  <i class="fas fa-lightbulb me-2 mt-1 text-warning"></i>
+                  <div>
+                    <strong>Importante:</strong> As cores das barras representam
+                    o status atual do projeto. Compare as barras claras
+                    (planejado) com as escuras (executado) para identificar
+                    desvios.
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="col-md-6">
+              <h6 class="text-success mb-3">
+                <i class="fas fa-mouse me-2"></i>Como Utilizar
+              </h6>
+              <div class="instruction-list">
+                <div class="instruction-item">
+                  <div class="instruction-icon bg-danger">
+                    <i class="fas fa-minus text-white"></i>
+                  </div>
+                  <div class="instruction-text">
+                    <strong>Linha vermelha tracejada</strong> indica a data
+                    atual (Hoje)
+                  </div>
+                </div>
+                <div class="instruction-item">
+                  <div class="instruction-icon bg-primary">
+                    <i class="fas fa-calendar text-white"></i>
+                  </div>
+                  <div class="instruction-text">
+                    <strong>Barras transparentes</strong> mostram as datas
+                    planejadas
+                  </div>
+                </div>
+                <div class="instruction-item">
+                  <div class="instruction-icon bg-success">
+                    <i class="fas fa-calendar-check text-white"></i>
+                  </div>
+                  <div class="instruction-text">
+                    <strong>Barras sólidas</strong> mostram as datas reais de
+                    execução
+                  </div>
+                </div>
+                <div class="instruction-item">
+                  <div class="instruction-icon bg-info">
+                    <i class="fas fa-mouse text-white"></i>
+                  </div>
+                  <div class="instruction-text">
+                    <strong>Passe o mouse</strong> sobre as barras para ver
+                    detalhes
+                  </div>
+                </div>
+                <div class="instruction-item">
+                  <div class="instruction-icon bg-warning">
+                    <i class="fas fa-search-plus text-white"></i>
+                  </div>
+                  <div class="instruction-text">
+                    <strong>Use o scroll</strong> ou ferramentas para fazer zoom
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Bootstrap JS -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+<!-- jQuery -->
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+
+<script>
+  function getCurrentYear() {
+    return new Date().getFullYear();
+  }
+
+  // Função para obter datas padrão baseadas no ano atual
+  function getDefaultDates() {
+    const currentYear = getCurrentYear();
+    return {
+      inicio: `${currentYear}-01-01`,
+      fim: `${currentYear}-12-31`,
+    };
+  }
+
+  // Inicializar filtros com ano dinâmico
+  const defaultDates = getDefaultDates();
+  let currentFilters = {
+    equipe: "",
+    status: "",
+    data_inicio: defaultDates.inicio,
+    data_fim: defaultDates.fim,
+  };
+  // Função para atualizar label do período
+  function updatePeriodLabel() {
+    const periodoSelect = document.getElementById("filterPeriodo");
+    const periodoValue = periodoSelect ? periodoSelect.value : "ano_atual";
+    const periodoTexto = document.getElementById("periodo-texto");
+
+    if (!periodoTexto) return;
+
+    const today = new Date();
+    const currentYear = today.getFullYear();
+
+    const periodoTextos = {
+      ano_atual: `${currentYear}`,
+      q1: `Q1 ${currentYear} (Jan-Mar)`,
+      q2: `Q2 ${currentYear} (Abr-Jun)`,
+      q3: `Q3 ${currentYear} (Jul-Set)`,
+      q4: `Q4 ${currentYear} (Out-Dez)`,
+      "6_meses": "Últimos 6 Meses",
+      "3_meses": "Últimos 3 Meses",
+      mes_atual: today.toLocaleDateString("pt-BR", {
+        month: "long",
+        year: "numeric",
+      }),
+      personalizado: "Período Personalizado",
+    };
+
+    periodoTexto.textContent =
+      periodoTextos[periodoValue] || "Período Selecionado";
+  }
+
+  // Função para calcular datas baseadas no período
+  function calculatePeriodDates(periodo) {
+    const today = new Date();
+    const currentYear = today.getFullYear();
+
+    switch (periodo) {
+      case "ano_atual":
+        return {
+          inicio: `${currentYear}-01-01`,
+          fim: `${currentYear}-12-31`,
         };
+      case "q1":
+        return {
+          inicio: `${currentYear}-01-01`,
+          fim: `${currentYear}-03-31`,
+        };
+      case "q2":
+        return {
+          inicio: `${currentYear}-04-01`,
+          fim: `${currentYear}-06-30`,
+        };
+      case "q3":
+        return {
+          inicio: `${currentYear}-07-01`,
+          fim: `${currentYear}-09-30`,
+        };
+      case "q4":
+        return {
+          inicio: `${currentYear}-10-01`,
+          fim: `${currentYear}-12-31`,
+        };
+      case "6_meses":
+        const seisMesesAtras = new Date();
+        seisMesesAtras.setMonth(today.getMonth() - 6);
+        return {
+          inicio: seisMesesAtras.toISOString().split("T")[0],
+          fim: today.toISOString().split("T")[0],
+        };
+      case "3_meses":
+        const tresMesesAtras = new Date();
+        tresMesesAtras.setMonth(today.getMonth() - 3);
+        return {
+          inicio: tresMesesAtras.toISOString().split("T")[0],
+          fim: today.toISOString().split("T")[0],
+        };
+      case "mes_atual":
+        const inicioMes = new Date(currentYear, today.getMonth(), 1);
+        const fimMes = new Date(currentYear, today.getMonth() + 1, 0);
+        return {
+          inicio: inicioMes.toISOString().split("T")[0],
+          fim: fimMes.toISOString().split("T")[0],
+        };
+      default:
+        return {
+          inicio: currentFilters.data_inicio,
+          fim: currentFilters.data_fim,
+        };
+    }
+  }
 
-        function loadGanttData() {
-            console.log('Carregando dados do Gantt...');
-            
-            document.getElementById('loading').style.display = 'block';
-            document.getElementById('ganttChart').style.display = 'none';
-            document.getElementById('error').style.display = 'none';
-            document.getElementById('noData').style.display = 'none';
-            
-            const params = new URLSearchParams(currentFilters);
-            console.log('Parâmetros:', currentFilters);
-            
-            fetch(`/api/gantt-data?${params}`)
-                .then(response => {
-                    console.log('Resposta recebida:', response.status);
-                    return response.json();
-                })
-                .then(data => {
-                    console.log('Dados processados:', data);
-                    document.getElementById('loading').style.display = 'none';
-                    
-                    if (data.error) {
-                        showError(data.error);
-                    } else if (data.message) {
-                        document.getElementById('noData').style.display = 'block';
-                        updateTotalEpicos(0);
-                    } else {
-                        createGanttChart(data.gantt);
-                        populateFilterOptions(data.equipes, data.status);
-                        updateTotalEpicos(data.total_epicos);
-                        document.getElementById('ganttChart').style.display = 'block';
-                    }
-                })
-                .catch(error => {
-                    console.error('Erro:', error);
-                    document.getElementById('loading').style.display = 'none';
-                    showError('Erro ao carregar dados: ' + error.message);
-                });
+  function loadGanttData() {
+    console.log("Carregando dados do Gantt...");
+
+    document.getElementById("loading").style.display = "block";
+    document.getElementById("ganttChart").style.display = "none";
+    document.getElementById("error").style.display = "none";
+    document.getElementById("noData").style.display = "none";
+
+    const params = new URLSearchParams(currentFilters);
+    console.log("Parâmetros:", currentFilters);
+
+    fetch(`/api/gantt-data?${params}`)
+      .then((response) => {
+        console.log("Resposta recebida:", response.status);
+        return response.json();
+      })
+      .then((data) => {
+        console.log("Dados processados:", data);
+        document.getElementById("loading").style.display = "none";
+
+        if (data.error) {
+          showError(data.error);
+        } else if (data.message) {
+          document.getElementById("noData").style.display = "block";
+          updateTotalEpicos(0);
+        } else {
+          createGanttChart(data.gantt);
+          populateFilterOptions(data.equipes, data.status);
+          updateTotalEpicos(data.total_epicos);
+          document.getElementById("ganttChart").style.display = "block";
         }
+      })
+      .catch((error) => {
+        console.error("Erro:", error);
+        document.getElementById("loading").style.display = "none";
+        showError("Erro ao carregar dados: " + error.message);
+      });
+  }
 
-        function createGanttChart(ganttData) {
-            console.log('Criando gráfico...');
-            
-            const graphDiv = document.getElementById('ganttChart');
-            const plotData = JSON.parse(ganttData);
-            
-            // CONFIGURAÇÕES RESPONSIVAS CORRETAS
-            plotData.layout.autosize = true;  // TRUE para ocupar toda div
-            plotData.layout.responsive = true;
-            
-            // Configurar plotly com configurações específicas
-            const config = {
-                responsive: true,
-                displayModeBar: true,
-                displaylogo: false,
-                modeBarButtonsToAdd: [
-                    {
-                        name: 'Resetar Zoom',
-                        icon: Plotly.Icons.home,
-                        click: function(gd) {
-                            // Resetar para o range original dos dados
-                            const originalRange = plotData.layout.xaxis.range;
-                            Plotly.relayout(gd, {
-                                'xaxis.range': originalRange,
-                                'xaxis2.range': originalRange,
-                                'yaxis.autorange': 'reversed'
-                            });
-                        }
-                    },
-                    {
-                        name: 'Zoom 3 Meses',
-                        icon: Plotly.Icons.zoombox,
-                        click: function(gd) {
-                            // Zoom para próximos 3 meses a partir de hoje
-                            const hoje = new Date();
-                            const tresMeses = new Date();
-                            tresMeses.setMonth(hoje.getMonth() + 3);
-                            
-                            const range = [
-                                hoje.toISOString().split('T')[0], 
-                                tresMeses.toISOString().split('T')[0]
-                            ];
-                            
-                            Plotly.relayout(gd, {
-                                'xaxis.range': range,
-                                'xaxis2.range': range
-                            });
-                        }
-                    }
-                ],
-                modeBarButtonsToRemove: ['pan2d', 'lasso2d', 'select2d'],
-                toImageButtonOptions: {
-                    format: 'png',
-                    filename: 'gantt_chart_comparativo',
-                    height: 800,
-                    width: 1400,
-                    scale: 1
-                }
-            };
-            
-            // Usar newPlot para garantir configurações corretas
-            Plotly.newPlot(graphDiv, plotData.data, plotData.layout, config)
-                .then(function() {
-                    console.log('Gráfico criado com sucesso!');
-                    
-                    // Forçar redimensionamento para ocupar toda largura
-                    setTimeout(() => {
-                        Plotly.Plots.resize(graphDiv);
-                        console.log('Gráfico redimensionado para ocupar toda div');
-                    }, 200);
-                    
-                    // Adicionar evento de redimensionamento
-                    window.addEventListener('resize', function() {
-                        Plotly.Plots.resize(graphDiv);
-                    });
-                })
-                .catch(function(error) {
-                    console.error('Erro ao criar gráfico:', error);
-                    showError('Erro ao renderizar o gráfico: ' + error.message);
-                });
-        }
+  function createGanttChart(ganttData) {
+    console.log("Criando gráfico...");
 
-        function populateFilterOptions(equipes, status) {
-            // Preencher dropdown de equipes
-            const equipeSelect = document.getElementById('filterEquipe');
-            if (equipeSelect.children.length === 1) { // Só adiciona se ainda não foi preenchido
-                equipes.forEach(equipe => {
-                    const option = document.createElement('option');
-                    option.value = equipe;
-                    option.textContent = equipe;
-                    equipeSelect.appendChild(option);
-                });
-            }
-            
-            // Preencher dropdown de status
-            const statusSelect = document.getElementById('filterStatus');
-            if (statusSelect.children.length === 1) { // Só adiciona se ainda não foi preenchido
-                status.forEach(st => {
-                    const option = document.createElement('option');
-                    option.value = st;
-                    option.textContent = st;
-                    statusSelect.appendChild(option);
-                });
-            }
-        }
+    const graphDiv = document.getElementById("ganttChart");
+    const plotData = JSON.parse(ganttData);
 
-        function updateTotalEpicos(total) {
-            document.getElementById('totalEpicos').textContent = `${total} épicos`;
-        }
+    // Aplicar estilo moderno ao layout
+    plotData.layout.autosize = true;
+    plotData.layout.responsive = true;
 
-        function updateLegenda(equipes) {
-            // Não é mais necessário já que as cores agora são por status
-            // A legenda é mostrada automaticamente pelo Plotly baseada no status
-            console.log('Legenda de status ativa no gráfico');
-        }
+    // Cores modernizadas
+    plotData.layout.plot_bgcolor = "#fafafa";
+    plotData.layout.paper_bgcolor = "white";
 
-        function showError(message) {
-            document.getElementById('errorMessage').textContent = message;
-            document.getElementById('error').style.display = 'block';
-        }
+    // Grid mais suave
+    plotData.layout.xaxis.gridcolor = "#e0e0e0";
+    plotData.layout.yaxis.gridcolor = "#e0e0e0";
 
-        function applyFilters() {
-            currentFilters.equipe = document.getElementById('filterEquipe').value;
-            currentFilters.status = document.getElementById('filterStatus').value;
-            currentFilters.data_inicio = document.getElementById('filterDataInicio').value;
-            currentFilters.data_fim = document.getElementById('filterDataFim').value;
-            
-            // Validação de datas
-            if (currentFilters.data_inicio && currentFilters.data_fim) {
-                if (new Date(currentFilters.data_inicio) > new Date(currentFilters.data_fim)) {
-                    alert('Data de início deve ser anterior à data de fim!');
-                    return;
-                }
-            }
-            
-            console.log('Aplicando filtros:', currentFilters);
-            loadGanttData();
-        }
+    // Fontes modernizadas
+    plotData.layout.font = {
+      family:
+        'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+      size: 12,
+      color: "#424242",
+    };
 
-        function clearFilters() {
-            document.getElementById('filterEquipe').value = '';
-            document.getElementById('filterStatus').value = '';
-            document.getElementById('filterDataInicio').value = '2025-01-01';
-            document.getElementById('filterDataFim').value = '2025-12-31';
-            
-            currentFilters = {
-                equipe: '',
-                status: '',
-                data_inicio: '2025-01-01',
-                data_fim: '2025-12-31'
-            };
-            
-            loadGanttData();
-        }
+    // Configurar plotly com configurações específicas
+    const config = {
+      responsive: true,
+      displayModeBar: true,
+      displaylogo: false,
+      modeBarButtonsToAdd: [
+        {
+          name: "Resetar Zoom",
+          icon: Plotly.Icons.home,
+          click: function (gd) {
+            const originalRange = plotData.layout.xaxis.range;
+            Plotly.relayout(gd, {
+              "xaxis.range": originalRange,
+              "xaxis2.range": originalRange,
+              "yaxis.autorange": "reversed",
+            });
+          },
+        },
+      ],
+      modeBarButtonsToRemove: ["pan2d", "lasso2d", "select2d"],
+      toImageButtonOptions: {
+        format: "png",
+        filename: "gantt_chart_modernizado",
+        height: 800,
+        width: 1400,
+        scale: 2,
+      },
+    };
 
-        function setCurrentYear() {
-            const currentYear = new Date().getFullYear();
-            document.getElementById('filterDataInicio').value = `${currentYear}-01-01`;
-            document.getElementById('filterDataFim').value = `${currentYear}-12-31`;
-            
-            currentFilters.data_inicio = `${currentYear}-01-01`;
-            currentFilters.data_fim = `${currentYear}-12-31`;
-            
-            loadGanttData();
-        }
+    // Usar newPlot para garantir configurações corretas
+    Plotly.newPlot(graphDiv, plotData.data, plotData.layout, config)
+      .then(function () {
+        console.log("Gráfico criado com sucesso!");
 
-        function setLast6Months() {
-            const hoje = new Date();
-            const seisMesesAtras = new Date();
-            seisMesesAtras.setMonth(hoje.getMonth() - 6);
-            
-            const dataInicio = seisMesesAtras.toISOString().split('T')[0];
-            const dataFim = hoje.toISOString().split('T')[0];
-            
-            document.getElementById('filterDataInicio').value = dataInicio;
-            document.getElementById('filterDataFim').value = dataFim;
-            
-            currentFilters.data_inicio = dataInicio;
-            currentFilters.data_fim = dataFim;
-            
-            loadGanttData();
-        }
+        setTimeout(() => {
+          Plotly.Plots.resize(graphDiv);
+          console.log("Gráfico redimensionado");
+        }, 200);
 
-        // Event Listeners
-        document.getElementById('btnAplicarFiltros').addEventListener('click', applyFilters);
-        document.getElementById('btnLimparFiltros').addEventListener('click', clearFilters);
-        document.getElementById('btnAnoAtual').addEventListener('click', setCurrentYear);
-        document.getElementById('btnUltimos6Meses').addEventListener('click', setLast6Months);
-
-        document.getElementById('btnFullscreen').addEventListener('click', function() {
-            const chartDiv = document.getElementById('ganttChart');
-            if (chartDiv.requestFullscreen) {
-                chartDiv.requestFullscreen();
-            } else if (chartDiv.webkitRequestFullscreen) {
-                chartDiv.webkitRequestFullscreen();
-            } else if (chartDiv.msRequestFullscreen) {
-                chartDiv.msRequestFullscreen();
-            }
+        window.addEventListener("resize", function () {
+          Plotly.Plots.resize(graphDiv);
         });
+      })
+      .catch(function (error) {
+        console.error("Erro ao criar gráfico:", error);
+        showError("Erro ao renderizar o gráfico: " + error.message);
+      });
+  }
 
-        // Aplicar filtros ao pressionar Enter nos campos de data
-        document.getElementById('filterDataInicio').addEventListener('keypress', function(e) {
-            if (e.key === 'Enter') applyFilters();
-        });
+  function populateFilterOptions(equipes, status) {
+    const equipeSelect = document.getElementById("filterEquipe");
+    if (equipeSelect.children.length === 1) {
+      equipes.forEach((equipe) => {
+        const option = document.createElement("option");
+        option.value = equipe;
+        option.textContent = equipe;
+        equipeSelect.appendChild(option);
+      });
+    }
 
-        document.getElementById('filterDataFim').addEventListener('keypress', function(e) {
-            if (e.key === 'Enter') applyFilters();
-        });
+    const statusSelect = document.getElementById("filterStatus");
+    if (statusSelect.children.length === 1) {
+      status.forEach((st) => {
+        const option = document.createElement("option");
+        option.value = st;
+        option.textContent = st;
+        statusSelect.appendChild(option);
+      });
+    }
+  }
 
-        // Carregar dados quando a página carrega
-        document.addEventListener('DOMContentLoaded', function() {
-            console.log('Página carregada, iniciando Gantt...');
-            loadGanttData();
-        });
-    </script>
+  function updateTotalEpicos(total) {
+    document.getElementById("totalEpicos").textContent = `${total} épicos`;
+  }
+
+  function showError(message) {
+    document.getElementById("errorMessage").textContent = message;
+    document.getElementById("error").style.display = "block";
+  }
+
+  function applyFilters() {
+    const periodoSelect = document.getElementById("filterPeriodo");
+    const periodo = periodoSelect.value;
+
+    if (periodo === "personalizado") {
+      currentFilters.data_inicio =
+        document.getElementById("filterDataInicio").value;
+      currentFilters.data_fim = document.getElementById("filterDataFim").value;
+    } else {
+      const dates = calculatePeriodDates(periodo);
+      currentFilters.data_inicio = dates.inicio;
+      currentFilters.data_fim = dates.fim;
+
+      // Atualizar campos de data para mostrar as datas calculadas
+      document.getElementById("filterDataInicio").value = dates.inicio;
+      document.getElementById("filterDataFim").value = dates.fim;
+    }
+
+    currentFilters.equipe = document.getElementById("filterEquipe").value;
+    currentFilters.status = document.getElementById("filterStatus").value;
+
+    // Validação de datas
+    if (currentFilters.data_inicio && currentFilters.data_fim) {
+      if (
+        new Date(currentFilters.data_inicio) > new Date(currentFilters.data_fim)
+      ) {
+        alert("Data de início deve ser anterior à data de fim!");
+        return;
+      }
+    }
+
+    updatePeriodLabel();
+    console.log("Aplicando filtros:", currentFilters);
+    loadGanttData();
+  }
+
+  function clearFilters() {
+    document.getElementById("filterEquipe").value = "";
+    document.getElementById("filterStatus").value = "";
+    document.getElementById("filterPeriodo").value = "ano_atual";
+    document.getElementById("filterDataInicio").value = "2025-01-01";
+    document.getElementById("filterDataFim").value = "2025-12-31";
+    document.getElementById("datas-personalizadas").style.display = "none";
+
+    currentFilters = {
+      equipe: "",
+      status: "",
+      data_inicio: "2025-01-01",
+      data_fim: "2025-12-31",
+    };
+
+    updatePeriodLabel();
+    loadGanttData();
+  }
+
+  function resetToCurrentYear() {
+    const currentYear = getCurrentYear();
+    const dates = {
+      inicio: `${currentYear}-01-01`,
+      fim: `${currentYear}-12-31`,
+    };
+
+    // Atualizar campos se existirem
+    const dataInicioField = document.getElementById("filterDataInicio");
+    const dataFimField = document.getElementById("filterDataFim");
+
+    if (dataInicioField) dataInicioField.value = dates.inicio;
+    if (dataFimField) dataFimField.value = dates.fim;
+
+    // Atualizar filtros globais
+    currentFilters.data_inicio = dates.inicio;
+    currentFilters.data_fim = dates.fim;
+
+    return dates;
+  }
+
+  // Event Listeners
+  document.addEventListener("DOMContentLoaded", function () {
+    console.log("Página carregada, iniciando Gantt modernizado...");
+
+    // Event listeners para filtros
+    document
+      .getElementById("btnAplicarFiltros")
+      .addEventListener("click", applyFilters);
+    document
+      .getElementById("btnLimparFiltros")
+      .addEventListener("click", clearFilters);
+
+    // Event listener para período
+    document
+      .getElementById("filterPeriodo")
+      .addEventListener("change", function () {
+        const periodo = this.value;
+        const datasPersonalizadas = document.getElementById(
+          "datas-personalizadas"
+        );
+
+        if (periodo === "personalizado") {
+          datasPersonalizadas.style.display = "block";
+        } else {
+          datasPersonalizadas.style.display = "none";
+          // Aplicar automaticamente quando não for personalizado
+          applyFilters();
+        }
+      });
+
+    // Event listener para tela cheia
+    document
+      .getElementById("btnFullscreen")
+      .addEventListener("click", function () {
+        const chartDiv = document.getElementById("ganttChart");
+        if (chartDiv.requestFullscreen) {
+          chartDiv.requestFullscreen();
+        } else if (chartDiv.webkitRequestFullscreen) {
+          chartDiv.webkitRequestFullscreen();
+        } else if (chartDiv.msRequestFullscreen) {
+          chartDiv.msRequestFullscreen();
+        }
+      });
+
+    // Aplicar filtros ao pressionar Enter nos campos de data
+    document
+      .getElementById("filterDataInicio")
+      .addEventListener("keypress", function (e) {
+        if (e.key === "Enter") applyFilters();
+      });
+
+    document
+      .getElementById("filterDataFim")
+      .addEventListener("keypress", function (e) {
+        if (e.key === "Enter") applyFilters();
+      });
+
+    const currentYear = getCurrentYear();
+
+    // Atualizar campos de data se existirem
+    const dataInicioField = document.getElementById("filterDataInicio");
+    const dataFimField = document.getElementById("filterDataFim");
+
+    if (dataInicioField && !dataInicioField.value) {
+      dataInicioField.value = `${currentYear}-01-01`;
+    }
+
+    if (dataFimField && !dataFimField.value) {
+      dataFimField.value = `${currentYear}-12-31`;
+    }
+
+    // Atualizar filtros globais
+    currentFilters.data_inicio = `${currentYear}-01-01`;
+    currentFilters.data_fim = `${currentYear}-12-31`;
+    // Inicializar
+    updatePeriodLabel();
+    loadGanttData();
+  });
+</script>
 {% endblock %}

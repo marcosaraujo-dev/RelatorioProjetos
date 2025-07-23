@@ -1,0 +1,260 @@
+<style>
+/* Estilos */
+.modern-select, .modern-input {
+    border: 2px solid #e3f2fd;
+    border-radius: 12px;
+    transition: all 0.3s ease;
+    background: white;
+}
+
+.modern-select:focus, .modern-input:focus {
+    border-color: #2196f3;
+    box-shadow: 0 0 0 0.2rem rgba(33, 150, 243, 0.15);
+    background: #fafafa;
+}
+
+.modern-btn {
+    border-radius: 10px;
+    padding: 8px 16px;
+    font-weight: 600;
+    transition: all 0.3s ease;
+    border: 2px solid transparent;
+}
+
+.modern-btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+
+.bg-gradient-primary {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+.bg-gradient-success {
+    background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+}
+
+.bg-gradient-info {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+.card {
+    border-radius: 16px !important;
+    overflow: hidden;
+}
+
+.card-header {
+    border: none;
+    border-radius: 16px 16px 0 0 !important;
+}
+
+.gantt-container {
+    border-radius: 0 0 16px 16px;
+    min-height: 600px;
+    overflow: hidden;
+}
+
+.status-legend {
+    display: inline-flex;
+    align-items: center;
+    padding: 8px 16px;
+    border-radius: 25px;
+    color: white;
+    font-weight: 600;
+    font-size: 0.875rem;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    transition: transform 0.2s ease;
+}
+
+.status-legend:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+}
+
+.status-concluido { 
+    background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+}
+
+.status-andamento { 
+    background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+}
+
+.status-atrasado { 
+    background: linear-gradient(135deg, #fc466b 0%, #3f5efb 100%);
+}
+
+.status-planejado { 
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    opacity: 0.8;
+}
+
+.instruction-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.instruction-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 8px 0;
+}
+
+.instruction-icon {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.instruction-text {
+    flex: 1;
+    font-size: 0.9rem;
+    line-height: 1.4;
+}
+
+#periodo-info {
+    border-radius: 12px;
+    background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
+    border: none;
+}
+
+#periodo-texto {
+    border-radius: 8px;
+    padding: 4px 12px;
+    font-weight: 600;
+}
+
+.loading {
+    padding: 60px 20px;
+    text-align: center;
+}
+
+.loading h5 {
+    color: #2196f3;
+    font-weight: 600;
+}
+
+/* Animações suaves */
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.card {
+    animation: fadeInUp 0.6s ease-out;
+}
+
+/* Responsividade */
+@media (max-width: 768px) {
+    .modern-btn {
+        width: 100%;
+        margin-bottom: 8px;
+    }
+    
+    .status-legend {
+        font-size: 0.75rem;
+        padding: 6px 12px;
+    }
+    
+    .instruction-item {
+        flex-direction: column;
+        text-align: center;
+        gap: 8px;
+    }
+}
+
+/* Instruction items - mantém o estilo existente */
+.instruction-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.instruction-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 8px 0;
+}
+
+.instruction-icon {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.instruction-text {
+    flex: 1;
+    font-size: 0.9rem;
+    line-height: 1.4;
+    color: #495057;
+}
+
+/* Cores dos ícones de instrução - usando as cores padrão do sistema */
+.bg-danger {
+    background-color: #dc3545 !important;
+}
+
+.bg-primary {
+    background-color: #4e73df !important;
+}
+
+.bg-success {
+    background-color: #28a745 !important;
+}
+
+.bg-info {
+    background-color: #17a2b8 !important;
+}
+
+.bg-warning {
+    background-color: #ffc107 !important;
+}
+
+/* Responsividade */
+@media (max-width: 768px) {
+    .status-legend {
+        font-size: 0.75rem;
+        padding: 6px 12px;
+        margin-bottom: 8px;
+    }
+    
+    .instruction-item {
+        flex-direction: column;
+        text-align: center;
+        gap: 8px;
+    }
+    
+    .instruction-text {
+        text-align: center;
+    }
+}
+
+/* Animação suave ao hover */
+.card {
+    transition: all 0.3s ease;
+}
+
+.instruction-icon {
+    transition: transform 0.2s ease;
+}
+
+.instruction-icon:hover {
+    transform: scale(1.1);
+}
+</style>
