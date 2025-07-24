@@ -92,6 +92,7 @@ def index():
             AVG(CAST(ISNULL(TasksPercentualMedia, 0) as float)) as percentual_medio
         FROM BI_Jira_Epico_Datas_Grafico
         WHERE EpicInicioPlanejado IS NOT NULL
+        And TipoRegistroCalculo = 'Planejado Time'
         """
         
         df_stats = pd.read_sql(query_stats, conn)
@@ -103,12 +104,13 @@ def index():
         else:
             stats = default_stats
         
-        # CORREÇÃO: Adicionar contagens de alertas específicos
+        # Adicionar contagens de alertas específicos
         # Épicos que vencem nos próximos 7 dias
         query_proximo = """
         SELECT COUNT(*) as count_proximo
         FROM BI_Jira_Epico_Datas_Grafico
         WHERE EpicInicioPlanejado IS NOT NULL
+        And TipoRegistroCalculo = 'Planejado Time'
         AND EpicDueDate BETWEEN GETDATE() AND DATEADD(day, 7, GETDATE())
         AND EpicStatus NOT IN ('Done', 'Closed')
         """
@@ -122,6 +124,7 @@ def index():
         SELECT COUNT(*) as count_baixo
         FROM BI_Jira_Epico_Datas_Grafico
         WHERE EpicInicioPlanejado IS NOT NULL
+        And TipoRegistroCalculo = 'Planejado Time'
         AND CAST(ISNULL(TasksPercentualMedia, 0) as decimal(5,2)) < 30
         AND EpicInicioPlanejado < DATEADD(day, -15, GETDATE())
         AND EpicStatus NOT IN ('Done', 'Closed')
@@ -147,6 +150,7 @@ def index():
             SUM(CASE WHEN EpicDueDate < GETDATE() AND EpicStatus NOT IN ('Done', 'Closed') THEN 1 ELSE 0 END) as atrasados
         FROM BI_Jira_Epico_Datas_Grafico
         WHERE EpicInicioPlanejado IS NOT NULL
+        And TipoRegistroCalculo = 'Planejado Time'
         GROUP BY EpicEquipe
         ORDER BY quantidade DESC
         """
@@ -236,7 +240,7 @@ def dashboard_data():
         df_stats = pd.read_sql(query_stats, conn, params=params)
         stats = convert_numpy_types(df_stats.iloc[0].to_dict()) if not df_stats.empty else {}
         
-        # CORREÇÃO: Adicionar contagens específicas para alertas
+        # Adicionar contagens específicas para alertas
         # Épicos que vencem nos próximos 7 dias
         query_proximo_prazo = f"""
         SELECT COUNT(*) as count_proximo_prazo
@@ -509,7 +513,7 @@ def dashboard_data():
         df_stats = pd.read_sql(query_stats, conn, params=params)
         stats = convert_numpy_types(df_stats.iloc[0].to_dict()) if not df_stats.empty else {}
         
-        # CORREÇÃO: Adicionar contagens específicas para alertas
+        # Adicionar contagens específicas para alertas
         # Épicos que vencem nos próximos 7 dias
         query_proximo_prazo = f"""
         SELECT COUNT(*) as count_proximo_prazo
@@ -704,6 +708,7 @@ def alertas_detalhes():
                 CAST(ISNULL(TasksPercentualMedia, 0) as decimal(5,2)) as PercentualConcluido
             FROM BI_Jira_Epico_Datas_Grafico
             WHERE EpicDueDate < GETDATE() 
+            And TipoRegistroCalculo = 'Planejado Time'
             AND EpicStatus NOT IN ('Done', 'Closed')
             AND EpicInicioPlanejado IS NOT NULL
             ORDER BY EpicDueDate
@@ -722,6 +727,7 @@ def alertas_detalhes():
                 CAST(ISNULL(TasksPercentualMedia, 0) as decimal(5,2)) as PercentualConcluido
             FROM BI_Jira_Epico_Datas_Grafico
             WHERE EpicDueDate BETWEEN GETDATE() AND DATEADD(day, 7, GETDATE())
+            And TipoRegistroCalculo = 'Planejado Time'
             AND EpicStatus NOT IN ('Done', 'Closed')
             AND EpicInicioPlanejado IS NOT NULL
             ORDER BY EpicDueDate
@@ -741,6 +747,7 @@ def alertas_detalhes():
                 DATEDIFF(day, EpicInicioPlanejado, GETDATE()) as DiasDecorridos
             FROM BI_Jira_Epico_Datas_Grafico
             WHERE CAST(ISNULL(TasksPercentualMedia, 0) as decimal(5,2)) < 30
+            And TipoRegistroCalculo = 'Planejado Time'
             AND EpicInicioPlanejado < DATEADD(day, -15, GETDATE())
             AND EpicStatus NOT IN ('Done', 'Closed')
             AND EpicInicioPlanejado IS NOT NULL
@@ -894,7 +901,7 @@ def gantt_data():
                 log_message(f"Processando épico {epic_number}")
                 
                 epic_number_str = str(epic_number) if epic_number is not None else "Epic-0"
-                # CORRIGIR: Remover caracteres especiais que podem quebrar JSON
+                # Remover caracteres especiais que podem quebrar JSON
                 epic_summary_str = str(epic_summary) if epic_summary is not None else "Sem resumo"
                 epic_summary_str = epic_summary_str.replace('"', "'").replace('\n', ' ').replace('\r', ' ')
                 epic_equipe_str = str(epic_equipe) if epic_equipe is not None else "Sem Equipe"
@@ -943,7 +950,7 @@ def gantt_data():
                         log_message(f"  Tipo de registro não reconhecido: {tipo_registro}")
                         continue  # Pular tipos não reconhecidos
                     
-                    # Nome completo da task - REMOVENDO EMOJIS QUE PODEM QUEBRAR JSON
+                    # Nome completo da task 
                     task_name = f"  {task_prefix}: {task_base_name}"
                     
                     # Datas de início e fim
@@ -1024,7 +1031,7 @@ def gantt_data():
             }
             legend_name = legend_names.get(tipo_registro, tipo_registro)
             
-            # CORRIGIR: Remover caracteres especiais do hovertemplate
+            # Remover caracteres especiais do hovertemplate
             hover_text = f"""<b>{item["TipoDisplay"]}</b><br>
 <b>{item["Task"]}</b><br>
 Equipe: {item["Resource"]}<br>
@@ -1204,7 +1211,7 @@ Indicador: {item["IndicadorDescricao"]}<br>
         
         log_message("Layout configurado! Convertendo para JSON...")
         
-        # CORRIGIR: Usar ensure_ascii=False para manter caracteres especiais, mas remover emojis problemáticos
+        # Usar ensure_ascii=False para manter caracteres especiais, mas remover emojis problemáticos
         graphJSON = json.dumps(fig, cls=PlotlyJSONEncoder, ensure_ascii=False)
         
         # Obter listas para filtros (únicas)
@@ -1215,7 +1222,7 @@ Indicador: {item["IndicadorDescricao"]}<br>
         total_epicos_unicos = df['EpicNumber'].nunique()
         
         log_message(f"SUCESSO! Retornando {total_epicos_unicos} épicos únicos com {len(gantt_data)} registros")
-        log_message("=== FIM GANTT-DATA AGRUPADO COM INDICADORES (CORRIGIDO) ===")
+        log_message("=== FIM GANTT-DATA AGRUPADO COM INDICADORES ===")
         
         return jsonify({
             'gantt': graphJSON,
@@ -1294,8 +1301,169 @@ def subtasks_data():
     except Exception as e:
         return jsonify({'error': str(e)})
 
+
 @app.route('/export/epicos')
 def export_epicos():
+    """Exportar épicos para CSV com filtros aplicados - VERSÃO ATUALIZADA"""
+    try:
+        conn = db_manager.get_connection()
+        
+        # Obter parâmetros dos filtros
+        equipe_filter = request.args.get('equipe', '').strip()
+        status_filter = request.args.get('status', '').strip()
+        produto_filter = request.args.get('produto', '').strip()
+        search_filter = request.args.get('search', '').strip()
+        data_inicio = request.args.get('data_inicio', '').strip()
+        data_fim = request.args.get('data_fim', '').strip()
+        
+        # Log dos filtros recebidos
+        log_message(f"Export épicos - Filtros: equipe={equipe_filter}, status={status_filter}, produto={produto_filter}, search={search_filter}, data_inicio={data_inicio}, data_fim={data_fim}")
+        
+        # Query base
+        query = "SELECT * FROM BI_Jira_Epico_Datas_Grafico WHERE TipoRegistroCalculo = 'Planejado Time'"
+        params = []
+        
+        # Aplicar filtros de equipe, status e produto
+        if equipe_filter:
+            query += " AND ISNULL(EpicEquipe, '') = ?"
+            params.append(equipe_filter)
+            
+        if status_filter:
+            query += " AND ISNULL(EpicStatus, '') = ?"
+            params.append(status_filter)
+            
+        if produto_filter:
+            query += " AND ISNULL(EpicProduto, '') = ?"
+            params.append(produto_filter)
+        
+        # Aplicar filtro de data (mesmo filtro usado na tela)
+        if data_inicio and data_fim:
+            query += """ AND (
+                (EpicDueDate >= ? AND EpicDueDate <= ?) OR
+                (EpicInicioPlanejado >= ? AND EpicInicioPlanejado <= ?) OR
+                (EpicInicioPlanejado < ? AND EpicDueDate > ?)
+            )"""
+            params.extend([data_inicio, data_fim, data_inicio, data_fim, data_inicio, data_fim])
+        elif data_inicio:
+            query += " AND EpicInicioPlanejado >= ?"
+            params.append(data_inicio)
+        elif data_fim:
+            query += " AND EpicDueDate <= ?"
+            params.append(data_fim)
+        
+        query += " ORDER BY EpicEquipe, EpicNumber"
+        
+        log_message(f"Query de export: {query}")
+        log_message(f"Parâmetros: {params}")
+        
+        # Executar query
+        df = pd.read_sql(query, conn, params=params)
+        log_message(f"Registros retornados antes do filtro de busca: {len(df)}")
+        
+        conn.close()
+        
+        # Aplicar filtro de busca (texto) no DataFrame - igual ao frontend
+        if search_filter:
+            search_lower = search_filter.lower()
+            mask = (
+                df['EpicNumber'].fillna('').astype(str).str.lower().str.contains(search_lower, na=False) |
+                df['EpicSummary'].fillna('').astype(str).str.lower().str.contains(search_lower, na=False)
+            )
+            df = df[mask]
+            log_message(f"Registros após filtro de busca '{search_filter}': {len(df)}")
+        
+        # Verificar se há dados para exportar
+        if df.empty:
+            log_message("Nenhum dado encontrado para exportar com os filtros aplicados")
+            return jsonify({
+                'error': 'Nenhum dado encontrado para exportar com os filtros aplicados'
+            }), 404
+        
+        # Formatar datas para melhor visualização no CSV
+        date_columns = ['EpicInicioPlanejado', 'EpicDueDate', 'TasksDataInicial', 'TasksDataFim']
+        for col in date_columns:
+            if col in df.columns:
+                # Converter para datetime se não estiver e depois para string
+                try:
+                    df[col] = pd.to_datetime(df[col], errors='coerce').dt.strftime('%d/%m/%Y %H:%M')
+                except:
+                    pass
+        
+        # Preencher valores nulos
+        df = df.fillna('')
+        
+        # Criar arquivo temporário
+        temp_file = tempfile.NamedTemporaryFile(mode='w+b', suffix='.csv', delete=False)
+        
+        # Salvar com encoding UTF-8 com BOM para Excel
+        df.to_csv(temp_file.name, index=False, encoding='utf-8-sig', sep=';')
+        
+        # Construir nome do arquivo com informações sobre os filtros
+        filename_parts = ['relatorio_epicos']
+        
+        if equipe_filter:
+            equipe_clean = equipe_filter.replace(' ', '_').replace('/', '_')
+            filename_parts.append(f"equipe_{equipe_clean}")
+            
+        if status_filter:
+            status_clean = status_filter.replace(' ', '_').replace('/', '_')
+            filename_parts.append(f"status_{status_clean}")
+            
+        if produto_filter:
+            produto_clean = produto_filter.replace(' ', '_').replace('/', '_')
+            filename_parts.append(f"produto_{produto_clean}")
+            
+        if search_filter:
+            search_clean = search_filter.replace(' ', '_').replace('/', '_')[:10]  # Limitar tamanho
+            filename_parts.append(f"busca_{search_clean}")
+            
+        if data_inicio or data_fim:
+            if data_inicio and data_fim:
+                filename_parts.append(f"{data_inicio}_a_{data_fim}")
+            elif data_inicio:
+                filename_parts.append(f"desde_{data_inicio}")
+            elif data_fim:
+                filename_parts.append(f"ate_{data_fim}")
+        
+        # Adicionar timestamp e total de registros
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        filename_parts.append(f"{len(df)}registros")
+        filename_parts.append(timestamp)
+        
+        filename = '_'.join(filename_parts) + '.csv'
+        
+        # Limitar tamanho do nome do arquivo
+        if len(filename) > 200:
+            filename = f"relatorio_epicos_{len(df)}registros_{timestamp}.csv"
+        
+        log_message(f"Exportando {len(df)} registros para arquivo: {filename}")
+        
+        return send_file(temp_file.name, 
+                        as_attachment=True, 
+                        download_name=filename,
+                        mimetype='text/csv')
+        
+    except Exception as e:
+        error_msg = f"Erro na exportação de épicos: {str(e)}"
+        log_message(error_msg)
+        return jsonify({'error': error_msg}), 500
+
+# Função auxiliar para limpeza de arquivos temporários (opcional)
+def cleanup_temp_files():
+    """Limpar arquivos temporários antigos"""
+    try:
+        import glob
+        import time
+        temp_pattern = os.path.join(tempfile.gettempdir(), "tmp*.csv")
+        for temp_file in glob.glob(temp_pattern):
+            try:
+                # Deletar arquivos temporários com mais de 1 hora
+                if time.time() - os.path.getctime(temp_file) > 3600:
+                    os.unlink(temp_file)
+            except:
+                pass
+    except:
+        pass 
     """Exportar épicos para CSV com filtros aplicados"""
     try:
         conn = db_manager.get_connection()

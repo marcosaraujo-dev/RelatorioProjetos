@@ -2,86 +2,235 @@
 
 {% block title %}Relatório de Épicos - Sistema de Projetos{% endblock %}
 {% block epicos_active %}active{% endblock %}
-{% block page_title %}Relatório de Épicos{% endblock %}
+{% block page_title %}<i class="fas fa-list-alt me-2"></i> Relatório de Épicos{% endblock %}
+
+{% block filtros_display %}display: none;{% endblock %}
+
+{% block head %}
+<style>
+/* Estilos específicos para manter o grid da tabela consistente */
+#tableEpicos {
+    table-layout: fixed;
+    width: 100%;
+}
+
+#tableEpicos th,
+#tableEpicos td {
+    word-wrap: break-word;
+    vertical-align: middle;
+    padding: 0.75rem 0.5rem;
+}
+
+/* Larguras específicas das colunas para manter consistência */
+#tableEpicos th:nth-child(1), #tableEpicos td:nth-child(1) { width: 8%; }
+#tableEpicos th:nth-child(2), #tableEpicos td:nth-child(2) { width: 20%; }
+#tableEpicos th:nth-child(3), #tableEpicos td:nth-child(3) { width: 10%; }
+#tableEpicos th:nth-child(4), #tableEpicos td:nth-child(4) { width: 10%; }
+#tableEpicos th:nth-child(5), #tableEpicos td:nth-child(5) { width: 8%; }
+#tableEpicos th:nth-child(6), #tableEpicos td:nth-child(6) { width: 10%; }
+#tableEpicos th:nth-child(7), #tableEpicos td:nth-child(7) { width: 8%; }
+#tableEpicos th:nth-child(8), #tableEpicos td:nth-child(8) { width: 8%; }
+#tableEpicos th:nth-child(9), #tableEpicos td:nth-child(9) { width: 8%; }
+#tableEpicos th:nth-child(10), #tableEpicos td:nth-child(10) { width: 10%; }
+#tableEpicos th:nth-child(11), #tableEpicos td:nth-child(11) { width: 8%; }
+#tableEpicos th:nth-child(12), #tableEpicos td:nth-child(12) { width: 6%; }
+
+/* Estilos específicos para os cards de planejamento */
+#detalhePlanejamentos .card {
+    transition: transform 0.2s ease-in-out;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+#detalhePlanejamentos .card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+}
+
+#detalhePlanejamentos .progress {
+    border-radius: 6px;
+    background-color: rgba(0,0,0,0.1);
+}
+
+/* Modal  */
+#modalDetalheEpico .modal-body {
+    max-height: 70vh !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    padding-right: 15px !important;
+}
+
+#modalDetalheEpico .modal-dialog {
+    max-height: 90vh !important;
+    margin: 1.75rem auto !important;
+}
+
+#modalDetalheEpico .modal-content {
+    max-height: 85vh !important;
+    display: flex !important;
+    flex-direction: column !important;
+}
+
+#modalDetalheEpico .modal-body {
+    flex: 1 1 auto !important;
+}
+
+#modalDetalheEpico .modal-body::-webkit-scrollbar {
+    width: 8px;
+}
+
+#modalDetalheEpico .modal-body::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 4px;
+}
+
+#modalDetalheEpico .modal-body::-webkit-scrollbar-thumb {
+    background: #888;
+    border-radius: 4px;
+}
+
+#modalDetalheEpico .modal-body::-webkit-scrollbar-thumb:hover {
+    background: #555;
+}
+
+@media (max-width: 768px) {
+    #modalDetalheEpico .modal-body {
+        max-height: 60vh !important;
+    }
+    
+    #modalDetalheEpico .modal-dialog {
+        margin: 0.5rem !important;
+    }
+}
+
+
+@media (max-width: 768px) {
+    #tableEpicos {
+        table-layout: auto;
+        font-size: 0.875rem;
+    }
+    
+    #detalhePlanejamentos .col-md-4 {
+        margin-bottom: 1rem;
+    }
+}
+</style>
+{% endblock %}
 
 {% block content %}
 <div class="row">
     <div class="col-12">
         <div class="card">
             <div class="card-header d-flex justify-content-between align-items-center">
-                <h5 class="card-title mb-0">
+                <h5 class="card-title mb-0 text-primary-custom">
                     <i class="fas fa-list-alt me-2"></i>
                     Dados dos Épicos
                 </h5>
-                <div>
-                    <button id="btnExportCSV" class="btn btn-success btn-export">
+                <div class="d-flex gap-2">
+                    <button id="btnExportCSV" class="btn btn-success btn-sm modern-btn">
                         <i class="fas fa-file-csv me-2"></i>
-                        Exportar CSV Filtrado
+                        Exportar CSV
                     </button>
-                    <button id="btnRefresh" class="btn btn-primary">
+                    <button id="btnRefresh" class="btn btn-primary btn-sm modern-btn">
                         <i class="fas fa-sync-alt me-2"></i>
                         Atualizar
                     </button>
                 </div>
             </div>
             <div class="card-body">
-                <!-- Filtros Melhorados -->
-                <div class="filter-section bg-light p-3 rounded mb-4">
-                    <h6 class="mb-3">
+                <!-- Filtros Personalizados -->
+                <div class="filtros-container">
+                    <h6 class="mb-3 text-primary-custom">
                         <i class="fas fa-filter me-2"></i>
-                        Filtros
+                        Filtros Avançados
                     </h6>
                     
-                    <!-- Linha 1: Filtros básicos -->
+                    <!-- Período de Análise -->
+                    <div class="alert periodo-info py-2 mb-3 border-0 shadow-sm">
+                        <div class="d-flex align-items-center">
+                            <i class="fas fa-calendar-alt me-2 text-primary"></i>
+                            <strong>Período de Análise:</strong>
+                            <span id="periodo-texto-epicos" class="ms-2 periodo-badge">Ano Atual</span>
+                        </div>
+                    </div>
+                    
+                    <!-- Filtros básicos -->
                     <div class="row mb-3">
                         <div class="col-md-2">
-                            <label for="filterEquipeEpicos" class="form-label">Equipe</label>
-                            <select id="filterEquipeEpicos" class="form-select">
+                            <label for="filterEquipeEpicos" class="form-label small fw-bold text-dark">
+                                <i class="fas fa-users me-1 text-primary"></i>Equipe
+                            </label>
+                            <select id="filterEquipeEpicos" class="form-select form-select-sm modern-select">
                                 <option value="">Todas as Equipes</option>
                             </select>
                         </div>
                         <div class="col-md-2">
-                            <label for="filterStatusEpicos" class="form-label">Status</label>
-                            <select id="filterStatusEpicos" class="form-select">
+                            <label for="filterStatusEpicos" class="form-label small fw-bold text-dark">
+                                <i class="fas fa-flag me-1 text-success"></i>Status
+                            </label>
+                            <select id="filterStatusEpicos" class="form-select form-select-sm modern-select">
                                 <option value="">Todos os Status</option>
                             </select>
                         </div>
                         <div class="col-md-2">
-                            <label for="filterProdutoEpicos" class="form-label">Produto</label>
-                            <select id="filterProdutoEpicos" class="form-select">
+                            <label for="filterProdutoEpicos" class="form-label small fw-bold text-dark">
+                                <i class="fas fa-box me-1 text-info"></i>Produto
+                            </label>
+                            <select id="filterProdutoEpicos" class="form-select form-select-sm modern-select">
                                 <option value="">Todos os Produtos</option>
                             </select>
                         </div>
                         <div class="col-md-3">
-                            <label for="filterDataInicio" class="form-label">Data Início</label>
-                            <input type="date" id="filterDataInicio" class="form-control" value="">
+                            <label for="searchEpicos" class="form-label small fw-bold text-dark">
+                                <i class="fas fa-search me-1 text-warning"></i>Buscar
+                            </label>
+                            <input type="text" id="searchEpicos" class="form-control form-control-sm modern-input" placeholder="Buscar por número ou resumo...">
                         </div>
                         <div class="col-md-3">
-                            <label for="filterDataFim" class="form-label">Data Fim</label>
-                            <input type="date" id="filterDataFim" class="form-control" value="">
+                            <div class="d-flex align-items-end gap-2 h-100">
+                                <div class="badge-contador">
+                                    <span id="totalRegistrosEpicos" class="badge-registros">0 registros</span>
+                                </div>
+                            </div>
                         </div>
                     </div>
                     
-                    <!-- Linha 2: Busca e botões de período -->
+                    <!-- Filtros de período -->
                     <div class="row">
-                        <div class="col-md-4">
-                            <label for="searchEpicos" class="form-label">Buscar</label>
-                            <input type="text" id="searchEpicos" class="form-control" placeholder="Buscar por número ou resumo...">
+                        <div class="col-md-2">
+                            <label for="filterPeriodoEpicos" class="form-label small fw-bold text-dark">
+                                <i class="fas fa-clock me-1 text-info"></i>Período
+                            </label>
+                            <select id="filterPeriodoEpicos" class="form-select form-select-sm modern-select">
+                                <option value="ano_atual">Ano Atual</option>
+                                <option value="6_meses">Últimos 6 Meses</option>
+                                <option value="personalizado">Personalizado</option>
+                            </select>
                         </div>
-                        <div class="col-md-8 d-flex align-items-end">
-                            <button type="button" id="btnAnoAtual" class="btn btn-info me-2">
-                                <i class="fas fa-calendar me-1"></i>
-                                Ano Atual
-                            </button>
-                            <button type="button" id="btnUltimos6Meses" class="btn btn-warning me-2">
-                                <i class="fas fa-calendar-alt me-1"></i>
-                                Últimos 6 Meses
-                            </button>
-                            <button type="button" id="btnLimparFiltros" class="btn btn-secondary me-2">
-                                <i class="fas fa-times me-1"></i>
-                                Limpar Filtros
-                            </button>
-                            <span id="totalRegistrosEpicos" class="badge bg-primary ms-3 fs-6">0 registros</span>
+                        <div class="col-md-3" id="datas-personalizadas-epicos" style="display: none">
+                            <div class="row">
+                                <div class="col-6">
+                                    <label for="filterDataInicioEpico" class="form-label small fw-bold text-dark">Data Início</label>
+                                    <input type="date" id="filterDataInicioEpico" class="form-control form-control-sm modern-input">
+                                </div>
+                                <div class="col-6">
+                                    <label for="filterDataFimEpico" class="form-label small fw-bold text-dark">Data Fim</label>
+                                    <input type="date" id="filterDataFimEpico" class="form-control form-control-sm modern-input">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-7">
+                            <div class="d-flex align-items-end gap-2 h-100">
+                                <div class="botoes-filtros">
+                                    <button type="button" id="btnAplicarFiltrosEpico" class="btn btn-primary btn-sm modern-btn">
+                                        <i class="fas fa-search me-1"></i>
+                                        APLICAR
+                                    </button>
+                                    <button type="button" id="btnLimparFiltrosEpico" class="btn btn-outline-secondary btn-sm modern-btn">
+                                        <i class="fas fa-times me-1"></i>
+                                        LIMPAR
+                                    </button>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -106,17 +255,18 @@
                         <table class="table table-striped table-hover" id="tableEpicos">
                             <thead class="table-dark">
                                 <tr>
-                                    <th>Projeto</th>
-                                    <th>Resumo</th>
-                                    <th>Equipe</th>
-                                    <th>Produto</th>
-                                    <th>Status</th>
-                                    <th>Responsável</th>
-                                    <th>Tipo Registro</th>
-                                    <th>Início Planejado</th>
-                                    <th>Data Fim</th>
-                                    <th>% Progresso</th>
-                                    <th>Indicador</th>
+                                    <th><i class="fas fa-project-diagram me-1"></i>Projeto</th>
+                                    <th><i class="fas fa-align-left me-1"></i>Resumo</th>
+                                    <th><i class="fas fa-users me-1"></i>Equipe</th>
+                                    <th><i class="fas fa-box me-1"></i>Produto</th>
+                                    <th><i class="fas fa-flag me-1"></i>Status</th>
+                                    <th><i class="fas fa-user me-1"></i>Responsável</th>
+                                    <th><i class="fas fa-tag me-1"></i>Tipo</th>
+                                    <th><i class="fas fa-calendar-plus me-1"></i>Início</th>
+                                    <th><i class="fas fa-calendar-check me-1"></i>Fim</th>
+                                    <th><i class="fas fa-percent me-1"></i>Progresso</th>
+                                    <th><i class="fas fa-traffic-light me-1"></i>Indicador</th>
+                                    <th><i class="fas fa-cog me-1"></i>Ações</th>
                                 </tr>
                             </thead>
                             <tbody id="tbodyEpicos">
@@ -125,26 +275,26 @@
                     </div>
 
                     <!-- Paginação -->
-                    <nav aria-label="Paginação">
+                    <nav aria-label="Paginação" class="mt-3">
                         <ul class="pagination justify-content-center" id="paginationEpicos">
                         </ul>
                     </nav>
 
                     <!-- Info da tabela -->
-                    <div class="row">
+                    <div class="row mt-3">
                         <div class="col-md-6">
                             <small class="text-muted">
-                                Mostrando <span id="showingFromEpicos">0</span> a <span id="showingToEpicos">0</span> 
-                                de <span id="totalRecordsEpicos">0</span> registros
+                                Mostrando <span id="showingFromEpicos" class="fw-bold text-primary">0</span> a 
+                                <span id="showingToEpicos" class="fw-bold text-primary">0</span> 
+                                de <span id="totalRecordsEpicos" class="fw-bold text-primary">0</span> registros
                             </small>
                         </div>
                         <div class="col-md-6 text-end">
-                            <label for="pageSize" class="form-label me-2">Registros por página:</label>
-                            <select id="pageSize" class="form-select d-inline-block w-auto">
+                            <label for="pageSize" class="form-label me-2 small">Registros por página:</label>
+                            <select id="pageSize" class="form-select form-select-sm d-inline-block w-auto modern-select">
                                 <option value="25">25</option>
                                 <option value="50">50</option>
                                 <option value="100">100</option>
-                                <option value="200">200</option>
                             </select>
                         </div>
                     </div>
@@ -153,24 +303,151 @@
         </div>
     </div>
 </div>
+
+<!-- Modal Detalhes do Épico -->
+<div class="modal fade" id="modalDetalheEpico" tabindex="-1">
+    <div class="modal-dialog modal-xl modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title">
+                    <i class="fas fa-info-circle me-2"></i>
+                    Detalhes do Épico
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                
+                <!-- Dados Básicos -->
+                <div class="row">
+                    
+                    <div class="col-12">
+                      
+                        <div class="col-12">
+                            <h6 class="text-primary fw-bold">
+                                <i class="fas fa-info-circle me-1"></i>Dados Básicos do Épico
+                            </h6>
+                            <hr>
+                        </div>
+                        <div id="DadosBasicos" class=" border rounded bg-light p-3">
+                            <div class="card border-primary mb-4">
+                            <div class="row mb-4 p-3">
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label class="form-label fw-bold text-primary">
+                                            <i class="fas fa-hashtag me-1"></i>Número do Projeto:
+                                        </label>
+                                        <p id="detalheProjeto" class="form-control-plaintext border p-2 bg-light rounded"></p>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label fw-bold text-primary">
+                                            <i class="fas fa-users me-1"></i>Equipe:
+                                        </label>
+                                        <p id="detalheEquipe" class="form-control-plaintext border p-2 bg-light rounded"></p>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label class="form-label fw-bold text-primary">
+                                            <i class="fas fa-box me-1"></i>Produto:
+                                        </label>
+                                        <p id="detalheProduto" class="form-control-plaintext border p-2 bg-light rounded"></p>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label fw-bold text-primary">
+                                            <i class="fas fa-flag me-1"></i>Status:
+                                        </label>
+                                        <p id="detalheStatus" class="form-control-plaintext border p-2 bg-light rounded"></p>
+                                    </div>
+                                </div>
+
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label class="form-label fw-bold text-primary">
+                                            <i class="fas fa-user me-1"></i>Responsável:
+                                        </label>
+                                        <p id="detalheResponsavel" class="form-control-plaintext border p-2 bg-light rounded"></p>
+                                    </div>
+                                </div>
+                                <div class="col-md-3">
+                                    <div class="mb-3">
+                                        <label class="form-label fw-bold text-primary">
+                                            <i class="fas fa-tags me-1"></i>Classe:
+                                        </label>
+                                        <p id="detalheClasse" class="form-control-plaintext border p-2 bg-light rounded"></p>
+                                    </div>
+                                </div>
+                                <div class="col-md-3">
+                                    <div class="mb-3">
+                                        <label class="form-label fw-bold text-primary">
+                                            <i class="fas fa-list-ol me-1"></i>Qtde. US Estimadas:
+                                        </label>
+                                        <p id="detalheQtdeUS" class="form-control-plaintext border p-2 bg-light rounded text-center">
+                                            <span class="badge bg-info fs-6">0</span>
+                                        </p>
+                                    </div>
+                                </div>
+
+                                <div class="col-12">
+                                    <label class="form-label fw-bold text-primary">
+                                        <i class="fas fa-align-left me-1"></i>Título:
+                                    </label>
+                                    <div id="detalheResumo" class="border p-3 bg-light rounded" style="min-height: 60px;"></div>
+                                </div>
+                            </div>
+                            
+                           
+                        </div>
+                    
+                </div>    
+                <!-- Agrupamento de Planejamentos -->
+                <div class="row mt-4">
+                    <div class="col-12">
+                        <label class="form-label fw-bold text-primary">
+                            <i class="fas fa-project-diagram me-1"></i>Tipos de Planejamento:
+                        </label>
+                        <div id="detalhePlanejamentos" class="border rounded bg-light p-3">
+                            <div class="text-center text-muted">
+                                <i class="fas fa-spinner fa-spin me-2"></i>
+                                Carregando tipos de planejamento...
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer bg-light">
+                <button type="button" class="btn btn-secondary modern-btn" data-bs-dismiss="modal">
+                    <i class="fas fa-times me-1"></i>
+                    Fechar
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
 {% endblock %}
 
 {% block scripts %}
 <script>
+ 
+
 let epicosData = [];
+let allEpicosData = [];
 let filteredData = [];
 let currentPage = 1;
 let pageSize = 25;
 
-// Inicializar datas padrão (ano atual)
-function initializeDefaultDates() {
-    const currentYear = new Date().getFullYear();
-    document.getElementById('filterDataInicio').value = `${currentYear}-01-01`;
-    document.getElementById('filterDataFim').value = `${currentYear}-12-31`;
-}
+let epicosFilters = {
+    equipe: "",
+    status: "",
+    produto: "",
+    search: "",
+    data_inicio: "",
+    data_fim: "",
+    periodo: "ano_atual"
+};
 
-// Carregar dados dos épicos
 function loadEpicosData() {
+    console.log('Carregando dados dos épicos...');
+    
     fetch('/api/epicos-data')
         .then(response => response.json())
         .then(data => {
@@ -179,8 +456,25 @@ function loadEpicosData() {
             if (data.error) {
                 showErrorEpicos(data.error);
             } else {
-                epicosData = data;
-                applyFiltersEpicos(); // Aplicar filtros após carregar
+                console.log('Dados recebidos:', data.length, 'registros');
+                
+                allEpicosData = data;
+                console.log('allEpicosData preenchido:', allEpicosData.length);
+                
+                const epicosUnicos = {};
+                data.forEach(item => {
+                    if (item.TipoRegistroCalculo === 'Planejado Time') {
+                        const key = item.EpicNumber || 'sem-numero';
+                        if (!epicosUnicos[key]) {
+                            epicosUnicos[key] = item;
+                        }
+                    }
+                });
+                
+                epicosData = Object.values(epicosUnicos);
+                console.log('Grid mostrará:', epicosData.length, 'épicos únicos');
+                
+                applyFiltersEpicos();
                 populateFiltersEpicos();
                 document.getElementById('tableContainerEpicos').style.display = 'block';
             }
@@ -192,9 +486,13 @@ function loadEpicosData() {
 }
 
 function populateFiltersEpicos() {
-    // Popular filtro de equipes
     const equipeSelect = document.getElementById('filterEquipeEpicos');
     const equipes = [...new Set(epicosData.map(item => item.EpicEquipe).filter(e => e))];
+    
+    while (equipeSelect.children.length > 1) {
+        equipeSelect.removeChild(equipeSelect.lastChild);
+    }
+    
     equipes.sort().forEach(equipe => {
         const option = document.createElement('option');
         option.value = equipe;
@@ -202,9 +500,13 @@ function populateFiltersEpicos() {
         equipeSelect.appendChild(option);
     });
 
-    // Popular filtro de status
     const statusSelect = document.getElementById('filterStatusEpicos');
     const statuses = [...new Set(epicosData.map(item => item.EpicStatus).filter(s => s))];
+    
+    while (statusSelect.children.length > 1) {
+        statusSelect.removeChild(statusSelect.lastChild);
+    }
+    
     statuses.sort().forEach(status => {
         const option = document.createElement('option');
         option.value = status;
@@ -212,9 +514,13 @@ function populateFiltersEpicos() {
         statusSelect.appendChild(option);
     });
 
-    // Popular filtro de produtos
     const produtoSelect = document.getElementById('filterProdutoEpicos');
     const produtos = [...new Set(epicosData.map(item => item.EpicProduto).filter(p => p))];
+    
+    while (produtoSelect.children.length > 1) {
+        produtoSelect.removeChild(produtoSelect.lastChild);
+    }
+    
     produtos.sort().forEach(produto => {
         const option = document.createElement('option');
         option.value = produto;
@@ -223,67 +529,60 @@ function populateFiltersEpicos() {
     });
 }
 
+
 function applyFiltersEpicos() {
-    const equipeFilter = document.getElementById('filterEquipeEpicos').value;
-    const statusFilter = document.getElementById('filterStatusEpicos').value;
-    const produtoFilter = document.getElementById('filterProdutoEpicos').value;
-    const searchFilter = document.getElementById('searchEpicos').value.toLowerCase();
-    const dataInicio = document.getElementById('filterDataInicio').value;
-    const dataFim = document.getElementById('filterDataFim').value;
+    // Capturar todos os valores dos filtros
+    epicosFilters.equipe = document.getElementById('filterEquipeEpicos').value;
+    epicosFilters.status = document.getElementById('filterStatusEpicos').value;
+    epicosFilters.produto = document.getElementById('filterProdutoEpicos').value;
+    epicosFilters.search = document.getElementById('searchEpicos').value.toLowerCase();
+    epicosFilters.periodo = document.getElementById('filterPeriodoEpicos').value;
+    
+    // Capturar datas personalizadas se o período for personalizado
+    if (epicosFilters.periodo === 'personalizado') {
+        epicosFilters.data_inicio = document.getElementById('filterDataInicioEpico').value;
+        epicosFilters.data_fim = document.getElementById('filterDataFimEpico').value;
+    } else {
+        // Limpar datas personalizadas se não for período personalizado
+        epicosFilters.data_inicio = '';
+        epicosFilters.data_fim = '';
+    }
 
+    console.log('Filtros aplicados:', epicosFilters);
+
+    // Aplicar filtros básicos
     filteredData = epicosData.filter(item => {
-        // Filtros básicos
-        let matches = (!equipeFilter || item.EpicEquipe === equipeFilter) &&
-                     (!statusFilter || item.EpicStatus === statusFilter) &&
-                     (!produtoFilter || item.EpicProduto === produtoFilter) &&
-                     (!searchFilter || 
-                      (item.EpicNumber && item.EpicNumber.toLowerCase().includes(searchFilter)) ||
-                      (item.EpicSummary && item.EpicSummary.toLowerCase().includes(searchFilter)));
-
-        // Filtro de data (verificar se o épico está no período)
-        if (matches && (dataInicio || dataFim)) {
-            const epicInicio = item.EpicInicioPlanejado ? parseDate(item.EpicInicioPlanejado) : null;
-            const epicFim = item.EpicDueDate ? parseDate(item.EpicDueDate) : null;
+        let matches = (!epicosFilters.equipe || item.EpicEquipe === epicosFilters.equipe) &&
+                     (!epicosFilters.status || item.EpicStatus === epicosFilters.status) &&
+                     (!epicosFilters.produto || item.EpicProduto === epicosFilters.produto) &&
+                     (!epicosFilters.search || 
+                      (item.EpicNumber && item.EpicNumber.toLowerCase().includes(epicosFilters.search)) ||
+                      (item.EpicSummary && item.EpicSummary.toLowerCase().includes(epicosFilters.search)));
+        
+        // Aplicar filtros de período se necessário
+        if (epicosFilters.periodo === 'personalizado' && (epicosFilters.data_inicio || epicosFilters.data_fim)) {
+            const itemDate = new Date(item.EpicInicioPlanejado || item.EpicDueDate);
             
-            if (dataInicio && dataFim) {
-                const filterStart = new Date(dataInicio);
-                const filterEnd = new Date(dataFim);
-                
-                // Épico deve ter alguma sobreposição com o período filtrado
-                if (epicInicio && epicFim) {
-                    matches = matches && (
-                        (epicFim >= filterStart && epicFim <= filterEnd) ||
-                        (epicInicio >= filterStart && epicInicio <= filterEnd) ||
-                        (epicInicio < filterStart && epicFim > filterEnd)
-                    );
-                }
+            if (epicosFilters.data_inicio) {
+                const dataInicio = new Date(epicosFilters.data_inicio);
+                if (itemDate < dataInicio) matches = false;
+            }
+            
+            if (epicosFilters.data_fim) {
+                const dataFim = new Date(epicosFilters.data_fim);
+                if (itemDate > dataFim) matches = false;
             }
         }
-
+        
         return matches;
     });
 
     currentPage = 1;
     renderTableEpicos();
     updateTotalRegistros();
-}
-
-function parseDate(dateString) {
-    // Converter formato brasileiro DD/MM/YYYY HH:MM para Date
-    if (!dateString) return null;
     
-    // Se já está no formato ISO
-    if (dateString.includes('-')) {
-        return new Date(dateString);
-    }
-    
-    // Se está no formato brasileiro
-    const parts = dateString.split(' ')[0].split('/');
-    if (parts.length === 3) {
-        return new Date(parts[2], parts[1] - 1, parts[0]);
-    }
-    
-    return new Date(dateString);
+    // Atualizar texto do período
+    updatePeriodoTexto();
 }
 
 function renderTableEpicos() {
@@ -294,92 +593,416 @@ function renderTableEpicos() {
 
     tbody.innerHTML = '';
 
-    pageData.forEach(item => {
+    pageData.forEach((item, index) => {
         const row = document.createElement('tr');
         
-        // Função para formatar percentual
-        const formatPercentual = (value) => {
-            if (!value) return '0%';
-            return parseFloat(value).toFixed(1) + '%';
-        };
-
-        // Função para formatar data
-        const formatDate = (dateStr) => {
-            if (!dateStr) return '-';
-            return dateStr;
-        };
-
-        // Classe para o indicador
-        const getIndicadorClass = (indicador) => {
-            switch(indicador) {
-                case 'Em Dia': return 'badge bg-success';
-                case 'Atrasado': return 'badge bg-danger';
-                case 'Atenção': return 'badge bg-warning text-dark';
-                default: return 'badge bg-secondary';
-            }
+        const truncateText = (text, maxLength = 50) => {
+            if (!text) return 'Sem resumo';
+            if (text.length <= maxLength) return text;
+            return text.substring(0, maxLength) + '...';
         };
 
         row.innerHTML = `
-            <td>${item.EpicProjectKey || '-'}</td>
-            <td title="${item.EpicSummary || ''}">
-                ${item.EpicSummary ? (item.EpicSummary.length > 50 ? item.EpicSummary.substring(0, 50) + '...' : item.EpicSummary) : '-'}
+            <td class="fw-bold text-primary">${item.EpicProjectKey || 'N/A'}</td>
+            <td title="${item.EpicSummary || ''}">${truncateText(item.EpicSummary)}</td>
+            <td><span class="badge bg-info">${item.EpicEquipe || 'Sem Equipe'}</span></td>
+            <td><span class="badge bg-primary">${item.EpicProduto || 'Sem Produto'}</span></td>
+            <td><span class="badge bg-info">${item.EpicStatus || 'Indefinido'}</span></td>
+            <td>${item.EpicAssignee || 'Não atribuído'}</td>
+            <td><small>${item.TipoRegistroCalculo || 'N/A'}</small></td>
+            <td><small>${item.EpicInicioPlanejado || 'Não definido'}</small></td>
+            <td><small>${item.EpicDueDate || 'Não definido'}</small></td>
+            <td>
+                <div class="d-flex align-items-center">
+                    <div class="progress me-2" style="width: 60px; height: 15px;">
+                        <div class="progress-bar bg-success" style="width: ${item.TasksPercentualMedia || 0}%"></div>
+                    </div>
+                    <small>${parseFloat(item.TasksPercentualMedia || 0).toFixed(1)}%</small>
+                </div>
             </td>
-            <td>${item.EpicEquipe || '-'}</td>
-            <td>${item.EpicProduto || '-'}</td>
-            <td><span class="badge bg-info">${item.EpicStatus || '-'}</span></td>
-            <td>${item.EpicAssignee || '-'}</td>            
-            <td>${item.TipoRegistroCalculo || '-'}</td>
-            <td>${formatDate(item.EpicInicioPlanejado)}</td>
-            <td>${formatDate(item.EpicDueDate)}</td>
-            <td>${formatPercentual(item.TasksPercentualMedia)}</td>
-            <td><span class="${getIndicadorClass(item.IndicadorAndamentoEpico)}">${item.IndicadorAndamentoEpico || '-'}</span></td>
+            <td><span class="badge bg-success">${item.IndicadorAndamentoEpico || 'Indefinido'}</span></td>
+            <td>
+                <button class="btn btn-sm btn-outline-primary" onclick="showEpicoDetails(${startIndex + index})">
+                    <i class="fas fa-eye"></i>
+                </button>
+            </td>
         `;
         
         tbody.appendChild(row);
     });
 
-    renderPaginationEpicos();
     updateTableInfoEpicos();
 }
 
-function renderPaginationEpicos() {
-    const pagination = document.getElementById('paginationEpicos');
-    const totalPages = Math.ceil(filteredData.length / pageSize);
+function showEpicoDetails(index) {
+    const item = filteredData[index];
+    if (!item) return;
+
+    console.log('Abrindo detalhes para:', item);
+    console.log('allEpicosData disponível:', allEpicosData.length);
+
+    const formatModalData = (data, defaultText = 'Não informado') => {
+        if (!data || data === '' || data === null || data === undefined || data === '-') {
+            return defaultText;
+        }
+        return data;
+    };
+
+    const epicNumber = item.EpicNumber;
+    const todosRegistrosEpico = allEpicosData.filter(registro => 
+        registro.EpicNumber === epicNumber
+    );
+
+    console.log('Registros encontrados:', todosRegistrosEpico);
+
+    // Preencher os dados básicos existentes
+    document.getElementById('detalheProjeto').textContent = formatModalData(item.EpicProjectKey, 'N/A');
+    document.getElementById('detalheEquipe').textContent = formatModalData(item.EpicEquipe, 'Sem equipe');
+    document.getElementById('detalheStatus').textContent = formatModalData(item.EpicStatus, 'Indefinido');
+    document.getElementById('detalheProduto').textContent = formatModalData(item.EpicProduto, 'Sem produto');
     
-    pagination.innerHTML = '';
-
-    if (totalPages <= 1) return;
-
-    // Botão Anterior
-    const prevLi = document.createElement('li');
-    prevLi.className = `page-item ${currentPage === 1 ? 'disabled' : ''}`;
-    prevLi.innerHTML = `<a class="page-link" href="#" onclick="changePage(${currentPage - 1})">Anterior</a>`;
-    pagination.appendChild(prevLi);
-
-    // Números das páginas
-    const startPage = Math.max(1, currentPage - 2);
-    const endPage = Math.min(totalPages, currentPage + 2);
-
-    for (let i = startPage; i <= endPage; i++) {
-        const li = document.createElement('li');
-        li.className = `page-item ${i === currentPage ? 'active' : ''}`;
-        li.innerHTML = `<a class="page-link" href="#" onclick="changePage(${i})">${i}</a>`;
-        pagination.appendChild(li);
-    }
-
-    // Botão Próximo
-    const nextLi = document.createElement('li');
-    nextLi.className = `page-item ${currentPage === totalPages ? 'disabled' : ''}`;
-    nextLi.innerHTML = `<a class="page-link" href="#" onclick="changePage(${currentPage + 1})">Próximo</a>`;
-    pagination.appendChild(nextLi);
+    // Preencher as novas informações
+    document.getElementById('detalheResumo').textContent = formatModalData(item.EpicSummary, 'Sem resumo disponível');
+    document.getElementById('detalheResponsavel').textContent = formatModalData(item.EpicAssignee, 'Não atribuído');
+    document.getElementById('detalheClasse').textContent = formatModalData(item.EpicClass, 'Não definida');
+    document.getElementById('detalheQtdeUS').innerHTML = `<span class="badge bg-info fs-6">${formatModalData(item.EpicQtdeUSEstimadas, '0')}</span>`;
+    
+    createPlanejamentosGrouping(todosRegistrosEpico);
+    
+    const modal = new bootstrap.Modal(document.getElementById('modalDetalheEpico'));
+    modal.show();
 }
 
-function changePage(page) {
-    const totalPages = Math.ceil(filteredData.length / pageSize);
-    if (page >= 1 && page <= totalPages) {
-        currentPage = page;
-        renderTableEpicos();
+function createPlanejamentosGrouping(registros) {
+    console.log('Criando agrupamento para:', registros);
+    
+    const container = document.getElementById('detalhePlanejamentos');
+    
+    if (!container) {
+        console.error('Container não encontrado!');
+        return;
     }
+    
+    const formatDate = (dateStr) => {
+        if (!dateStr || dateStr === '' || dateStr === '-') {
+            return '<span class="text-muted">Não definida</span>';
+        }
+        return `<span class="text-dark">${dateStr}</span>`;
+    };
+    
+    const formatPercentual = (value) => {
+        if (!value) return '<span class="text-muted">0%</span>';
+        return `<span class="fw-bold">${parseFloat(value).toFixed(1)}%</span>`;
+    };
+    
+    const tiposOrdenados = ['Planejado P.O.', 'Planejado Time', 'Realizado Time'];
+    
+    // CARD 1: Tipos de Planejamento - Dados Atuais
+    let html = `
+        <div class="card border-primary mb-4">
+            <div class="card-header bg-primary bg-opacity-10">
+                <h6 class="card-title mb-0 ">
+                    <i class="fas fa-project-diagram me-2"></i>
+                    Tipos de Planejamento - Dados Atuais
+                </h6>
+            </div>
+            <div class="card-body">
+                <div class="row">
+    `;
+    
+    tiposOrdenados.forEach(tipo => {
+        const registro = registros.find(r => r.TipoRegistroCalculo === tipo);
+        
+        console.log(`Tipo ${tipo}:`, registro);
+        
+        let dataInicio, dataFim, percentual;
+        
+        if (tipo === 'Planejado P.O.') {
+            const primeiroRegistro = registros[0];
+            dataInicio = primeiroRegistro ? primeiroRegistro.EpicInicioPlanejado : null;
+            dataFim = primeiroRegistro ? primeiroRegistro.EpicDueDate : null;
+            percentual = primeiroRegistro ? primeiroRegistro.TasksPercentualMedia : null;
+        } else if (registro) {
+            dataInicio = registro.TasksDataInicial;
+            dataFim = registro.TasksDataFim;
+            percentual = registro.TasksPercentualMedia;
+        }
+        
+        const color = tipo === 'Planejado P.O.' ? 'secondary' : (tipo === 'Planejado Time' ? 'info' : 'success');
+        const icon = tipo === 'Planejado P.O.' ? 'fas fa-clipboard-list' : (tipo === 'Planejado Time' ? 'fas fa-clock' : 'fas fa-check-circle');
+        
+        html += `
+            <div class="col-md-4 mb-3">
+                <div class="card border-${color} h-100">
+                    <div class="card-header bg-${color} bg-opacity-10">
+                        <h6 class="card-title mb-0 text-${color}">
+                            <i class="${icon} me-2"></i>
+                            ${tipo}
+                        </h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-2">
+                            <small class="text-muted fw-bold">Início:</small>
+                            <div>${formatDate(dataInicio)}</div>
+                        </div>
+                        <div class="mb-2">
+                            <small class="text-muted fw-bold">Fim:</small>
+                            <div>${formatDate(dataFim)}</div>
+                        </div>
+                        <div class="mb-0">
+                            <small class="text-muted fw-bold">Progresso:</small>
+                            <div class="progress mt-1" style="height: 12px;">
+                                <div class="progress-bar bg-${color}" style="width: ${percentual || 0}%"></div>
+                            </div>
+                            <small class="text-end d-block mt-1">${formatPercentual(percentual)}</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+    });
+    
+    html += `
+                </div>
+            </div>
+        </div>
+    `;
+    
+    // CARD 2: Regras de Cálculo dos Percentuais
+    html += `
+        <div class="card border-info mb-4">
+            <div class="card-header bg-info bg-opacity-10">
+                <h6 class="card-title mb-0 text-info">
+                    <i class="fas fa-calculator me-2"></i>
+                    Regras de Cálculo dos Percentuais
+                </h6>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <!-- Planejado P.O. -->
+                    <div class="col-md-4 mb-3">
+                        <div class="card border-secondary h-100">
+                            <div class="card-header bg-secondary bg-opacity-10">
+                                <h6 class="card-title mb-0 text-secondary">
+                                    <i class="fas fa-clipboard-list me-2"></i>
+                                    Planejado P.O.
+                                </h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-6">
+                                        <div class="mb-2">
+                                            <small class="text-muted fw-bold">
+                                                <i class="fas fa-calendar-alt me-1 text-primary"></i>Período:
+                                            </small>
+                                            <div><small>Do início planejado até a data de entrega (Due Date) do épico</small></div>
+                                        </div>
+                                    </div>
+                                    <div class="col-6">
+                                        <div class="mb-2">
+                                            <small class="text-muted fw-bold">
+                                                <i class="fas fa-percent me-1 text-success"></i>Percentual:
+                                            </small>
+                                            <div><small>Sempre 0% (não considera progresso das tasks)</small></div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="row">
+                                    <div class="col-12">
+                                        <div class="mb-0">
+                                            <small class="text-muted fw-bold">
+                                                <i class="fas fa-info-circle me-1 text-info"></i>Finalidade:
+                                            </small>
+                                            <div><small>Representa o cronograma original definido pelo P.O.</small></div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Planejado Time -->
+                    <div class="col-md-4 mb-3">
+                        <div class="card border-info h-100">
+                            <div class="card-header bg-info bg-opacity-10">
+                                <h6 class="card-title mb-0 text-info">
+                                    <i class="fas fa-clock me-2"></i>
+                                    Planejado Time
+                                </h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-6">
+                                        <div class="mb-2">
+                                            <small class="text-muted fw-bold">
+                                                <i class="fas fa-calendar-alt me-1 text-primary"></i>Período:
+                                            </small>
+                                            <div><small>Do menor início planejado até o maior fim planejado das tasks</small></div>
+                                        </div>
+                                    </div>
+                                    <div class="col-6">
+                                        <div class="mb-2">
+                                            <small class="text-muted fw-bold">
+                                                <i class="fas fa-percent me-1 text-success"></i>Percentual:
+                                            </small>
+                                            <div><small>Média dos percentuais planejados das tasks (excluindo BUGs)</small></div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="row">
+                                    <div class="col-6">
+                                        <div class="mb-2">
+                                            <small class="text-muted fw-bold">
+                                                <i class="fas fa-clock me-1 text-warning"></i>Horas:
+                                            </small>
+                                            <div><small>Soma das horas de trabalho planejadas das tasks</small></div>
+                                        </div>
+                                    </div>
+                                    <div class="col-6">
+                                        <div class="mb-0">
+                                            <small class="text-muted fw-bold">
+                                                <i class="fas fa-info-circle me-1 text-info"></i>Disponível:
+                                            </small>
+                                            <div><small>Apenas quando épico está em desenvolvimento ou concluído</small></div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Realizado Time -->
+                    <div class="col-md-4 mb-3">
+                        <div class="card border-success h-100">
+                            <div class="card-header bg-success bg-opacity-10">
+                                <h6 class="card-title mb-0 text-success">
+                                    <i class="fas fa-check-circle me-2"></i>
+                                    Realizado Time
+                                </h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-6">
+                                        <div class="mb-2">
+                                            <small class="text-muted fw-bold">
+                                                <i class="fas fa-calendar-alt me-1 text-primary"></i>Período:
+                                            </small>
+                                            <div><small>Do menor início realizado até o maior fim realizado das tasks</small></div>
+                                        </div>
+                                    </div>
+                                    <div class="col-6">
+                                        <div class="mb-2">
+                                            <small class="text-muted fw-bold">
+                                                <i class="fas fa-percent me-1 text-success"></i>Percentual:
+                                            </small>
+                                            <div><small>Média dos percentuais realizados das tasks (excluindo BUGs)</small></div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="row">
+                                    <div class="col-6">
+                                        <div class="mb-2">
+                                            <small class="text-muted fw-bold">
+                                                <i class="fas fa-check me-1 text-success"></i>Progresso:
+                                            </small>
+                                            <div><small>Média dos percentuais concluídos das tasks</small></div>
+                                        </div>
+                                    </div>
+                                    <div class="col-6">
+                                        <div class="mb-2">
+                                            <small class="text-muted fw-bold">
+                                                <i class="fas fa-clock me-1 text-warning"></i>Horas:
+                                            </small>
+                                            <div><small>Soma das horas de trabalho efetivamente realizadas</small></div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="row">
+                                    <div class="col-12">
+                                        <div class="mb-0">
+                                            <small class="text-muted fw-bold">
+                                                <i class="fas fa-info-circle me-1 text-info"></i>Disponível:
+                                            </small>
+                                            <div><small>Apenas quando épico está em desenvolvimento ou concluído</small></div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    // CARD 3: Indicadores de Andamento
+    html += `
+        <div class="card border-warning">
+            <div class="card-header bg-warning bg-opacity-10">
+                <h6 class="card-title mb-0 text-warning">
+                    <i class="fas fa-traffic-light me-2"></i>
+                    Lógica dos Indicadores de Andamento
+                </h6>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-4">
+                        <div class="card border-success h-100">
+                            <div class="card-header bg-success bg-opacity-10">
+                                <h6 class="card-title mb-0 text-success">
+                                    <i class="fas fa-check-circle me-2"></i>
+                                    Verde
+                                </h6>
+                            </div>
+                            <div class="card-body">
+                                <small>Épico concluído (Done/Closed) OU ainda não iniciado OU progresso >= planejado</small>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="card border-warning h-100">
+                            <div class="card-header bg-warning bg-opacity-10">
+                                <h6 class="card-title mb-0 text-warning">
+                                    <i class="fas fa-exclamation-triangle me-2"></i>
+                                    Amarelo
+                                </h6>
+                            </div>
+                            <div class="card-body">
+                                <small>Atraso de até 5% em relação ao planejado</small>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="card border-danger h-100">
+                            <div class="card-header bg-danger bg-opacity-10">
+                                <h6 class="card-title mb-0 text-danger">
+                                    <i class="fas fa-times-circle me-2"></i>
+                                    Vermelho
+                                </h6>
+                            </div>
+                            <div class="card-body">
+                                <small>Atraso significativo OU planejamento 100% com épico em aberto</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Status considerados -->
+                <div class="mt-3 p-2 bg-light border rounded">
+                    <small class="text-muted">
+                        <i class="fas fa-flag me-1"></i>
+                        <strong>Status processados:</strong> Em Desenvolvimento, Pre-release, DONE, Closed
+                        <br>
+                        <i class="fas fa-ban me-1"></i>
+                        <strong>Status excluídos:</strong> Rejeitado, Rejected
+                    </small>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    console.log('HTML gerado');
+    container.innerHTML = html;
 }
 
 function updateTableInfoEpicos() {
@@ -400,81 +1023,249 @@ function showErrorEpicos(message) {
     document.getElementById('errorEpicos').style.display = 'block';
 }
 
-function setCurrentYear() {
-    const currentYear = new Date().getFullYear();
-    document.getElementById('filterDataInicio').value = `${currentYear}-01-01`;
-    document.getElementById('filterDataFim').value = `${currentYear}-12-31`;
-    applyFiltersEpicos();
-}
-
-function setLast6Months() {
-    const hoje = new Date();
-    const seisMesesAtras = new Date();
-    seisMesesAtras.setMonth(hoje.getMonth() - 6);
-    
-    const dataInicio = seisMesesAtras.toISOString().split('T')[0];
-    const dataFim = hoje.toISOString().split('T')[0];
-    
-    document.getElementById('filterDataInicio').value = dataInicio;
-    document.getElementById('filterDataFim').value = dataFim;
-    applyFiltersEpicos();
-}
-
 function clearFilters() {
+    epicosFilters = {
+        equipe: "",
+        status: "",
+        produto: "",
+        search: "",
+        data_inicio: "",
+        data_fim: "",
+        periodo: "ano_atual"
+    };
+
     document.getElementById('filterEquipeEpicos').value = '';
     document.getElementById('filterStatusEpicos').value = '';
     document.getElementById('filterProdutoEpicos').value = '';
     document.getElementById('searchEpicos').value = '';
-    document.getElementById('filterDataInicio').value = '';
-    document.getElementById('filterDataFim').value = '';
+    document.getElementById('filterPeriodoEpicos').value = 'ano_atual';
+    document.getElementById('filterDataInicioEpico').value = '';
+    document.getElementById('filterDataFimEpico').value = '';
+    
+    
+    
+
+    // Esconder datas personalizadas
+    document.getElementById('datas-personalizadas-epicos').style.display = 'none';
+    updatePeriodoTexto();
     applyFiltersEpicos();
 }
 
 function exportFilteredCSV() {
-    // Obter parâmetros dos filtros atuais
-    const params = new URLSearchParams({
-        equipe: document.getElementById('filterEquipeEpicos').value,
-        status: document.getElementById('filterStatusEpicos').value,
-        produto: document.getElementById('filterProdutoEpicos').value,
-        search: document.getElementById('searchEpicos').value,
-        data_inicio: document.getElementById('filterDataInicio').value,
-        data_fim: document.getElementById('filterDataFim').value
-    });
+    console.log('Exportando com filtros:', epicosFilters);
     
-    // Abrir URL de export com filtros
-    window.open(`/export/epicos?${params.toString()}`, '_blank');
+    const params = new URLSearchParams();
+    
+    // Filtros básicos
+    if (epicosFilters.equipe) {
+        params.append('equipe', epicosFilters.equipe);
+    }
+    
+    if (epicosFilters.status) {
+        params.append('status', epicosFilters.status);
+    }
+    
+    if (epicosFilters.produto) {
+        params.append('produto', epicosFilters.produto);
+    }
+    
+    if (epicosFilters.search) {
+        params.append('search', epicosFilters.search);
+    }
+    
+    // Filtros de período
+    if (epicosFilters.periodo) {
+        params.append('periodo', epicosFilters.periodo);
+    }
+    
+    // Datas personalizadas (se aplicável)
+    if (epicosFilters.periodo === 'personalizado') {
+        if (epicosFilters.data_inicio) {
+            params.append('data_inicio', epicosFilters.data_inicio);
+        }
+        if (epicosFilters.data_fim) {
+            params.append('data_fim', epicosFilters.data_fim);
+        }
+    }
+    
+    // Adicionar informação sobre quantos registros serão exportados
+    params.append('total_registros', filteredData.length);
+    
+    const btnExport = document.getElementById('btnExportCSV');
+    const originalText = btnExport.innerHTML;
+    
+    // Feedback visual melhorado
+    btnExport.innerHTML = `<i class="fas fa-spinner fa-spin me-2"></i>Exportando ${filteredData.length} registros...`;
+    btnExport.disabled = true;
+    
+    const url = `/export/epicos?${params.toString()}`;
+    
+    console.log('URL de exportação:', url);
+    
+    // Criar iframe para download
+    const iframe = document.createElement('iframe');
+    iframe.style.display = 'none';
+    iframe.src = url;
+    document.body.appendChild(iframe);
+    
+    // Restaurar botão após delay
+    setTimeout(() => {
+        btnExport.innerHTML = originalText;
+        btnExport.disabled = false;
+        document.body.removeChild(iframe);
+        
+        // Mostrar mensagem de sucesso
+        showExportSuccess(filteredData.length);
+    }, 2000);
+}
+
+// Função auxiliar para mostrar mensagem de sucesso
+function showExportSuccess(totalRegistros) {
+    // Criar toast de sucesso
+    const toast = document.createElement('div');
+    toast.className = 'toast align-items-center text-white bg-success border-0 position-fixed';
+    toast.style.cssText = 'top: 20px; right: 20px; z-index: 9999;';
+    toast.setAttribute('role', 'alert');
+    toast.innerHTML = `
+        <div class="d-flex">
+            <div class="toast-body">
+                <i class="fas fa-check-circle me-2"></i>
+                Exportação concluída! ${totalRegistros} registros exportados.
+            </div>
+            <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+        </div>
+    `;
+    
+    document.body.appendChild(toast);
+    
+    // Mostrar toast
+    const bsToast = new bootstrap.Toast(toast, {
+        autohide: true,
+        delay: 4000
+    });
+    bsToast.show();
+    
+    // Remover toast após ser ocultado
+    toast.addEventListener('hidden.bs.toast', () => {
+        document.body.removeChild(toast);
+    });
+}
+
+// Função para atualizar o texto do período
+function updatePeriodoTexto() {
+    const periodoTexto = document.getElementById('periodo-texto-epicos');
+    const periodo = epicosFilters.periodo;
+    
+    let texto = '';
+    switch(periodo) {
+        case 'ano_atual':
+            texto = 'Ano Atual';
+            break;
+        case '6_meses':
+            texto = 'Últimos 6 Meses';
+            break;
+        case 'personalizado':
+            if (epicosFilters.data_inicio && epicosFilters.data_fim) {
+                texto = `${epicosFilters.data_inicio} até ${epicosFilters.data_fim}`;
+            } else if (epicosFilters.data_inicio) {
+                texto = `A partir de ${epicosFilters.data_inicio}`;
+            } else if (epicosFilters.data_fim) {
+                texto = `Até ${epicosFilters.data_fim}`;
+            } else {
+                texto = 'Personalizado (sem datas)';
+            }
+            break;
+        default:
+            texto = 'Todos os Períodos';
+    }
+    
+    if (periodoTexto) {
+        periodoTexto.textContent = texto;
+    }
 }
 
 // Event Listeners
-document.getElementById('filterEquipeEpicos').addEventListener('change', applyFiltersEpicos);
-document.getElementById('filterStatusEpicos').addEventListener('change', applyFiltersEpicos);
-document.getElementById('filterProdutoEpicos').addEventListener('change', applyFiltersEpicos);
-document.getElementById('searchEpicos').addEventListener('input', applyFiltersEpicos);
-document.getElementById('filterDataInicio').addEventListener('change', applyFiltersEpicos);
-document.getElementById('filterDataFim').addEventListener('change', applyFiltersEpicos);
-
-document.getElementById('btnAnoAtual').addEventListener('click', setCurrentYear);
-document.getElementById('btnUltimos6Meses').addEventListener('click', setLast6Months);
-document.getElementById('btnLimparFiltros').addEventListener('click', clearFilters);
-
-document.getElementById('pageSize').addEventListener('change', function() {
-    pageSize = parseInt(this.value);
-    currentPage = 1;
-    renderTableEpicos();
-});
-
-document.getElementById('btnRefresh').addEventListener('click', function() {
-    document.getElementById('tableContainerEpicos').style.display = 'none';
-    document.getElementById('errorEpicos').style.display = 'none';
-    document.getElementById('loadingEpicos').style.display = 'block';
-    loadEpicosData();
-});
-
-document.getElementById('btnExportCSV').addEventListener('click', exportFilteredCSV);
-
-// Carregar dados quando a página carregar
 document.addEventListener('DOMContentLoaded', function() {
-    initializeDefaultDates();
+    console.log('Inicializando página de épicos...');
+    
+    // Event listeners para filtros
+    document.getElementById('filterEquipeEpicos').addEventListener('change', applyFiltersEpicos);
+    document.getElementById('filterStatusEpicos').addEventListener('change', applyFiltersEpicos);
+    document.getElementById('filterProdutoEpicos').addEventListener('change', applyFiltersEpicos);
+    document.getElementById('searchEpicos').addEventListener('input', applyFiltersEpicos);
+
+    // Event listener para período
+    document.getElementById('filterPeriodoEpicos').addEventListener('change', function() {
+        const periodo = this.value;
+    const datasPersonalizadas = document.getElementById('datas-personalizadas-epicos');
+
+    if (periodo === 'personalizado') {
+        datasPersonalizadas.style.display = 'block';
+
+        const anoAtual = new Date().getFullYear();
+        const dataInicio = `${anoAtual}-01-01`;
+        const dataFim = `${anoAtual}-12-31`;
+
+        document.getElementById('filterDataInicioEpico').value = dataInicio;
+        document.getElementById('filterDataFimEpico').value = dataFim;
+
+        epicosFilters.data_inicio = dataInicio;
+        epicosFilters.data_fim = dataFim;
+    } else {
+        datasPersonalizadas.style.display = 'none';
+        document.getElementById('filterDataInicioEpico').value = '';
+        document.getElementById('filterDataFimEpico').value = '';
+
+        epicosFilters.data_inicio = '';
+        epicosFilters.data_fim = '';
+    }
+
+    epicosFilters.periodo = periodo;
+    applyFiltersEpicos();
+    });
+
+    // Event listeners para datas personalizadas
+    document.getElementById('filterDataInicioEpico').addEventListener('change', function() {
+        if (epicosFilters.periodo === 'personalizado') {
+            applyFiltersEpicos();
+        }
+    });
+    
+    document.getElementById('filterDataFimEpico').addEventListener('change', function() {
+        if (epicosFilters.periodo === 'personalizado') {
+            applyFiltersEpicos();
+        }
+    });
+
+
+    const btnAplicar = document.getElementById('btnAplicarFiltrosEpico');
+    const btnLimpar = document.getElementById('btnLimparFiltrosEpico');
+
+    console.log("Aplicar:", btnAplicar);
+    console.log("Limpar:", btnLimpar);
+    
+    // Event listeners para botões
+    document.getElementById('btnAplicarFiltrosEpico').addEventListener('click', applyFiltersEpicos);
+    document.getElementById('btnLimparFiltrosEpico').addEventListener('click', clearFilters);
+
+    // Event listener para tamanho da página
+    document.getElementById('pageSize').addEventListener('change', function() {
+        pageSize = parseInt(this.value);
+        currentPage = 1;
+        renderTableEpicos();
+    });
+
+    // Event listeners para botões de ação
+    document.getElementById('btnRefresh').addEventListener('click', function() {
+        document.getElementById('tableContainerEpicos').style.display = 'none';
+        document.getElementById('errorEpicos').style.display = 'none';
+        document.getElementById('loadingEpicos').style.display = 'block';
+        loadEpicosData();
+    });
+
+    document.getElementById('btnExportCSV').addEventListener('click', exportFilteredCSV);
+
+    // Carregar dados iniciais
     loadEpicosData();
 });
 </script>

@@ -2,7 +2,7 @@
 
 {% block title %}Dashboard - Sistema de Projetos{% endblock %}
 {% block dashboard_active %}active{% endblock %}
-{% block page_title %}Dashboard Executivo{% endblock %}
+{% block page_title %}<i class="fas fa-tachometer-alt me-2"></i> Dashboard Executivo{% endblock %}
 
 <!-- Usar os filtros padrão do base.html -->
 {% block filtros %}
@@ -269,7 +269,7 @@
 
 <!-- Modal para Detalhes dos Alertas -->
 <div class="modal fade" id="modalDetalhesAlerta" tabindex="-1" aria-labelledby="modalDetalhesAlertaLabel" aria-hidden="true">
-    <div class="modal-dialog modal-xl">
+    <div class="modal-dialog modal-xl modal-dialog-scrollable">
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title" id="modalDetalhesAlertaLabel">
@@ -1040,7 +1040,18 @@ function mostrarTabelaDetalhes(data, tipo) {
     document.getElementById('resumoDetalhes').innerHTML = resumo;
     
     document.getElementById('btnExportarDetalhes').onclick = function() {
+        const btnExport = document.getElementById('btnExportarDetalhes');
+        const originalText = btnExport.innerHTML;
+        // Feedback visual melhorado
+        btnExportarDetalhes.innerHTML = `<i class="fas fa-spinner fa-spin me-2"></i>Exportando ${registros.length} registros...`;
+        btnExportarDetalhes.disabled = true;
+    
         exportarDetalhes(tipo, registros);
+        setTimeout(() => {
+            btnExport.innerHTML = originalText;
+            btnExport.disabled = false;
+        }, 2000);
+    
     };
 }
 
@@ -1067,6 +1078,39 @@ function exportarDetalhes(tipo, registros) {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+
+    showExportSuccess(registros.length);
+}
+
+function showExportSuccess(totalRegistros) {
+    // Criar toast de sucesso
+    const toast = document.createElement('div');
+    toast.className = 'toast align-items-center text-white bg-success border-0 position-fixed';
+    toast.style.cssText = 'top: 20px; right: 20px; z-index: 9999;';
+    toast.setAttribute('role', 'alert');
+    toast.innerHTML = `
+        <div class="d-flex">
+            <div class="toast-body">
+                <i class="fas fa-check-circle me-2"></i>
+                Exportação concluída! ${totalRegistros} registros exportados.
+            </div>
+            <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+        </div>
+    `;
+    
+    document.body.appendChild(toast);
+    
+    // Mostrar toast
+    const bsToast = new bootstrap.Toast(toast, {
+        autohide: true,
+        delay: 4000
+    });
+    bsToast.show();
+    
+    // Remover toast após ser ocultado
+    toast.addEventListener('hidden.bs.toast', () => {
+        document.body.removeChild(toast);
+    });
 }
 
 function updateTimestamp() {
