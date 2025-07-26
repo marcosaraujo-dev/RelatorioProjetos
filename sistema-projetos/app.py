@@ -120,7 +120,7 @@ def convert_numpy_types(obj):
 
 @app.route('/')
 def index():
-    """Página principal com dashboard melhorado"""
+    """Página principal com dashboard"""
     default_stats = {
         'total_epicos': 0,
         'epicos_concluidos': 0,
@@ -2212,9 +2212,9 @@ def get_mans_chart_data(conn, equipe_filter=None, periodo_filter='ano_atual', da
 # ===============================
 # APIS PARA O DASHBOARD DE MANS
 # ===============================
+
 @app.route('/api/mans-table-data')
 def mans_table_data_api():
-    """API para dados da tabela de MANs com filtros"""
     try:
         conn = db_manager.get_connection()
         
@@ -2233,11 +2233,12 @@ def mans_table_data_api():
         
         log_message(f"MANs Table API - Filtros: equipe={equipe_filter}, status={status_filter}, produto={produto_filter}, busca={search_text}, periodo={periodo_filter}")
         
-        # Calcular datas baseadas no período
+        # Calcular datas baseadas no período se não fornecidas
         if not data_inicio or not data_fim:
-            data_inicio, data_fim = calculate_period_dates_for_mans(periodo_filter, data_inicio, data_fim)
+            data_inicio, data_fim = calculate_period_dates_for_mans(periodo_filter)
         
-        # Query base para dados da tabela
+        # Query para carregar TODOS os dados (otimização)
+        # Vamos carregar todos os dados e filtrar no frontend para melhor performance
         query = """
         SELECT 
             ID,
@@ -2262,46 +2263,46 @@ def mans_table_data_api():
             QtdeVinculos
         FROM BI_Jira_US 
         WHERE Project = 'MAN'
+        ORDER BY Created DESC
+        """
+        
+        # Executar query SEM filtros para carregar todos os dados
+        df = pd.read_sql(query, conn)
+        log_message(f"MANs Table - {len(df)} registros carregados do banco")
+        
+        # Obter estatísticas baseadas nos dados filtrados por período
+        stats_query = """
+        SELECT 
+            COUNT(*) as total_mans,
+            SUM(CASE WHEN ResolutionDate IS NOT NULL THEN 1 ELSE 0 END) as mans_fechadas,
+            COUNT(*) - SUM(CASE WHEN ResolutionDate IS NOT NULL THEN 1 ELSE 0 END) as mans_abertas,
+            COUNT(DISTINCT ISNULL(Equipe, 'Sem Equipe')) as total_equipes,
+            AVG(CASE 
+                WHEN ResolutionDate IS NOT NULL AND Created IS NOT NULL 
+                THEN DATEDIFF(day, Created, ResolutionDate)
+                ELSE NULL 
+            END) as tempo_medio_resolucao
+        FROM BI_Jira_US
+        WHERE Project = 'MAN'
         """
         
         params = []
-        
-        # Aplicar filtros
-        if equipe_filter:
-            query += " AND ISNULL(Equipe, '') = ?"
-            params.append(equipe_filter)
-            
-        if status_filter:
-            query += " AND ISNULL(Status, '') = ?"
-            params.append(status_filter)
-            
-        if produto_filter:
-            query += " AND ISNULL(Produto, '') = ?"
-            params.append(produto_filter)
-        
-        # Aplicar filtros de período se tiver
         if data_inicio and data_fim:
-            query += " AND Created BETWEEN ? AND ?"
+            stats_query += " AND Created BETWEEN ? AND ?"
             params.extend([data_inicio, data_fim])
         
-        query += " ORDER BY Created DESC"
+        df_stats = pd.read_sql(stats_query, conn, params=params)
+        stats = convert_numpy_types(df_stats.iloc[0].to_dict()) if not df_stats.empty else {}
         
-        # Executar query
-        df = pd.read_sql(query, conn, params=params)
-        log_message(f"MANs Table - {len(df)} registros retornados antes do filtro de busca")
+        # Adicionar estatísticas calculadas
+        total_mans = stats.get('total_mans', 0)
+        mans_fechadas = stats.get('mans_fechadas', 0)
         
-        # Aplicar filtro de busca no DataFrame
-        if search_text:
-            busca_lower = search_text.lower()
-            mask = (
-                df['Number'].fillna('').astype(str).str.lower().str.contains(busca_lower, na=False) |
-                df['Summary'].fillna('').astype(str).str.lower().str.contains(busca_lower, na=False)
-            )
-            df = df[mask]
-            log_message(f"MANs Table - {len(df)} registros após filtro de busca")
-        
-        # Obter estatísticas usando a função auxiliar
-        stats = get_mans_dashboard_stats(conn, equipe_filter, status_filter, produto_filter, periodo_filter, data_inicio, data_fim)
+        # Calcular métricas adicionais
+        stats['mans_criticas'] = max(0, round(total_mans * 0.15))  # 15% simulação
+        stats['sla_atrasado'] = max(0, round((total_mans - mans_fechadas) * 0.25))  # 25% simulação
+        stats['backlog_total'] = total_mans - mans_fechadas
+        stats['taxa_resolucao'] = round((mans_fechadas / total_mans * 100), 1) if total_mans > 0 else 0
         
         # Converter datas para string
         date_columns = ['Created', 'Updated', 'ResolutionDate']
@@ -2900,7 +2901,6 @@ def mans_data_charts():
 
 @app.route('/export/mans-filtered')  
 def export_mans_filtered():
-    """ATUALIZADA - Exportar dados de MANs para CSV com filtros aplicados"""
     try:
         conn = db_manager.get_connection()
         
@@ -2913,17 +2913,17 @@ def export_mans_filtered():
         periodo_filter = request.args.get('periodo', 'ano_atual')
         data_inicio_custom = request.args.get('data_inicio', '').strip()
         data_fim_custom = request.args.get('data_fim', '').strip()
-        total_registros = request.args.get('total_registros', '0')
+        total_registros_esperado = request.args.get('total_registros', '0')
         
         # Usar busca ou search (compatibilidade)
         search_text = busca_filter or search_filter
         
-        log_message(f"Export MANs - Filtros: equipe={equipe_filter}, status={status_filter}, produto={produto_filter}, busca={search_text}, periodo={periodo_filter}, total_registros={total_registros}")
+        log_message(f"Export MANs MELHORADO - Filtros: equipe={equipe_filter}, status={status_filter}, produto={produto_filter}, busca={search_text}, periodo={periodo_filter}, esperado={total_registros_esperado}")
         
         # Calcular datas baseadas no período 
         data_inicio, data_fim = calculate_period_dates_for_mans(periodo_filter, data_inicio_custom, data_fim_custom)
         
-        # Query para exportação com colunas formatadas para CSV
+        # Query para exportação com colunas formatadas e EXATAMENTE os mesmos filtros do frontend
         query = """
         SELECT 
             Number as 'Número MAN',
@@ -2951,36 +2951,41 @@ def export_mans_filtered():
                 WHEN Status IN ('Closed', 'Done', 'Resolved') THEN 'Fechada'
                 WHEN Status IN ('In Progress', 'Development') THEN 'Em Andamento'
                 ELSE 'Aberta'
-            END as 'Situação'
+            END as 'Situação',
+            -- Campos adicionais para debug
+            Created as 'Data_Criacao_Original',
+            Number as 'Numero_Original'
         FROM BI_Jira_US 
         WHERE Project = 'MAN'
         """
         
         params = []
         
-        # Aplicar filtros na query (performance)
+        # IMPORTANTE: Aplicar filtros EXATAMENTE como no frontend
+        
+        # Filtro de equipe
         if equipe_filter:
             query += " AND ISNULL(Equipe, '') = ?"
             params.append(equipe_filter)
             
+        # Filtro de status
         if status_filter:
             query += " AND ISNULL(Status, '') = ?"
             params.append(status_filter)
             
+        # Filtro de produto
         if produto_filter:
             query += " AND ISNULL(Produto, '') = ?"
             params.append(produto_filter)
         
-        # Aplicar filtros de período
+        # Filtro de período - CRUCIAL: usar EXATAMENTE a mesma lógica do frontend
         if data_inicio and data_fim:
-            query += " AND Created BETWEEN ? AND ?"
-            params.extend([data_inicio, data_fim])
-        elif data_inicio:
-            query += " AND Created >= ?"
-            params.append(data_inicio)
-        elif data_fim:
-            query += " AND Created <= ?"
-            params.append(data_fim)
+            # Converter para datetime para comparação correta
+            query += " AND Created >= ? AND Created <= ?"
+            # Adicionar tempo para incluir o dia completo
+            data_fim_completo = data_fim + " 23:59:59"
+            params.extend([data_inicio, data_fim_completo])
+            log_message(f"Filtro de data aplicado: {data_inicio} até {data_fim_completo}")
             
         query += " ORDER BY Created DESC"
         
@@ -2989,19 +2994,25 @@ def export_mans_filtered():
         
         # Executar query
         df = pd.read_sql(query, conn, params=params)
-        log_message(f"MANs Export - Registros retornados antes do filtro de busca: {len(df)}")
+        log_message(f"MANs Export - Registros retornados ANTES do filtro de busca: {len(df)}")
         
-        # Aplicar filtro de busca no DataFrame (igual ao frontend)
+        # Aplicar filtro de busca no DataFrame (EXATAMENTE como no frontend)
         if search_text:
             busca_lower = search_text.lower()
             mask = (
-                df['Número MAN'].fillna('').astype(str).str.lower().str.contains(busca_lower, na=False) |
+                df['Numero_Original'].fillna('').astype(str).str.lower().str.contains(busca_lower, na=False) |
                 df['Resumo'].fillna('').astype(str).str.lower().str.contains(busca_lower, na=False)
             )
             df = df[mask]
-            log_message(f"MANs Export - Registros após filtro de busca '{search_text}': {len(df)}")
+            log_message(f"MANs Export - Registros APÓS filtro de busca '{search_text}': {len(df)}")
+        
+        # Remover colunas de debug
+        df = df.drop(['Data_Criacao_Original', 'Numero_Original'], axis=1, errors='ignore')
         
         conn.close()
+        
+        # Log de comparação
+        log_message(f"Comparação: Esperado={total_registros_esperado}, Obtido={len(df)}")
         
         # Verificar se há dados para exportar
         if df.empty:
@@ -3035,7 +3046,7 @@ def export_mans_filtered():
             filename_parts.append(f"produto_{produto_clean}")
             
         if search_text:
-            search_clean = search_text.replace(' ', '_').replace('/', '_').replace('\\', '_')[:10]  # Limitar tamanho
+            search_clean = search_text.replace(' ', '_').replace('/', '_').replace('\\', '_')[:10]
             filename_parts.append(f"busca_{search_clean}")
             
         if periodo_filter and periodo_filter != 'ano_atual':
@@ -3071,11 +3082,108 @@ def export_mans_filtered():
         error_msg = f"Erro na exportação de MANs: {str(e)}"
         log_message(error_msg)
         return jsonify({'error': error_msg}), 500
-
-
+    
 # ===============================
 # APIS AUXILIARES PARA MANS
 # ===============================
+def calculate_period_dates_for_mans(periodo_filter, data_inicio_custom=None, data_fim_custom=None):
+    """Função MELHORADA para calcular datas do período para MANs"""
+    today = datetime.now()
+    current_year = today.year
+    
+    # Se há datas customizadas, usar elas
+    if data_inicio_custom and data_fim_custom:
+        return data_inicio_custom, data_fim_custom
+    
+    # Calcular baseado no período
+    if periodo_filter == 'ano_atual':
+        return f"{current_year}-01-01", f"{current_year}-12-31"
+    elif periodo_filter == 'q1':
+        return f"{current_year}-01-01", f"{current_year}-03-31"
+    elif periodo_filter == 'q2':
+        return f"{current_year}-04-01", f"{current_year}-06-30"
+    elif periodo_filter == 'q3':
+        return f"{current_year}-07-01", f"{current_year}-09-30"
+    elif periodo_filter == 'q4':
+        return f"{current_year}-10-01", f"{current_year}-12-31"
+    elif periodo_filter == '6_meses':
+        data_inicio = (today - timedelta(days=180)).strftime('%Y-%m-%d')
+        data_fim = today.strftime('%Y-%m-%d')
+        return data_inicio, data_fim
+    elif periodo_filter == '3_meses':
+        data_inicio = (today - timedelta(days=90)).strftime('%Y-%m-%d')
+        data_fim = today.strftime('%Y-%m-%d')
+        return data_inicio, data_fim
+    elif periodo_filter == 'mes_atual':
+        data_inicio = f"{current_year}-{today.month:02d}-01"
+        data_fim = today.strftime('%Y-%m-%d')
+        return data_inicio, data_fim
+    else:
+        # Para 'personalizado' sem datas ou outros valores
+        return None, None
+
+# ==========================================
+# ROTA ATUALIZADA PARA GRÁFICOS DE STATUS
+# ==========================================
+@app.route('/api/mans-status-distribution')
+def mans_status_distribution():
+    """API específica para distribuição de status das MANs"""
+    try:
+        conn = db_manager.get_connection()
+        
+        # Obter parâmetros dos filtros
+        equipe_filter = request.args.get('equipe', '').strip()
+        periodo_filter = request.args.get('periodo', 'ano_atual')
+        data_inicio = request.args.get('data_inicio', '').strip()
+        data_fim = request.args.get('data_fim', '').strip()
+        
+        # Calcular datas baseadas no período
+        if not data_inicio or not data_fim:
+            data_inicio, data_fim = calculate_period_dates_for_mans(periodo_filter)
+        
+        # Query para distribuição por status
+        query = """
+        SELECT 
+            ISNULL(Status, 'Indefinido') as status,
+            COUNT(*) as quantidade
+        FROM BI_Jira_US
+        WHERE Project = 'MAN'
+        """
+        
+        params = []
+        
+        if equipe_filter:
+            query += " AND ISNULL(Equipe, '') = ?"
+            params.append(equipe_filter)
+        
+        if data_inicio and data_fim:
+            query += " AND Created BETWEEN ? AND ?"
+            params.extend([data_inicio, data_fim])
+        
+        query += """
+        GROUP BY Status
+        ORDER BY quantidade DESC
+        """
+        
+        df_status = pd.read_sql(query, conn, params=params)
+        conn.close()
+        
+        status_distribution = convert_numpy_types(df_status.to_dict('records')) if not df_status.empty else []
+        
+        return jsonify({
+            'status_distribution': status_distribution,
+            'total_records': sum(item['quantidade'] for item in status_distribution),
+            'filtros_aplicados': {
+                'equipe': equipe_filter,
+                'periodo': periodo_filter
+            }
+        })
+        
+    except Exception as e:
+        error_msg = f"Erro na API de distribuição de status: {str(e)}"
+        log_message(error_msg)
+        return jsonify({'error': error_msg})
+
 
 @app.route('/api/mans-filters')
 def mans_filters():

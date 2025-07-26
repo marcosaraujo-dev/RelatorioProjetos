@@ -164,20 +164,7 @@
                                 <option value="">Todas as Equipes</option>
                             </select>
                         </div>
-                        <div class="col-md-3">
-                            <label for="filterStatusMans" class="form-label small fw-bold text-dark">
-                                <i class="fas fa-flag me-1 text-success"></i>Status
-                            </label>
-                            <select id="filterStatusMans" class="form-select form-select-sm modern-select">
-                                <option value="">Todos os Status</option>
-                                <option value="Closed">Fechado</option>
-                                <option value="Done">Concluído</option>
-                                <option value="Resolved">Resolvido</option>
-                                <option value="In Progress">Em Progresso</option>
-                                <option value="Open">Aberto</option>
-                                <option value="To Do">A Fazer</option>
-                            </select>
-                        </div>
+                        
                         <div class="col-md-3">
                             <label for="filterProdutoMans" class="form-label small fw-bold text-dark">
                                 <i class="fas fa-box me-1 text-info"></i>Produto
@@ -457,6 +444,7 @@
 </div>
 
 <!-- Gráficos de MANs -->
+<!-- Gráficos de MANs -->
 <div id="chartsContainerMans" style="display: none;" class="fade-in">
     <div class="row mb-4">
         <!-- Gráfico de Backlog por Equipe -->
@@ -496,9 +484,10 @@
         </div>
     </div>
 
-    <!-- Gráfico de Performance por Equipe -->
+    <!-- Segunda linha de gráficos -->
     <div class="row mb-4">
-        <div class="col-xl-8 col-lg-12 mb-4">
+        <!-- Gráfico de Performance por Equipe -->
+        <div class="col-xl-6 col-lg-12 mb-4">
             <div class="mans-chart-container">
                 <h6 class="text-primary fw-bold mb-3">
                     <i class="fas fa-chart-area me-2"></i>Performance de Resolução por Equipe
@@ -515,11 +504,11 @@
             </div>
         </div>
 
-        <!-- Gráfico de Distribuição por Status -->
-        <div class="col-xl-4 col-lg-12 mb-4">
+        <!-- NOVO: Gráfico de Distribuição por Status REAL -->
+        <div class="col-xl-6 col-lg-12 mb-4">
             <div class="mans-chart-container">
                 <h6 class="text-primary fw-bold mb-3">
-                    <i class="fas fa-chart-pie me-2"></i>Distribuição por Status
+                    <i class="fas fa-chart-pie me-2"></i>Distribuição por Status                   
                 </h6>
                 <div id="mansStatusChart" style="height: 450px;">
                     <div class="text-center text-muted p-4">
@@ -534,15 +523,18 @@
         </div>
     </div>
 
-    <!-- Gráfico Detalhado por Equipe e Mês -->
+    <!-- MELHORADO: Gráfico Detalhado por Equipe e Mês -->
     <div class="row mb-4">
         <div class="col-12">
             <div class="mans-chart-container">
                 <h6 class="text-primary fw-bold mb-3">
                     <i class="fas fa-chart-area me-2"></i>Evolução Detalhada por Equipe e Mês
+                    <span class="badge bg-info ms-2">ATUALIZADO</span>
                 </h6>
+                
+                <!-- Controles melhorados -->
                 <div class="row mb-3">
-                    <div class="col-md-6">
+                    <div class="col-md-4">
                         <label for="tipoVisualizacaoMans" class="form-label small fw-bold">
                             <i class="fas fa-eye me-1"></i>Tipo de Visualização:
                         </label>
@@ -552,13 +544,28 @@
                             <option value="linha">Linhas</option>
                         </select>
                     </div>
-                    <div class="col-md-6">
-                        <small class="text-muted">
-                            <i class="fas fa-info-circle me-1"></i>
-                            Use o filtro de equipe no topo da página para filtrar dados específicos
-                        </small>
+                    <div class="col-md-8">
+                        <div class="alert alert-info py-2 mb-0">
+                            <small>
+                                <i class="fas fa-info-circle me-1"></i>
+                                <strong>Filtros Aplicados:</strong> Este gráfico agora respeita automaticamente os filtros de 
+                                <span class="fw-bold">Equipe</span> e <span class="fw-bold">Período</span> selecionados acima.
+                                <br>
+                                <span class="text-muted">Dados atualizados em tempo real conforme os filtros são modificados.</span>
+                            </small>
+                        </div>
                     </div>
                 </div>
+                
+                <!-- Indicadores de filtros ativos -->
+                <div class="row mb-3">
+                    <div class="col-12">
+                        <div id="filtrosAtivosIndicador" class="d-flex flex-wrap gap-2">
+                            <!-- Será preenchido dinamicamente pelo JavaScript -->
+                        </div>
+                    </div>
+                </div>
+                
                 <div id="mansDetalhadoChart" style="height: 500px;">
                     <div class="text-center text-muted p-4">
                         <div class="spinner-border text-primary mb-3" role="status">
@@ -572,6 +579,7 @@
         </div>
     </div>
 </div>
+
 
 <!-- Legenda e Informações Detalhadas -->
 <div class="row mt-4 fade-in">
@@ -818,10 +826,17 @@
                                                 <p><strong>Objetivo:</strong> Visualizar proporção de MANs em cada status.</p>
                                                 <p><strong>Visualização:</strong> Gráfico de pizza/rosca com cores:</p>
                                                 <ul>
-                                                    <li><span class="badge bg-success">Verde</span>: Closed/Done/Resolved</li>
-                                                    <li><span class="badge bg-primary">Azul</span>: In Progress</li>
-                                                    <li><span class="badge bg-warning">Amarelo</span>: Open/To Do</li>
-                                                    <li><span class="badge bg-secondary">Cinza</span>: Outros status</li>
+                                                    
+                                                    <li><span class="badge bg-warning text-dark">Amarelo</span>: AG. ANÁLISE</li>
+                                                    <li><span class="badge bg-info text-dark">Azul</span>: AG. DESENVOLVIMENTO, Em Desenvolvimento</li>
+                                                    <li><span class="badge" style="background-color: #6f42c1; color: #fff;">Roxo</span>: AG. TESTES</li>
+                                                    <li><span class="badge" style="background-color: #20c997; color: #fff;">Verde Água</span>: ANÁLISE CONCLUÍDA</li>
+                                                    <li><span class="badge bg-primary">Azul Escuro</span>: Em Análise</li>
+                                                    <li><span class="badge" style="background-color: #6610f2; color: #fff;">Roxo Escuro</span>: EM TESTES</li>
+                                                    <li><span class="badge" style="background-color: #fd7e14; color: #fff;">Laranja</span>: AG. VALIDAÇÃO</li>
+                                                    <li><span class="badge bg-secondary">Cinza</span>: Pre-release</li>
+                                                    <li><span class="badge bg-success">Verde</span>: Closed, Done</li>
+                                                    <li><span class="badge bg-danger">Vermelho</span>: Rejeitado</li>
                                                 </ul>
                                                 <p><strong>Interpretação:</strong></p>
                                                 <ul>
@@ -1038,9 +1053,11 @@
 {% block scripts %}
 <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
 <script>
+
 let mansData = [];
 let allMansData = [];
 let filteredMansData = [];
+let originalMansStats = {}
 
 let mansFilters = {
     equipe: "",
@@ -1095,25 +1112,17 @@ function loadMansData() {
         
         document.getElementById('loadingMans').style.display = 'none';
         
-        // Verificar se há erros em qualquer uma das respostas
+        // Verificar se há erros
         if ((tableResponse && tableResponse.error) || (chartResponse && chartResponse.error)) {
             const error = tableResponse?.error || chartResponse?.error || 'Erro desconhecido';
             showErrorMans(error);
             return;
         }
         
-        // Verificar se as respostas são válidas
-        if (!tableResponse || !chartResponse) {
-            showErrorMans('Respostas inválidas do servidor');
-            return;
-        }
-        
-        console.log('Dados da tabela:', tableResponse.mans?.length || 0, 'MANs');
-        console.log('Dados dos gráficos:', chartResponse.graficos || 'Nenhum gráfico');
-        
-        // Dados da tabela
+        // Armazenar dados originais
         allMansData = tableResponse.mans || [];
         mansData = allMansData;
+        originalMansStats = tableResponse.stats || {};
         
         // Dados dos gráficos
         mansChartData = chartResponse.graficos || {
@@ -1121,13 +1130,7 @@ function loadMansData() {
             tendencia: { meses: [], abertas: [], fechadas: [] }
         };
         
-        // Atualizar cards com estatísticas
-        updateMansCards(tableResponse.stats || {});
-        
-        // Criar gráficos
-        createMansCharts();
-        
-        // Aplicar filtros iniciais
+        // Aplicar filtros iniciais (sem recarregar API)
         applyFrontendFiltersMans();
         populateFiltersMans();
         
@@ -1141,6 +1144,7 @@ function loadMansData() {
         showErrorMans('Erro ao carregar dados: ' + error.message);
     });
 }
+
 
 function updateMansCards(stats) {
     console.log('Atualizando cards de MANs:', stats);
@@ -1546,7 +1550,7 @@ function createMansStatusChart() {
     chartElement.innerHTML = '';
     
     // Simular dados de distribuição por status baseado nos dados disponíveis
-    // Em uma implementação real, estes dados viriam do backend
+
     const statusData = {
         'Closed': Math.round((mansData.length || 0) * 0.4),
         'In Progress': Math.round((mansData.length || 0) * 0.25),
@@ -1615,6 +1619,9 @@ function createMansStatusChart() {
     });
 }
 
+// ==========================================
+// GRÁFICO DETALHADO
+// ==========================================
 function createMansDetalhadoChart() {
     const chartElement = document.getElementById('mansDetalhadoChart');
     if (!chartElement) {
@@ -1624,65 +1631,77 @@ function createMansDetalhadoChart() {
     
     console.log('Criando gráfico detalhado de MANs...');
     
-    // Usar o filtro de equipe existente da tela principal
-    const equipeFiltro = mansFilters.equipe || '';
-    const tipoVisualizacao = document.getElementById('tipoVisualizacaoMans')?.value || 'agrupado';
-    
     chartElement.innerHTML = '';
     
-    const dadosDetalhados = mansChartData.equipe_mes_detalhado || [];
-    console.log('Dados detalhados disponíveis:', dadosDetalhados.length);
-    
-    if (dadosDetalhados.length === 0) {
+    if (filteredMansData.length === 0) {
         chartElement.innerHTML = `
             <div class="text-center text-muted p-4">
                 <i class="fas fa-chart-area fa-3x mb-3"></i>
-                <p>Nenhum dado detalhado disponível para o período selecionado</p>
-                <small class="text-muted">Filtros aplicados: ${JSON.stringify(mansFilters)}</small>
+                <p>Nenhum dado disponível para os filtros selecionados</p>
+                <small class="text-muted">Ajuste os filtros para visualizar dados</small>
             </div>
         `;
         return;
     }
     
-    // Filtrar por equipe se selecionada no filtro principal
-    let dadosFiltrados = dadosDetalhados;
-    if (equipeFiltro) {
-        dadosFiltrados = dadosDetalhados.filter(item => item.Equipe === equipeFiltro);
-        console.log(`Filtrando por equipe '${equipeFiltro}':`, dadosFiltrados.length, 'registros');
-    }
+    // Agrupar dados filtrados por equipe e mês
+    const dadosPorEquipeMes = {};
     
-    if (dadosFiltrados.length === 0) {
+    filteredMansData.forEach(item => {
+        const equipe = item.Equipe || 'Sem Equipe';
+        const dataCreated = new Date(item.Created);
+        const mesAno = `${dataCreated.getFullYear()}-${(dataCreated.getMonth() + 1).toString().padStart(2, '0')}`;
+        
+        if (!dadosPorEquipeMes[equipe]) {
+            dadosPorEquipeMes[equipe] = {};
+        }
+        
+        if (!dadosPorEquipeMes[equipe][mesAno]) {
+            dadosPorEquipeMes[equipe][mesAno] = {
+                abertas: 0,
+                fechadas: 0
+            };
+        }
+        
+        // Contar abertas
+        dadosPorEquipeMes[equipe][mesAno].abertas++;
+        
+        // Contar fechadas (se foi resolvida)
+        if (item.ResolutionDate && item.ResolutionDate !== '') {
+            dadosPorEquipeMes[equipe][mesAno].fechadas++;
+        }
+    });
+    
+    // Obter todas as equipes e meses
+    const equipes = Object.keys(dadosPorEquipeMes).sort();
+    const todosMeses = new Set();
+    
+    equipes.forEach(equipe => {
+        Object.keys(dadosPorEquipeMes[equipe]).forEach(mes => {
+            todosMeses.add(mes);
+        });
+    });
+    
+    const meses = Array.from(todosMeses).sort();
+    
+    if (meses.length === 0) {
         chartElement.innerHTML = `
             <div class="text-center text-muted p-4">
-                <i class="fas fa-filter fa-3x mb-3"></i>
-                <p>Nenhum dado encontrado para a equipe selecionada: <strong>${equipeFiltro}</strong></p>
-                <small class="text-muted">Limpe o filtro de equipe para ver todas as equipes</small>
+                <i class="fas fa-calendar fa-3x mb-3"></i>
+                <p>Nenhum dado temporal disponível</p>
             </div>
         `;
         return;
     }
     
-    // Agrupar dados por mês
-    const dadosPorMes = {};
-    dadosFiltrados.forEach(item => {
-        const mes = item.MesAno;
-        if (!dadosPorMes[mes]) {
-            dadosPorMes[mes] = {};
-        }
-        dadosPorMes[mes][item.Equipe] = {
-            abertas: item.TotalAbertas || 0,
-            fechadas: item.TotalFechadas || item.FechadasNoMesmo || 0
-        };
-    });
-    
-    const meses = Object.keys(dadosPorMes).sort();
-    const equipes = [...new Set(dadosFiltrados.map(item => item.Equipe))].sort();
-    
-    console.log('Processando dados:', {
+    console.log('Processando dados detalhados:', {
         meses: meses.length,
         equipes: equipes.length,
-        tipoVisualizacao
+        periodoFiltro: mansFilters.periodo,
+        equipeFiltro: mansFilters.equipe
     });
+    
+    const tipoVisualizacao = document.getElementById('tipoVisualizacaoMans')?.value || 'agrupado';
     
     let data = [];
     
@@ -1692,8 +1711,8 @@ function createMansDetalhadoChart() {
             const cores = ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd', '#8c564b'];
             const corBase = cores[index % cores.length];
             
-            const abertasPorMes = meses.map(mes => dadosPorMes[mes][equipe]?.abertas || 0);
-            const fechadasPorMes = meses.map(mes => dadosPorMes[mes][equipe]?.fechadas || 0);
+            const abertasPorMes = meses.map(mes => dadosPorEquipeMes[equipe][mes]?.abertas || 0);
+            const fechadasPorMes = meses.map(mes => dadosPorEquipeMes[equipe][mes]?.fechadas || 0);
             
             data.push({
                 x: meses,
@@ -1723,8 +1742,8 @@ function createMansDetalhadoChart() {
             const cores = ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd', '#8c564b'];
             const corBase = cores[index % cores.length];
             
-            const abertasPorMes = meses.map(mes => dadosPorMes[mes][equipe]?.abertas || 0);
-            const fechadasPorMes = meses.map(mes => dadosPorMes[mes][equipe]?.fechadas || 0);
+            const abertasPorMes = meses.map(mes => dadosPorEquipeMes[equipe][mes]?.abertas || 0);
+            const fechadasPorMes = meses.map(mes => dadosPorEquipeMes[equipe][mes]?.fechadas || 0);
             
             data.push({
                 x: meses,
@@ -1746,9 +1765,12 @@ function createMansDetalhadoChart() {
         });
     }
     
+    const filtroTexto = mansFilters.equipe ? `- ${mansFilters.equipe}` : '- Todas as Equipes';
+    const periodoTexto = getPeriodoDescricao(mansFilters.periodo);
+    
     const layout = {
         title: {
-            text: `Evolução Detalhada ${equipeFiltro ? `- ${equipeFiltro}` : '- Todas as Equipes'} (${mansFilters.periodo || 'Período Atual'})`,
+            text: `Evolução Detalhada ${filtroTexto} (${periodoTexto})`,
             font: { size: 14 }
         },
         barmode: tipoVisualizacao === 'empilhado' ? 'stack' : 'group',
@@ -1792,7 +1814,7 @@ function createMansDetalhadoChart() {
         `;
     });
 }
-    
+
 
 function populateFiltersMans() {
     // Preencher filtro de equipes
@@ -1826,6 +1848,86 @@ function populateFiltersMans() {
     });
 }
 
+// ==========================================
+// MELHORIAS NO DASHBOARD DE MANS
+// ==========================================
+
+// ==========================================
+// FUNÇÃO DE CARREGAMENTO OTIMIZADA
+// ==========================================
+function loadMansData() {
+    console.log('Carregando dados do dashboard de MANs...');
+    
+    // Usar período padrão (ano atual) na primeira carga
+    const currentYear = new Date().getFullYear();
+    const params = new URLSearchParams({
+        periodo: 'ano_atual',
+        data_inicio: `${currentYear}-01-01`,
+        data_fim: `${currentYear}-12-31`
+    });
+    
+    console.log('Parâmetros da requisição:', params.toString());
+    
+    // Carregar dados da tabela E dados dos gráficos
+    Promise.all([
+        fetch(`/api/mans-table-data?${params}`)
+            .then(response => {
+                console.log('Resposta mans-table-data status:', response.status);
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                return response.json();
+            }),
+        fetch(`/api/mans-data-charts?${params}`)
+            .then(response => {
+                console.log('Resposta mans-data-charts status:', response.status);
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                return response.json();
+            })
+    ])
+    .then(([tableResponse, chartResponse]) => {
+        console.log('Ambas as respostas recebidas:', {tableResponse, chartResponse});
+        
+        document.getElementById('loadingMans').style.display = 'none';
+        
+        // Verificar se há erros
+        if ((tableResponse && tableResponse.error) || (chartResponse && chartResponse.error)) {
+            const error = tableResponse?.error || chartResponse?.error || 'Erro desconhecido';
+            showErrorMans(error);
+            return;
+        }
+        
+        // Armazenar dados originais
+        allMansData = tableResponse.mans || [];
+        mansData = allMansData;
+        originalMansStats = tableResponse.stats || {};
+        
+        // Dados dos gráficos
+        mansChartData = chartResponse.graficos || {
+            backlog: { equipes: [], abertas: [], fechadas: [], saldo: [] },
+            tendencia: { meses: [], abertas: [], fechadas: [] }
+        };
+        
+        // Aplicar filtros iniciais (sem recarregar API)
+        applyFrontendFiltersMans();
+        populateFiltersMans();
+        
+        // Mostrar containers
+        document.getElementById('cardsContainerMans').style.display = 'block';
+        document.getElementById('chartsContainerMans').style.display = 'block';
+    })
+    .catch(error => {
+        console.error('Erro completo:', error);
+        document.getElementById('loadingMans').style.display = 'none';
+        showErrorMans('Erro ao carregar dados: ' + error.message);
+    });
+}
+
+// ==========================================
+// APLICAÇÃO DE FILTROS OTIMIZADA
+// ==========================================
 function applyFiltersMans() {
     // Capturar todos os valores dos filtros
     mansFilters.equipe = document.getElementById('filterEquipeMans').value;
@@ -1888,16 +1990,8 @@ function applyFiltersMans() {
 
     console.log('Filtros aplicados:', mansFilters);
 
-    // Desabilitar campos durante processamento
-    disableFiltersMans(true);
-
-    // Se for um período que requer nova consulta ao backend, recarregar dados
-    if (mansFilters.periodo !== 'ano_atual' || mansFilters.data_inicio || mansFilters.data_fim) {
-        reloadDataWithFiltersMans();
-    } else {
-        // Aplicar filtros apenas no frontend (dados já carregados)
-        applyFrontendFiltersMans();
-    }
+    // Aplicar filtros apenas no frontend (dados já carregados)
+    applyFrontendFiltersMans();
 }
 
 function reloadDataWithFiltersMans() {
@@ -1995,8 +2089,11 @@ function reloadDataWithFiltersMans() {
 }
 
 function applyFrontendFiltersMans() {
-    // Aplicar filtros básicos nos dados já carregados
-    filteredMansData = mansData.filter(item => {
+    console.log('Aplicando filtros no frontend...');
+    
+    // Aplicar filtros nos dados já carregados
+    filteredMansData = allMansData.filter(item => {
+        // Filtro básico de texto e seleções
         let matches = (!mansFilters.equipe || item.Equipe === mansFilters.equipe) &&
                      (!mansFilters.status || item.Status === mansFilters.status) &&
                      (!mansFilters.produto || item.Produto === mansFilters.produto) &&
@@ -2004,11 +2101,184 @@ function applyFrontendFiltersMans() {
                       (item.Number && item.Number.toLowerCase().includes(mansFilters.search)) ||
                       (item.Summary && item.Summary.toLowerCase().includes(mansFilters.search)));
         
+        // Filtro de período baseado na data de criação
+        if (matches && mansFilters.data_inicio && mansFilters.data_fim) {
+            const itemDate = new Date(item.Created);
+            const startDate = new Date(mansFilters.data_inicio);
+            const endDate = new Date(mansFilters.data_fim);
+            
+            // Ajustar endDate para incluir o dia completo
+            endDate.setHours(23, 59, 59, 999);
+            
+            matches = itemDate >= startDate && itemDate <= endDate;
+        }
+        
         return matches;
     });
 
+    console.log(`Filtros aplicados: ${filteredMansData.length} de ${allMansData.length} registros`);
+
+    // Atualizar estatísticas baseadas nos dados filtrados
+    updateMansCardsFromFilteredData();
+    
+    // Atualizar gráficos com dados filtrados
+    updateChartsFromFilteredData();
+    
+    // Atualizar contadores e textos
     updateTotalRegistrosMans();
     updatePeriodoTextoMans();
+}
+
+// ==========================================
+// ATUALIZAR CARDS COM DADOS FILTRADOS
+// ==========================================
+function updateMansCardsFromFilteredData() {
+    console.log('Atualizando cards com dados filtrados...');
+    
+    const totalMans = filteredMansData.length;
+    const mansResolvidas = filteredMansData.filter(item => item.ResolutionDate && item.ResolutionDate !== '').length;
+    const mansPendentes = totalMans - mansResolvidas;
+    const equipes = [...new Set(filteredMansData.map(item => item.Equipe).filter(e => e))].length;
+    
+    // Calcular tempo médio de resolução
+    const mansComTempo = filteredMansData.filter(item => item.ResolutionDate && item.Created);
+    let tempoMedio = 0;
+    if (mansComTempo.length > 0) {
+        const somaTempos = mansComTempo.reduce((sum, item) => {
+            const created = new Date(item.Created);
+            const resolved = new Date(item.ResolutionDate);
+            const diffDays = (resolved - created) / (1000 * 60 * 60 * 24);
+            return sum + diffDays;
+        }, 0);
+        tempoMedio = somaTempos / mansComTempo.length;
+    }
+    
+    // Atualizar cards
+    const stats = {
+        total_mans: totalMans,
+        mans_fechadas: mansResolvidas,
+        mans_abertas: mansPendentes,
+        total_equipes: equipes,
+        tempo_medio_resolucao: tempoMedio,
+        mans_criticas: Math.round(totalMans * 0.15), // Simulação
+        sla_atrasado: Math.round(mansPendentes * 0.25), // Simulação
+        backlog_total: mansPendentes,
+        taxa_resolucao: totalMans > 0 ? ((mansResolvidas / totalMans) * 100) : 0
+    };
+    
+    updateMansCards(stats);
+}
+
+// ==========================================
+// ATUALIZAR GRÁFICOS COM DADOS FILTRADOS
+// ==========================================
+function updateChartsFromFilteredData() {
+    console.log('Atualizando gráficos com dados filtrados...');
+    
+    // Criar gráficos atualizados
+    createMansCharts();
+    
+    // Criar gráfico de status 
+    createMansStatusChartFromData();
+    
+    // Criar gráfico detalhado respeitando filtros (CORRIGIDO)
+    createMansDetalhadoChart();
+}
+
+// ==========================================
+// NOVO: GRÁFICO DE STATUS REAL
+// ==========================================
+function createMansStatusChartFromData() {
+    const chartElement = document.getElementById('mansStatusChart');
+    if (!chartElement) {
+        console.error('Elemento mansStatusChart não encontrado');
+        return;
+    }
+    
+    chartElement.innerHTML = '';
+    
+    if (filteredMansData.length === 0) {
+        chartElement.innerHTML = `
+            <div class="text-center text-muted p-4">
+                <i class="fas fa-chart-pie fa-3x mb-3"></i>
+                <p>Nenhum dado de status disponível para os filtros selecionados</p>
+            </div>
+        `;
+        return;
+    }
+    
+    // Contar por status real dos dados filtrados
+    const statusCount = {};
+    filteredMansData.forEach(item => {
+        const status = item.Status || 'Indefinido';
+        statusCount[status] = (statusCount[status] || 0) + 1;
+    });
+    
+    const labels = Object.keys(statusCount);
+    const values = Object.values(statusCount);
+    
+    const statusColors = {
+        'closed': '#28a745',             // Verde - Concluído
+        'rejeitado': '#dc3545',          // Vermelho - Rejeitado
+        'ag. análise': '#ffc107',        // Amarelo - Aguardando Análise
+        'ag. desenvolvimento': '#17a2b8',// Azul - Aguardando Desenvolvimento
+        'ag. testes': '#6f42c1',         // Roxo - Aguardando Testes
+        'análise concluída': '#20c997',  // Verde Água - Análise Concluída
+        'em análise': '#007bff',         // Azul - Em Análise
+        'em testes': '#6610f2',          // Roxo Escuro - Em Testes
+        'ag. validação': '#fd7e14',      // Laranja - Aguardando Validação
+        'em desenvolvimento': '#17a2b8', // Azul - Em Desenvolvimento
+        'pre-release': '#6c757d',        // Cinza - Pre-release
+        'done': '#28a745'                // Verde - Feito
+    };
+    // Cores baseadas no tipo de status
+    const colors = labels.map(status => {
+        const key = status.trim().toLowerCase(); // Normaliza para comparar corretamente
+        return statusColors[key] || '#adb5bd';   // Cinza claro para status não mapeados
+    });
+    
+    const data = [{
+        labels: labels,
+        values: values,
+        type: 'pie',
+        hole: 0.4,
+        marker: { colors: colors },
+        textinfo: 'label+percent',
+        textposition: 'auto',
+        hovertemplate: '<b>%{label}</b><br>Quantidade: %{value}<br>Percentual: %{percent}<extra></extra>'
+    }];
+    
+    const layout = {
+        title: {
+            text: `Distribuição por Status (${filteredMansData.length} MANs)`,
+            font: { size: 14 }
+        },
+        margin: { t: 50, b: 20, l: 20, r: 20 },
+        plot_bgcolor: 'rgba(0,0,0,0)',
+        paper_bgcolor: 'rgba(0,0,0,0)',
+        font: { family: 'Arial, sans-serif', size: 12 },
+        showlegend: true,
+        legend: {
+            orientation: 'v',
+            x: 1.05,
+            y: 0.5
+        }
+    };
+    
+    Plotly.newPlot('mansStatusChart', data, layout, {
+        responsive: true,
+        displayModeBar: false
+    }).then(() => {
+        console.log('Gráfico de status atualizado com dados filtrados');
+    }).catch(error => {
+        console.error('Erro ao criar gráfico de status:', error);
+        chartElement.innerHTML = `
+            <div class="text-center text-danger p-4">
+                <i class="fas fa-exclamation-triangle fa-2x mb-3"></i>
+                <p>Erro ao carregar gráfico de status</p>
+            </div>
+        `;
+    });
 }
 
 function disableFiltersMans(disable) {
@@ -2071,73 +2341,129 @@ function clearFiltersMans() {
     applyFiltersMans();
 }
 
+// ==========================================
+// FUNÇÃO DE EXPORTAÇÃO
+// ==========================================
+
 function exportFilteredCSVMans() {
-    console.log('Exportando MANs com filtros:', mansFilters);
+    console.log('Exportando MANs com filtros (dados locais):', filteredMansData.length);
+    
+    if (filteredMansData.length === 0) {
+        alert('Nenhum dado disponível para exportar com os filtros aplicados.');
+        return;
+    }
     
     const params = new URLSearchParams();
     
-    // Filtros básicos
-    if (mansFilters.equipe) {
-        params.append('equipe', mansFilters.equipe);
-    }
+    if (mansFilters.equipe) params.append('equipe', mansFilters.equipe);
+    if (mansFilters.status) params.append('status', mansFilters.status);
+    if (mansFilters.produto) params.append('produto', mansFilters.produto);
+    if (mansFilters.search) params.append('busca', mansFilters.search);
+    if (mansFilters.periodo) params.append('periodo', mansFilters.periodo);
     
-    if (mansFilters.status) {
-        params.append('status', mansFilters.status);
-    }
+    if (mansFilters.data_inicio) params.append('data_inicio', mansFilters.data_inicio);
+    if (mansFilters.data_fim) params.append('data_fim', mansFilters.data_fim);
     
-    if (mansFilters.produto) {
-        params.append('produto', mansFilters.produto);
-    }
-    
-    if (mansFilters.search) {
-        params.append('busca', mansFilters.search);
-    }
-    
-    // Filtros de período
-    if (mansFilters.periodo) {
-        params.append('periodo', mansFilters.periodo);
-    }
-    
-    // Datas personalizadas (se aplicável)
-    if (mansFilters.periodo === 'personalizado') {
-        if (mansFilters.data_inicio) {
-            params.append('data_inicio', mansFilters.data_inicio);
-        }
-        if (mansFilters.data_fim) {
-            params.append('data_fim', mansFilters.data_fim);
-        }
-    }
-    
-    // Adicionar informação sobre quantos registros serão exportados
     params.append('total_registros', filteredMansData.length);
     
     const btnExport = document.getElementById('btnExportCSVMans');
     const originalText = btnExport.innerHTML;
     
-    // Feedback visual melhorado
     btnExport.innerHTML = `<i class="fas fa-spinner fa-spin me-2"></i>Exportando ${filteredMansData.length} MANs...`;
     btnExport.disabled = true;
     
     const url = `/export/mans-filtered?${params.toString()}`;
-    
     console.log('URL de exportação:', url);
     
-    // Criar iframe para download
-    const iframe = document.createElement('iframe');
-    iframe.style.display = 'none';
-    iframe.src = url;
-    document.body.appendChild(iframe);
-    
-    // Restaurar botão após delay
-    setTimeout(() => {
-        btnExport.innerHTML = originalText;
-        btnExport.disabled = false;
-        document.body.removeChild(iframe);
+    // MÉTODO 1: Tentar usando link temporário (mais confiável)
+    try {
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = ''; // Força download
+        link.style.display = 'none';
         
-        // Mostrar mensagem de sucesso
-        showExportSuccessMans(filteredMansData.length);
-    }, 2000);
+        // Adicionar ao DOM temporariamente
+        document.body.appendChild(link);
+        
+        // Disparar o clique
+        link.click();
+        
+        // Remover após um pequeno delay
+        setTimeout(() => {
+            document.body.removeChild(link);
+        }, 100);
+        
+        console.log('✅ Download iniciado via link temporário');
+        
+        // Restaurar botão após delay
+        setTimeout(() => {
+            btnExport.innerHTML = originalText;
+            btnExport.disabled = false;
+            showExportSuccessMans(filteredMansData.length);
+        }, 1500);
+        
+    } catch (error) {
+        console.error('❌ Erro no método de link, tentando window.open:', error);
+        
+        // MÉTODO 2: Fallback usando window.open
+        try {
+            const downloadWindow = window.open(url, '_blank');
+            
+            // Fechar a janela após um tempo (o download já terá iniciado)
+            setTimeout(() => {
+                if (downloadWindow) {
+                    downloadWindow.close();
+                }
+            }, 2000);
+            
+            console.log('✅ Download iniciado via window.open');
+            
+            // Restaurar botão
+            setTimeout(() => {
+                btnExport.innerHTML = originalText;
+                btnExport.disabled = false;
+                showExportSuccessMans(filteredMansData.length);
+            }, 1500);
+            
+        } catch (error2) {
+            console.error('❌ Erro no window.open, tentando iframe:', error2);
+            
+            // MÉTODO 3: Fallback final usando iframe (método original)
+            try {
+                const iframe = document.createElement('iframe');
+                iframe.style.display = 'none';
+                iframe.src = url;
+                document.body.appendChild(iframe);
+                
+                // Aguardar mais tempo antes de remover
+                setTimeout(() => {
+                    if (document.body.contains(iframe)) {
+                        document.body.removeChild(iframe);
+                    }
+                    btnExport.innerHTML = originalText;
+                    btnExport.disabled = false;
+                    showExportSuccessMans(filteredMansData.length);
+                }, 3000);
+                
+                console.log('✅ Download iniciado via iframe (fallback)');
+                
+            } catch (error3) {
+                console.error('❌ Todos os métodos falharam:', error3);
+                
+                // MÉTODO 4: Último recurso - navegar diretamente
+                alert(`Redirecionando para download...\n\nSe o download não iniciar automaticamente, copie esta URL:\n${url}`);
+                window.location.href = url;
+                
+                // Restaurar botão
+                setTimeout(() => {
+                    btnExport.innerHTML = originalText;
+                    btnExport.disabled = false;
+                }, 2000);
+            }
+        }
+    }
 }
+
 
 function showExportSuccessMans(totalRegistros) {
     // Criar toast de sucesso
@@ -2168,6 +2494,28 @@ function showExportSuccessMans(totalRegistros) {
     toast.addEventListener('hidden.bs.toast', () => {
         document.body.removeChild(toast);
     });
+}
+
+// ==========================================
+// FUNÇÃO AUXILIAR PARA DESCRIÇÃO DO PERÍODO
+// ==========================================
+function getPeriodoDescricao(periodo) {
+    const today = new Date();
+    const currentYear = today.getFullYear();
+    
+    const descriptions = {
+        'ano_atual': `${currentYear}`,
+        'q1': `Q1 ${currentYear}`,
+        'q2': `Q2 ${currentYear}`,
+        'q3': `Q3 ${currentYear}`,
+        'q4': `Q4 ${currentYear}`,
+        '6_meses': 'Últimos 6 Meses',
+        '3_meses': 'Últimos 3 Meses',
+        'mes_atual': 'Mês Atual',
+        'personalizado': 'Personalizado'
+    };
+    
+    return descriptions[periodo] || 'Período Selecionado';
 }
 
 function updatePeriodoTextoMans() {
@@ -2223,73 +2571,172 @@ function updatePeriodoTextoMans() {
     }
 }
 
+// Função para atualizar indicadores visuais dos filtros ativos
+function updateFiltrosAtivosIndicador() {
+    const container = document.getElementById('filtrosAtivosIndicador');
+    if (!container) return;
+    
+    container.innerHTML = '';
+    
+    const filtros = [];
+    
+    if (mansFilters.equipe) {
+        filtros.push(`<span class="badge bg-primary"><i class="fas fa-users me-1"></i>Equipe: ${mansFilters.equipe}</span>`);
+    }
+    
+    if (mansFilters.status) {
+        filtros.push(`<span class="badge bg-success"><i class="fas fa-flag me-1"></i>Status: ${mansFilters.status}</span>`);
+    }
+    
+    if (mansFilters.produto) {
+        filtros.push(`<span class="badge bg-info"><i class="fas fa-box me-1"></i>Produto: ${mansFilters.produto}</span>`);
+    }
+    
+    if (mansFilters.search) {
+        filtros.push(`<span class="badge bg-warning text-dark"><i class="fas fa-search me-1"></i>Busca: ${mansFilters.search}</span>`);
+    }
+    
+    if (mansFilters.periodo && mansFilters.periodo !== 'ano_atual') {
+        const periodoTexto = getPeriodoDescricao(mansFilters.periodo);
+        filtros.push(`<span class="badge bg-secondary"><i class="fas fa-calendar me-1"></i>${periodoTexto}</span>`);
+    }
+    
+    if (filtros.length === 0) {
+        container.innerHTML = '<small class="text-muted"><i class="fas fa-filter me-1"></i>Nenhum filtro aplicado - exibindo todas as MANs</small>';
+    } else {
+        container.innerHTML = `
+            <small class="text-muted me-2"><i class="fas fa-filter me-1"></i>Filtros ativos:</small>
+            ${filtros.join(' ')}
+            <button class="btn btn-outline-secondary btn-sm ms-2" onclick="clearFiltersMans()">
+                <i class="fas fa-times me-1"></i>Limpar Todos
+            </button>
+        `;
+    }
+}
+
+function applyFrontendFiltersMansUpdated() {
+    console.log('Aplicando filtros no frontend...');
+    
+    // Aplicar filtros nos dados já carregados
+    filteredMansData = allMansData.filter(item => {
+        // Filtro básico de texto e seleções
+        let matches = (!mansFilters.equipe || item.Equipe === mansFilters.equipe) &&
+                     (!mansFilters.status || item.Status === mansFilters.status) &&
+                     (!mansFilters.produto || item.Produto === mansFilters.produto) &&
+                     (!mansFilters.search || 
+                      (item.Number && item.Number.toLowerCase().includes(mansFilters.search)) ||
+                      (item.Summary && item.Summary.toLowerCase().includes(mansFilters.search)));
+        
+        // Filtro de período baseado na data de criação
+        if (matches && mansFilters.data_inicio && mansFilters.data_fim) {
+            const itemDate = new Date(item.Created);
+            const startDate = new Date(mansFilters.data_inicio);
+            const endDate = new Date(mansFilters.data_fim);
+            
+            // Ajustar endDate para incluir o dia completo
+            endDate.setHours(23, 59, 59, 999);
+            
+            matches = itemDate >= startDate && itemDate <= endDate;
+        }
+        
+        return matches;
+    });
+
+    console.log(`Filtros aplicados: ${filteredMansData.length} de ${allMansData.length} registros`);
+
+    // Atualizar estatísticas baseadas nos dados filtrados
+    updateMansCardsFromFilteredData();
+    
+    // Atualizar gráficos com dados filtrados
+    updateChartsFromFilteredData();
+    
+    // Atualizar contadores e textos
+    updateTotalRegistrosMans();
+    updatePeriodoTextoMans();
+    
+    // NOVO: Atualizar indicadores de filtros ativos
+    updateFiltrosAtivosIndicador();
+}
+
+// createMansCharts para garantir que o gráfico detalhado seja criado
+function createMansChartsUpdated() {
+    console.log('Criando gráficos de MANs...');
+    
+    try {
+        createMansBacklogChart();
+        createMansTendenciaChart();
+        createMansPerformanceChart();
+        
+        // Criar gráfico de status com dados reais
+        createMansStatusChartFromData();
+        
+        // Criar gráfico detalhado automaticamente
+        setTimeout(() => {
+            createMansDetalhadoChart();
+        }, 500);
+        
+    } catch (error) {
+        console.error('Erro ao criar gráficos de MANs:', error);
+    }
+}
+
 // Event Listeners
 document.addEventListener('DOMContentLoaded', function() {
-    console.log('Inicializando dashboard de MANs...');
+    console.log('Inicializando dashboard de MANs otimizado...');
     
-    // Event listeners para filtros (aplicar automaticamente após mudança)
+    // Event listeners para filtros (aplicar automaticamente SEM recarregar API)
     document.getElementById('filterEquipeMans').addEventListener('change', applyFiltersMans);
     document.getElementById('filterStatusMans').addEventListener('change', applyFiltersMans);
     document.getElementById('filterProdutoMans').addEventListener('change', applyFiltersMans);
     
-    // Para a busca, aplicar com pequeno delay para evitar muitas requisições
+    // Para a busca, aplicar com pequeno delay
     let searchTimeout;
     document.getElementById('searchMans').addEventListener('input', function() {
         clearTimeout(searchTimeout);
         searchTimeout = setTimeout(applyFiltersMans, 300);
     });
 
-    // Event listener para período (aplicar automaticamente)
+    // Event listener para período
     document.getElementById('filterPeriodoMans').addEventListener('change', function() {
         const periodo = this.value;
         const datasPersonalizadas = document.getElementById('datas-personalizadas-mans');
 
         if (periodo === 'personalizado') {
             datasPersonalizadas.style.display = 'block';
-
             const anoAtual = new Date().getFullYear();
-            const dataInicio = `${anoAtual}-01-01`;
-            const dataFim = `${anoAtual}-12-31`;
-
-            document.getElementById('filterDataInicioMans').value = dataInicio;
-            document.getElementById('filterDataFimMans').value = dataFim;
+            document.getElementById('filterDataInicioMans').value = `${anoAtual}-01-01`;
+            document.getElementById('filterDataFimMans').value = `${anoAtual}-12-31`;
         } else {
             datasPersonalizadas.style.display = 'none';
             document.getElementById('filterDataInicioMans').value = '';
             document.getElementById('filterDataFimMans').value = '';
         }
 
-        // Aplicar filtros automaticamente quando o período mudar
+        // Aplicar filtros SEM recarregar API
         applyFiltersMans();
     });
 
     // Event listeners para datas personalizadas
-    document.getElementById('filterDataInicioMans').addEventListener('change', function() {
-        if (mansFilters.periodo === 'personalizado') {
-            applyFiltersMans();
-        }
-    });
-    
-    document.getElementById('filterDataFimMans').addEventListener('change', function() {
-        if (mansFilters.periodo === 'personalizado') {
-            applyFiltersMans();
-        }
-    });
+    document.getElementById('filterDataInicioMans').addEventListener('change', applyFiltersMans);
+    document.getElementById('filterDataFimMans').addEventListener('change', applyFiltersMans);
 
-    // Event listeners para botões
+    // Botão APLICAR - agora só aplica filtros locais
     document.getElementById('btnAplicarFiltrosMans').addEventListener('click', applyFiltersMans);
+    
+    // Botão LIMPAR
     document.getElementById('btnLimparFiltrosMans').addEventListener('click', clearFiltersMans);
 
-    // Event listeners para botões de ação
+    // Botão ATUALIZAR - este sim recarrega da API
     document.getElementById('btnRefreshMans').addEventListener('click', function() {
         document.getElementById('cardsContainerMans').style.display = 'none';
         document.getElementById('chartsContainerMans').style.display = 'none';
         loadMansData();
     });
 
+    // Botão EXPORTAR
     document.getElementById('btnExportCSVMans').addEventListener('click', exportFilteredCSVMans);
 
-    // Event listener para mudança de tipo de visualização do gráfico detalhado
+    // Event listener para mudança de tipo de visualização
     const selectTipoViz = document.getElementById('tipoVisualizacaoMans');
     if (selectTipoViz) {
         selectTipoViz.addEventListener('change', function() {
@@ -2297,6 +2744,7 @@ document.addEventListener('DOMContentLoaded', function() {
             createMansDetalhadoChart();
         });
     }
+    
     // Carregar dados iniciais
     loadMansData();
 });
