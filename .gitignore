@@ -1,3 +1,63 @@
+# === Python básico ===
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.pyc
+*.pdb
+*.log
+*.egg-info/
+*.egg
+*.env
+*.venv
+.env
+.venv/
+env/
+venv/
+pip-log.txt
+
+# === Jupyter Notebooks ===
+.ipynb_checkpoints/
+
+# === VSCode, PyCharm e editores ===
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# === Arquivos de sistema ===
+.DS_Store
+Thumbs.db
+
+# === Flask ===
+instance/
+*.db
+*.sqlite3
+
+# === Arquivos temporários ou de exportação ===
+*.bak
+*.swp
+*.tmp
+
+# === PyInstaller build ===
+build/
+dist/
+*.spec
+
+# === Arquivos CSV ou relatórios exportados ===
+*.csv
+*.xlsx
+
+# === Arquivos temporários de exportação Flask ===
+tmp*
+*.temp
+*.tmp.csv
+
+# === Logs de execução da aplicação ===
+*.log
+logs/
+
+
 # Logs
 logs
 *.log
