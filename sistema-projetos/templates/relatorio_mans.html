@@ -1,0 +1,1417 @@
+{% extends "base.html" %}
+
+{% block title %}Relatório de MANs - Sistema de Projetos{% endblock %}
+{% block mans_active %}active{% endblock %}
+{% block page_title %}<i class="fas fa-wrench me-2"></i> Relatório de MANs (Manutenções){% endblock %}
+
+{% block filtros_display %}display: none;{% endblock %}
+
+{% block head %}
+<style>
+/* Estilos específicos para manter o grid da tabela consistente */
+#tableMans {
+    table-layout: fixed;
+    width: 100%;
+}
+
+#tableMans th,
+#tableMans td {
+    word-wrap: break-word;
+    vertical-align: middle;
+    padding: 0.75rem 0.5rem;
+}
+
+/* Larguras específicas das colunas para manter consistência */
+#tableMans th:nth-child(1), #tableMans td:nth-child(1) { width: 10%; }
+#tableMans th:nth-child(2), #tableMans td:nth-child(2) { width: 25%; }
+#tableMans th:nth-child(3), #tableMans td:nth-child(3) { width: 12%; }
+#tableMans th:nth-child(4), #tableMans td:nth-child(4) { width: 10%; }
+#tableMans th:nth-child(5), #tableMans td:nth-child(5) { width: 10%; }
+#tableMans th:nth-child(6), #tableMans td:nth-child(6) { width: 10%; }
+#tableMans th:nth-child(7), #tableMans td:nth-child(7) { width: 8%; }
+#tableMans th:nth-child(8), #tableMans td:nth-child(8) { width: 8%; }
+#tableMans th:nth-child(9), #tableMans td:nth-child(9) { width: 7%; }
+
+
+/* Modal de detalhes */
+#modalDetalheMAN .modal-body {
+    max-height: 80vh !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    padding-right: 15px !important;
+}
+
+#modalDetalheMAN .modal-dialog {
+    max-height: 95vh !important;
+    margin: 1rem auto !important;
+}
+
+#modalDetalheMAN .modal-content {
+    max-height: 90vh !important;
+    display: flex !important;
+    flex-direction: column !important;
+}
+
+@media (max-width: 768px) {
+    #modalDetalheMAN .modal-body {
+        max-height: 70vh !important;
+    }
+    
+    #modalDetalheMAN .modal-dialog {
+        margin: 0.5rem !important;
+    }
+    
+    #tableMans {
+        table-layout: auto;
+        font-size: 0.875rem;
+    }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+
+<!-- Filtros e Controles -->
+<div class="row">
+    <div class="col-12">
+        <div class="card shadow-sm border-0">
+            <div class="card-header bg-white justify-content-between align-items-center">
+                <!-- Filtros Personalizados -->
+                <div class="filtros-container" style="position: relative;">
+                    <h6 class="mb-3 text-primary-custom">
+                        <i class="fas fa-filter me-2"></i>
+                        Filtros para MANs
+                    </h6>
+                    <div style="position: absolute; top: 10px; right: 20px; z-index: 10;">
+                        <div class="d-flex align-items-end gap-2 h-100">
+                            <div class="badge-contador">
+                                <span id="totalRegistrosMans" class="badge-registros">0 MANs</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Período de Análise -->
+                    <div class="alert periodo-info py-2 mb-3 border-0 shadow-sm">
+                        <div class="d-flex align-items-center">
+                            <i class="fas fa-calendar-alt me-2 text-primary"></i>
+                            <strong>Período de Análise:</strong>
+                            <span id="periodo-texto-mans" class="ms-2 periodo-badge">Ano Atual</span>
+                        </div>
+                    </div>
+                    
+                    <!-- Filtros básicos -->
+                    <div class="row mb-3">
+                        <div class="col-md-2">
+                            <label for="filterEquipeMans" class="form-label small fw-bold text-dark">
+                                <i class="fas fa-users me-1 text-primary"></i>Equipe
+                            </label>
+                            <select id="filterEquipeMans" class="form-select form-select-sm modern-select">
+                                <option value="">Todas as Equipes</option>
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <label for="filterStatusMans" class="form-label small fw-bold text-dark">
+                                <i class="fas fa-flag me-1 text-success"></i>Status
+                            </label>
+                            <select id="filterStatusMans" class="form-select form-select-sm modern-select">
+                                <option value="">Todos os Status</option>
+                                <option value="Closed">Fechado</option>
+                                <option value="Done">Concluído</option>
+                                <option value="Resolved">Resolvido</option>
+                                <option value="In Progress">Em Progresso</option>
+                                <option value="Open">Aberto</option>
+                                <option value="To Do">A Fazer</option>
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <label for="filterProdutoMans" class="form-label small fw-bold text-dark">
+                                <i class="fas fa-box me-1 text-info"></i>Produto
+                            </label>
+                            <select id="filterProdutoMans" class="form-select form-select-sm modern-select">
+                                <option value="">Todos os Produtos</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label for="searchMans" class="form-label small fw-bold text-dark">
+                                <i class="fas fa-search me-1 text-warning"></i>Buscar
+                            </label>
+                            <input type="text" id="searchMans" class="form-control form-control-sm modern-input" placeholder="Buscar por número ou resumo...">
+                        </div>
+                        
+                    </div>
+                    
+                    <!-- Filtros de período -->
+                    <div class="row">
+                        <div class="col-md-2">
+                            <label for="filterPeriodoMans" class="form-label small fw-bold text-dark">
+                                <i class="fas fa-clock me-1 text-info"></i>Período
+                            </label>
+                            <select id="filterPeriodoMans" class="form-select form-select-sm modern-select">
+                                <option value="ano_atual">Ano Atual</option>
+                                <option value="q1">Q1 - Jan a Mar</option>
+                                <option value="q2">Q2 - Abr a Jun</option>
+                                <option value="q3">Q3 - Jul a Set</option>
+                                <option value="q4">Q4 - Out a Dez</option>
+                                <option value="6_meses">Últimos 6 Meses</option>
+                                <option value="3_meses">Últimos 3 Meses</option>
+                                <option value="mes_atual">Mês Atual</option>
+                                <option value="personalizado">Personalizado</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3" id="datas-personalizadas-mans" style="display: none">
+                            <div class="row">
+                                <div class="col-6">
+                                    <label for="filterDataInicioMans" class="form-label small fw-bold text-dark">Data Início</label>
+                                    <input type="date" id="filterDataInicioMans" class="form-control form-control-sm modern-input">
+                                </div>
+                                <div class="col-6">
+                                    <label for="filterDataFimMans" class="form-label small fw-bold text-dark">Data Fim</label>
+                                    <input type="date" id="filterDataFimMans" class="form-control form-control-sm modern-input">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-5">
+                            <div class="d-flex align-items-end gap-2 h-100">
+                                <div class="botoes-filtros">
+                                    <button type="button" id="btnAplicarFiltrosMans" class="btn btn-primary btn-sm modern-btn">
+                                        <i class="fas fa-search me-1"></i>
+                                        APLICAR
+                                    </button>
+                                    <button type="button" id="btnLimparFiltrosMans" class="btn btn-outline-secondary btn-sm modern-btn">
+                                        <i class="fas fa-times me-1"></i>
+                                        LIMPAR
+                                    </button>
+                                  
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+
+<!-- Grid de Relatório de MANs -->
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="card-title mb-0 text-primary-custom">
+                    <i class="fas fa-table me-2"></i>
+                    Lista Detalhada de MANs
+                </h5>
+                <div class="d-flex gap-2">
+                    <button id="btnExportCSVMans" class="btn btn-success btn-sm modern-btn">
+                        <i class="fas fa-file-csv me-2"></i>
+                        Exportar CSV
+                    </button>
+                    <button id="btnRefreshMans" class="btn btn-primary btn-sm modern-btn">
+                        <i class="fas fa-sync-alt me-2"></i>
+                        Atualizar
+                    </button>
+                </div>
+            </div>
+            <div class="card-body">
+                
+                <!-- Loading -->
+                <div id="loadingMans" class="loading">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Carregando...</span>
+                    </div>
+                    <p class="mt-2">Carregando dados das MANs...</p>
+                </div>
+
+                <!-- Erro -->
+                <div id="errorMans" style="display: none;" class="alert alert-danger">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    <span id="errorMessageMans"></span>
+                </div>
+
+                <!-- Tabela -->
+                <div id="tableContainerMans" style="display: none;">
+                    <div class="table-responsive">
+                        <table class="table table-striped table-hover" id="tableMans">
+                            <thead class="table-dark">
+                                <tr>
+                                    <th><i class="fas fa-hashtag me-1"></i>Número</th>
+                                    <th><i class="fas fa-align-left me-1"></i>Resumo</th>
+                                    <th><i class="fas fa-users me-1"></i>Equipe</th>
+                                    <th><i class="fas fa-flag me-1"></i>Status</th>
+                                    <th><i class="fas fa-box me-1"></i>Produto</th>
+                                    <th><i class="fas fa-user me-1"></i>Responsável</th>
+                                    <th><i class="fas fa-calendar-plus me-1"></i>Criação</th>
+                                    <th><i class="fas fa-calendar-check me-1"></i>Resolução</th>
+                                    <th><i class="fas fa-cog me-1"></i>Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tbodyMans">
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Paginação -->
+                    <nav aria-label="Paginação" class="mt-3">
+                        <ul class="pagination justify-content-center" id="paginationMans">
+                        </ul>
+                    </nav>
+
+                    <!-- Info da tabela -->
+                    <div class="row mt-3">
+                        <div class="col-md-6">
+                            <small class="text-muted">
+                                Mostrando <span id="showingFromMans" class="fw-bold text-primary">0</span> a 
+                                <span id="showingToMans" class="fw-bold text-primary">0</span> 
+                                de <span id="totalRecordsMans" class="fw-bold text-primary">0</span> registros
+                            </small>
+                        </div>
+                        <div class="col-md-6 text-end">
+                            <label for="pageSizeMans" class="form-label me-2 small">Registros por página:</label>
+                            <select id="pageSizeMans" class="form-select form-select-sm d-inline-block w-auto modern-select">
+                                <option value="25">25</option>
+                                <option value="50">50</option>
+                                <option value="100">100</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+<!-- Modal Detalhes da MAN -->
+<div class="modal fade" id="modalDetalheMAN" tabindex="-1">
+    <div class="modal-dialog modal-xl modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title">
+                    <i class="fas fa-wrench me-2"></i>
+                    Detalhes da MAN
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                
+                <!-- Dados Básicos da MAN -->
+                <div class="row">
+                    <div class="col-12">
+                        <h6 class="text-primary fw-bold">
+                            <i class="fas fa-info-circle me-1"></i>Dados Básicos da MAN
+                        </h6>
+                        <hr>
+                        <div class="card border-primary mb-4">
+                            <div class="row mb-4 p-3">
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label class="form-label fw-bold text-primary">
+                                            <i class="fas fa-hashtag me-1"></i>Número da MAN:
+                                        </label>
+                                        <p id="detalheNumeroMAN" class="form-control-plaintext border p-2 bg-light rounded"></p>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label fw-bold text-primary">
+                                            <i class="fas fa-users me-1"></i>Equipe:
+                                        </label>
+                                        <p id="detalheEquipeMAN" class="form-control-plaintext border p-2 bg-light rounded"></p>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label fw-bold text-primary">
+                                            <i class="fas fa-flag me-1"></i>Status:
+                                        </label>
+                                        <p id="detalheStatusMAN" class="form-control-plaintext border p-2 bg-light rounded"></p>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label class="form-label fw-bold text-primary">
+                                            <i class="fas fa-box me-1"></i>Produto:
+                                        </label>
+                                        <p id="detalheProdutoMAN" class="form-control-plaintext border p-2 bg-light rounded"></p>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label fw-bold text-primary">
+                                            <i class="fas fa-user me-1"></i>Responsável:
+                                        </label>
+                                        <p id="detalheResponsavelMAN" class="form-control-plaintext border p-2 bg-light rounded"></p>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label fw-bold text-primary">
+                                            <i class="fas fa-calendar me-1"></i>Origem:
+                                        </label>
+                                        <p id="detalheOrigemMAN" class="form-control-plaintext border p-2 bg-light rounded"></p>
+                                    </div>
+                                </div>
+
+                                <div class="col-12">
+                                    <label class="form-label fw-bold text-primary">
+                                        <i class="fas fa-align-left me-1"></i>Resumo:
+                                    </label>
+                                    <div id="detalheResumoMAN" class="border p-3 bg-light rounded" style="min-height: 60px;"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Dados de Datas e Tempo -->
+                <div class="row mt-4">
+                    <div class="col-12">
+                        <h6 class="text-primary fw-bold">
+                            <i class="fas fa-calendar-alt me-1"></i>Timeline da MAN
+                        </h6>
+                        <hr>
+                        <div class="card border-info mb-4">
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <h6 class="text-info mb-3">📅 Datas Importantes</h6>
+                                        <div class="mb-2">
+                                            <small class="text-muted fw-bold">Data de Criação:</small>
+                                            <div id="detalheCriacaoMAN" class="border p-2 bg-light rounded"></div>
+                                        </div>
+                                        <div class="mb-2">
+                                            <small class="text-muted fw-bold">Última Atualização:</small>
+                                            <div id="detalheAtualizacaoMAN" class="border p-2 bg-light rounded"></div>
+                                        </div>
+                                        <div class="mb-2">
+                                            <small class="text-muted fw-bold">Data de Resolução:</small>
+                                            <div id="detalheResolucaoMAN" class="border p-2 bg-light rounded"></div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <h6 class="text-success mb-3">⏱️ Tempo de Resolução</h6>
+                                        <div class="mb-2">
+                                            <small class="text-muted fw-bold">Tempo Total:</small>
+                                            <div id="detalheTempoResolucaoMAN" class="border p-2 bg-light rounded"></div>
+                                        </div>
+                                        <div class="mb-2">
+                                            <small class="text-muted fw-bold">Status Atual:</small>
+                                            <div id="detalheStatusAtualMAN" class="border p-2 bg-light rounded"></div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Informações Técnicas -->
+                <div class="row mt-4">
+                    <div class="col-12">
+                        <h6 class="text-primary fw-bold">
+                            <i class="fas fa-cogs me-1"></i>Informações Técnicas
+                        </h6>
+                        <hr>
+                        <div class="card border-warning mb-4">
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="mb-2">
+                                            <small class="text-muted fw-bold">ID Interno:</small>
+                                            <div id="detalheIDMAN" class="border p-2 bg-light rounded"></div>
+                                        </div>
+                                        <div class="mb-2">
+                                            <small class="text-muted fw-bold">Projeto:</small>
+                                            <div id="detalheProjetoMAN" class="border p-2 bg-light rounded"></div>
+                                        </div>
+                                        <div class="mb-2">
+                                            <small class="text-muted fw-bold">Service Pack:</small>
+                                            <div id="detalheServicePackMAN" class="border p-2 bg-light rounded"></div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="mb-2">
+                                            <small class="text-muted fw-bold">Patch:</small>
+                                            <div id="detalhePatchMAN" class="border p-2 bg-light rounded"></div>
+                                        </div>
+                                        <div class="mb-2">
+                                            <small class="text-muted fw-bold">Vínculos:</small>
+                                            <div id="detalheVinculosMAN" class="border p-2 bg-light rounded"></div>
+                                        </div>
+                                        <div class="mb-2">
+                                            <small class="text-muted fw-bold">Tipo de Issue:</small>
+                                            <div id="detalheTipoMAN" class="border p-2 bg-light rounded"></div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer bg-light">
+                <button type="button" class="btn btn-secondary modern-btn" data-bs-dismiss="modal">
+                    <i class="fas fa-times me-1"></i>
+                    Fechar
+                </button>
+                <button type="button" class="btn btn-primary modern-btn" id="btnCopiarDetalhesMAN">
+                    <i class="fas fa-copy me-1"></i>
+                    Copiar Informações
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+<script>
+let mansData = [];
+let allMansData = [];
+let filteredMansData = [];
+let currentPageMans = 1;
+let pageSizeMans = 25;
+
+let mansFilters = {
+    equipe: "",
+    status: "",
+    produto: "",
+    search: "",
+    data_inicio: "",
+    data_fim: "",
+    periodo: "ano_atual"
+};
+
+
+function loadMansData() {
+    console.log('Carregando dados das MANs...');
+    
+    // Usar período padrão (ano atual) na primeira carga
+    const currentYear = new Date().getFullYear();
+    const params = new URLSearchParams({
+        periodo: 'ano_atual',
+        data_inicio: `${currentYear}-01-01`,
+        data_fim: `${currentYear}-12-31`
+    });
+    
+    console.log('Parâmetros da requisição:', params.toString());
+    
+    // Carregar dados da tabela E dados dos gráficos
+    Promise.all([
+        fetch(`/api/mans-table-data?${params}`)
+            .then(response => {
+                console.log('Resposta mans-table-data status:', response.status);
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                return response.json();
+            })
+            .then(data => {
+                console.log('Dados recebidos de mans-table-data:', data);
+                return data;
+            }),
+        fetch(`/api/mans-data-charts?${params}`)
+            .then(response => {
+                console.log('Resposta mans-data-charts status:', response.status);
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                return response.json();
+            })
+            .then(data => {
+                console.log('Dados recebidos de mans-data-charts:', data);
+                return data;
+            })
+    ])
+    .then(([tableResponse, chartResponse]) => {
+        console.log('Ambas as respostas recebidas:', {tableResponse, chartResponse});
+        
+        document.getElementById('loadingMans').style.display = 'none';
+        
+        // Verificar se há erros em qualquer uma das respostas
+        if ((tableResponse && tableResponse.error) || (chartResponse && chartResponse.error)) {
+            const error = tableResponse?.error || chartResponse?.error || 'Erro desconhecido';
+            showErrorMans(error);
+            return;
+        }
+        
+        // Verificar se as respostas são válidas
+        if (!tableResponse || !chartResponse) {
+            showErrorMans('Respostas inválidas do servidor');
+            return;
+        }
+        
+        console.log('Dados da tabela:', tableResponse.mans?.length || 0, 'MANs');
+        console.log('Dados dos gráficos:', chartResponse.graficos || 'Nenhum gráfico');
+        
+        // Dados da tabela
+        allMansData = tableResponse.mans || [];
+        mansData = allMansData;
+        
+        
+        
+        // Aplicar filtros iniciais
+        applyFrontendFiltersMans();
+        populateFiltersMans();
+        document.getElementById('tableContainerMans').style.display = 'block';
+    })
+    .catch(error => {
+        console.error('Erro completo:', error);
+        document.getElementById('loadingMans').style.display = 'none';
+        showErrorMans('Erro ao carregar dados: ' + error.message);
+    });
+}
+
+
+
+
+
+
+function renderTableMans() {
+    const tbody = document.getElementById('tbodyMans');
+    const startIndex = (currentPageMans - 1) * pageSizeMans;
+    const endIndex = Math.min(startIndex + pageSizeMans, filteredMansData.length);
+    const pageData = filteredMansData.slice(startIndex, endIndex);
+
+    tbody.innerHTML = '';
+
+    pageData.forEach((item, index) => {
+        const row = document.createElement('tr');
+        
+        const truncateText = (text, maxLength = 40) => {
+            if (!text) return 'Sem resumo';
+            if (text.length <= maxLength) return text;
+            return text.substring(0, maxLength) + '...';
+        };
+
+        const formatDate = (dateStr) => {
+            if (!dateStr) return 'Não definido';
+            try {
+                return new Date(dateStr).toLocaleDateString('pt-BR');
+            } catch {
+                return dateStr;
+            }
+        };
+
+        const getStatusClass = (status) => {
+            switch(status) {
+                case 'Done':
+                case 'Closed':
+                case 'Resolved': return 'badge bg-success';
+                case 'In Progress': return 'badge bg-primary';
+                case 'Open': return 'badge bg-danger';
+                case 'To Do': return 'badge bg-secondary';
+                default: return 'badge bg-light text-dark';
+            }
+        };
+
+        row.innerHTML = `
+            <td class="fw-bold text-primary">${item.ProjectKey || 'N/A'}</td>
+            <td title="${item.Summary || ''}">${truncateText(item.Summary)}</td>
+            <td><span class="badge bg-info">${item.Equipe || 'Sem Equipe'}</span></td>
+            <td><span class="${getStatusClass(item.Status)}">${item.Status || 'Indefinido'}</span></td>
+            <td><span class="badge bg-secondary">${item.Produto || 'N/A'}</span></td>
+            <td>${item.Assignee || 'Não atribuído'}</td>
+            <td><small>${formatDate(item.Created)}</small></td>
+            <td><small>${formatDate(item.ResolutionDate) || '-'}</small></td>
+            <td>
+                <button class="btn btn-sm btn-outline-primary" onclick="showMANDetails(${startIndex + index})">
+                    <i class="fas fa-eye"></i>
+                </button>
+            </td>
+        `;
+        
+        tbody.appendChild(row);
+    });
+
+    renderPaginationMans();
+    updateTableInfoMans();
+}
+
+function populateFiltersMans() {
+    // Preencher filtro de equipes
+    const equipeSelect = document.getElementById('filterEquipeMans');
+    const equipes = [...new Set(mansData.map(item => item.Equipe).filter(e => e))];
+    
+    while (equipeSelect.children.length > 1) {
+        equipeSelect.removeChild(equipeSelect.lastChild);
+    }
+    
+    equipes.sort().forEach(equipe => {
+        const option = document.createElement('option');
+        option.value = equipe;
+        option.textContent = equipe;
+        equipeSelect.appendChild(option);
+    });
+
+    // Preencher filtro de produtos
+    const produtoSelect = document.getElementById('filterProdutoMans');
+    const produtos = [...new Set(mansData.map(item => item.Produto).filter(p => p))];
+    
+    while (produtoSelect.children.length > 1) {
+        produtoSelect.removeChild(produtoSelect.lastChild);
+    }
+    
+    produtos.sort().forEach(produto => {
+        const option = document.createElement('option');
+        option.value = produto;
+        option.textContent = produto;
+        produtoSelect.appendChild(option);
+    });
+
+    
+}
+
+
+
+function applyFiltersMans() {
+    // Capturar todos os valores dos filtros
+    mansFilters.equipe = document.getElementById('filterEquipeMans').value;
+    mansFilters.status = document.getElementById('filterStatusMans').value;
+    mansFilters.produto = document.getElementById('filterProdutoMans').value;
+    mansFilters.search = document.getElementById('searchMans').value.toLowerCase();
+    mansFilters.periodo = document.getElementById('filterPeriodoMans').value;
+    
+    // Calcular datas baseadas no período selecionado
+    const today = new Date();
+    const currentYear = today.getFullYear();
+    
+    if (mansFilters.periodo === 'personalizado') {
+        mansFilters.data_inicio = document.getElementById('filterDataInicioMans').value;
+        mansFilters.data_fim = document.getElementById('filterDataFimMans').value;
+    } else {
+        // Calcular datas automaticamente baseadas no período
+        switch(mansFilters.periodo) {
+            case 'ano_atual':
+                mansFilters.data_inicio = `${currentYear}-01-01`;
+                mansFilters.data_fim = `${currentYear}-12-31`;
+                break;
+            case 'q1':
+                mansFilters.data_inicio = `${currentYear}-01-01`;
+                mansFilters.data_fim = `${currentYear}-03-31`;
+                break;
+            case 'q2':
+                mansFilters.data_inicio = `${currentYear}-04-01`;
+                mansFilters.data_fim = `${currentYear}-06-30`;
+                break;
+            case 'q3':
+                mansFilters.data_inicio = `${currentYear}-07-01`;
+                mansFilters.data_fim = `${currentYear}-09-30`;
+                break;
+            case 'q4':
+                mansFilters.data_inicio = `${currentYear}-10-01`;
+                mansFilters.data_fim = `${currentYear}-12-31`;
+                break;
+            case '6_meses':
+                const seisMesesAtras = new Date();
+                seisMesesAtras.setMonth(today.getMonth() - 6);
+                mansFilters.data_inicio = seisMesesAtras.toISOString().split('T')[0];
+                mansFilters.data_fim = today.toISOString().split('T')[0];
+                break;
+            case '3_meses':
+                const tresMesesAtras = new Date();
+                tresMesesAtras.setMonth(today.getMonth() - 3);
+                mansFilters.data_inicio = tresMesesAtras.toISOString().split('T')[0];
+                mansFilters.data_fim = today.toISOString().split('T')[0];
+                break;
+            case 'mes_atual':
+                mansFilters.data_inicio = `${currentYear}-${(today.getMonth() + 1).toString().padStart(2, '0')}-01`;
+                mansFilters.data_fim = today.toISOString().split('T')[0];
+                break;
+            default:
+                mansFilters.data_inicio = '';
+                mansFilters.data_fim = '';
+        }
+    }
+
+    console.log('Filtros aplicados:', mansFilters);
+
+
+    const filtro = mansFilters;
+    filteredMansData = allMansData.filter(man => {
+        let matches = (!filtro.equipe || man.Equipe === filtro.equipe) &&
+                      (!filtro.status || man.Status === filtro.status) &&
+                      (!filtro.produto || man.Produto === filtro.produto) &&
+                      (!filtro.search ||
+                        (man.ProjectKey && man.ProjectKey.toLowerCase().includes(filtro.search)) ||
+                        (man.Summary && man.Summary.toLowerCase().includes(filtro.search)));
+
+        if (filtro.periodo === 'personalizado' && (filtro.data_inicio || filtro.data_fim)) {
+            const itemDate = new Date(item.Created || item.ResolutionDate);
+            
+            if (filtro.data_inicio) {
+                const dataInicio = new Date(filtro.data_inicio);
+                if (itemDate < dataInicio) matches = false;
+            }
+            
+            if (filtro.data_fim) {
+                const dataFim = new Date(filtro.data_fim);
+                if (itemDate > dataFim) matches = false;
+            }
+        }
+
+        return matches;
+        // Você pode adicionar filtragem por data se necessário
+    });
+
+    // Desabilitar campos durante processamento
+    disableFiltersMans(true);
+    
+    // Se for um período que requer nova consulta ao backend, recarregar dados
+    if (mansFilters.periodo !== 'ano_atual' || mansFilters.data_inicio || mansFilters.data_fim) {
+        reloadDataWithFiltersMans();
+    } else {
+        // Aplicar filtros apenas no frontend (dados já carregados)
+        applyFrontendFiltersMans();
+    }
+}
+
+function reloadDataWithFiltersMans() {
+    console.log('Recarregando dados de MANs com filtros de período...');
+    
+    document.getElementById('loadingMans').style.display = 'block';
+    document.getElementById('tableContainerMans').style.display = 'none';
+    document.getElementById('errorMans').style.display = 'none';
+
+    // Construir parâmetros para a API
+    const params = new URLSearchParams({
+        periodo: mansFilters.periodo || 'ano_atual',
+        data_inicio: mansFilters.data_inicio || '',
+        data_fim: mansFilters.data_fim || '',
+        equipe: mansFilters.equipe || '',
+        status: mansFilters.status || '',
+        produto: mansFilters.produto || '',
+        search: mansFilters.search || '',
+        ano: mansFilters.ano || ''
+    });
+
+    console.log('Parâmetros de recarga:', params.toString());
+
+    // Carregar dados da tabela E dados dos gráficos
+    Promise.all([
+        fetch(`/api/mans-table-data?${params}`)
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                return response.json();
+            }),
+        fetch(`/api/mans-data-charts?${params}`)
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                return response.json();
+            })
+    ])
+    .then(([tableResponse, chartResponse]) => {
+        document.getElementById('loadingMans').style.display = 'none';
+        
+        if ((tableResponse && tableResponse.error) || (chartResponse && chartResponse.error)) {
+            const error = tableResponse?.error || chartResponse?.error || 'Erro desconhecido';
+            showErrorMans(error);
+            disableFiltersMans(false);
+            return;
+        }
+        
+        if (!tableResponse || !chartResponse) {
+            showErrorMans('Respostas inválidas do servidor');
+            disableFiltersMans(false);
+            return;
+        }
+        
+        console.log('Dados recarregados - Tabela:', tableResponse.mans?.length || 0, 'MANs');
+        console.log('Dados recarregados - Gráficos:', chartResponse.graficos || 'Nenhum');
+        
+        // Atualizar dados com os novos resultados
+        mansData = tableResponse.mans || [];
+        allMansData = mansData;
+        
+        
+        // Aplicar filtros de frontend nos novos dados
+        applyFrontendFiltersMans();
+        
+        // Reabilitar campos
+        setTimeout(() => {
+            disableFiltersMans(false);
+        }, 500);
+        
+        document.getElementById('tableContainerMans').style.display = 'block';
+    })
+    .catch(error => {
+        console.error('Erro ao recarregar dados de MANs:', error);
+        document.getElementById('loadingMans').style.display = 'none';
+        showErrorMans('Erro ao recarregar dados: ' + error.message);
+        disableFiltersMans(false);
+    });
+}
+
+function applyFrontendFiltersMans() {
+    // Aplicar filtros básicos nos dados já carregados
+    filteredMansData = mansData.filter(item => {
+        let matches = (!mansFilters.equipe || item.Equipe === mansFilters.equipe) &&
+                     (!mansFilters.status || item.Status === mansFilters.status) &&
+                     (!mansFilters.produto || item.Produto === mansFilters.produto) &&
+                     (!mansFilters.ano || (item.Created && new Date(item.Created).getFullYear().toString() === mansFilters.ano)) &&
+                     (!mansFilters.search || 
+                      (item.ProjectKey && item.ProjectKey.toLowerCase().includes(mansFilters.search)) ||
+                      (item.Summary && item.Summary.toLowerCase().includes(mansFilters.search)));
+        
+        return matches;
+    });
+
+    currentPageMans = 1;
+    renderTableMans();
+    updateTotalRegistrosMans();
+    updatePeriodoTextoMans();
+}
+
+function disableFiltersMans(disable) {
+    const elements = [
+        'filterEquipeMans',
+        'filterStatusMans', 
+        'filterProdutoMans',
+        'searchMans',
+        'filterPeriodoMans',
+        'filterDataInicioMans',
+        'filterDataFimMans',
+        'btnAplicarFiltrosMans',
+        'btnLimparFiltrosMans'
+    ];
+    
+    elements.forEach(id => {
+        const element = document.getElementById(id);
+        if (element) {
+            element.disabled = disable;
+            if (disable) {
+                element.style.opacity = '0.6';
+            } else {
+                element.style.opacity = '1';
+            }
+        }
+    });
+}
+
+function renderTableMans() {
+    const tbody = document.getElementById('tbodyMans');
+    const startIndex = (currentPageMans - 1) * pageSizeMans;
+    const endIndex = Math.min(startIndex + pageSizeMans, filteredMansData.length);
+    const pageData = filteredMansData.slice(startIndex, endIndex);
+
+    tbody.innerHTML = '';
+
+    pageData.forEach((item, index) => {
+        const row = document.createElement('tr');
+        
+        const truncateText = (text, maxLength = 40) => {
+            if (!text) return 'Sem resumo';
+            if (text.length <= maxLength) return text;
+            return text.substring(0, maxLength) + '...';
+        };
+
+        const formatDate = (dateStr) => {
+            if (!dateStr) return 'Não definido';
+            try {
+                return new Date(dateStr).toLocaleDateString('pt-BR');
+            } catch {
+                return dateStr;
+            }
+        };
+
+        const getStatusClass = (status) => {
+            switch(status) {
+                case 'Done':
+                case 'Closed':
+                case 'Resolved': return 'badge bg-success';
+                case 'In Progress': return 'badge bg-primary';
+                case 'Open': return 'badge bg-danger';
+                case 'To Do': return 'badge bg-secondary';
+                default: return 'badge bg-light text-dark';
+            }
+        };
+
+        row.innerHTML = `
+            <td class="fw-bold text-primary">${item.ProjectKey || 'N/A'}</td>
+            <td title="${item.Summary || ''}">${truncateText(item.Summary)}</td>
+            <td><span class="badge bg-info">${item.Equipe || 'Sem Equipe'}</span></td>
+            <td><span class="${getStatusClass(item.Status)}">${item.Status || 'Indefinido'}</span></td>
+            <td><span class="badge bg-secondary">${item.Produto || 'N/A'}</span></td>
+            <td>${item.Assignee || 'Não atribuído'}</td>
+            <td><small>${formatDate(item.Created)}</small></td>
+            <td><small>${formatDate(item.ResolutionDate) || '-'}</small></td>
+            <td>
+                <button class="btn btn-sm btn-outline-primary" onclick="showMANDetails(${startIndex + index})">
+                    <i class="fas fa-eye"></i>
+                </button>
+            </td>
+        `;
+        
+        tbody.appendChild(row);
+    });
+
+    renderPaginationMans();
+    updateTableInfoMans();
+}
+
+function showMANDetails(index) {
+    const item = filteredMansData[index];
+    if (!item) return;
+
+    console.log('Abrindo detalhes para MAN:', item);
+
+    const formatModalData = (data, defaultText = 'Não informado') => {
+        if (!data || data === '' || data === null || data === undefined || data === '-') {
+            return defaultText;
+        }
+        return data;
+    };
+
+    const formatDate = (dateStr) => {
+        if (!dateStr || dateStr === '' || dateStr === '-') {
+            return '<span class="text-muted">Não definida</span>';
+        }
+        try {
+            return `<span class="text-dark">${new Date(dateStr).toLocaleString('pt-BR')}</span>`;
+        } catch {
+            return `<span class="text-dark">${dateStr}</span>`;
+        }
+    };
+
+    // Preencher dados básicos da MAN
+    document.getElementById('detalheNumeroMAN').textContent = formatModalData(item.Number, 'N/A');
+    document.getElementById('detalheEquipeMAN').textContent = formatModalData(item.Equipe, 'Sem equipe');
+    document.getElementById('detalheStatusMAN').textContent = formatModalData(item.Status, 'Indefinido');
+    document.getElementById('detalheProdutoMAN').textContent = formatModalData(item.Produto, 'Sem produto');
+    document.getElementById('detalheResponsavelMAN').textContent = formatModalData(item.Assignee, 'Não atribuído');
+    document.getElementById('detalheOrigemMAN').textContent = formatModalData(item.OrigemAbertura, 'Não informada');
+    document.getElementById('detalheResumoMAN').textContent = formatModalData(item.Summary, 'Sem resumo disponível');
+
+    // Preencher timeline
+    document.getElementById('detalheCriacaoMAN').innerHTML = formatDate(item.Created);
+    document.getElementById('detalheAtualizacaoMAN').innerHTML = formatDate(item.Updated);
+    document.getElementById('detalheResolucaoMAN').innerHTML = formatDate(item.ResolutionDate);
+
+    // Calcular tempo de resolução
+    let tempoResolucao = 'N/A';
+    if (item.ResolutionDate && item.Created) {
+        try {
+            const created = new Date(item.Created);
+            const resolved = new Date(item.ResolutionDate);
+            const diffTime = Math.abs(resolved - created);
+            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+            tempoResolucao = `${diffDays} dias`;
+        } catch (e) {
+            tempoResolucao = 'Erro no cálculo';
+        }
+    } else if (!item.ResolutionDate && item.Created) {
+        try {
+            const created = new Date(item.Created);
+            const now = new Date();
+            const diffTime = Math.abs(now - created);
+            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+            tempoResolucao = `${diffDays} dias (em aberto)`;
+        } catch (e) {
+            tempoResolucao = 'Ainda em aberto';
+        }
+    }
+
+    document.getElementById('detalheTempoResolucaoMAN').innerHTML = `<span class="text-dark fw-bold">${tempoResolucao}</span>`;
+    
+    // Status atual
+    let statusAtual = 'Em aberto';
+    if (['Done', 'Closed', 'Resolved'].includes(item.Status)) {
+        statusAtual = 'Resolvida';
+    } else if (['In Progress'].includes(item.Status)) {
+        statusAtual = 'Em progresso';
+    }
+    document.getElementById('detalheStatusAtualMAN').innerHTML = `<span class="badge bg-info">${statusAtual}</span>`;
+
+    // Preencher informações técnicas
+    document.getElementById('detalheIDMAN').innerHTML = `<span class="text-dark">${formatModalData(item.ISSUE_ID, 'N/A')}</span>`;
+    document.getElementById('detalheProjetoMAN').innerHTML = `<span class="text-dark">${formatModalData(item.Project, 'N/A')}</span>`;
+    document.getElementById('detalheServicePackMAN').innerHTML = `<span class="text-dark">${formatModalData(item.ServicePackLiberacao, 'N/A')}</span>`;
+    document.getElementById('detalhePatchMAN').innerHTML = `<span class="text-dark">${formatModalData(item.PatchLiberacao, 'N/A')}</span>`;
+    document.getElementById('detalheVinculosMAN').innerHTML = `<span class="text-dark">${formatModalData(item.QtdeVinculos || '0', '0')}</span>`;
+    document.getElementById('detalheTipoMAN').innerHTML = `<span class="text-dark">${formatModalData(item.IssueType, 'N/A')}</span>`;
+
+    // Configurar botão de cópia
+    document.getElementById('btnCopiarDetalhesMAN').onclick = function() {
+        copiarDetalhesMAN(item);
+    };
+
+    const modal = new bootstrap.Modal(document.getElementById('modalDetalheMAN'));
+    modal.show();
+}
+
+function copiarDetalhesMAN(man) {
+    const texto = `
+MAN ${man.ProjectKey || 'N/A'}
+Resumo: ${man.Summary || 'Sem resumo'}
+Equipe: ${man.Equipe || 'Não atribuída'}
+Status: ${man.Status || 'N/A'}
+Produto: ${man.Produto || 'N/A'}
+Responsável: ${man.Assignee || 'Não atribuído'}
+Criação: ${man.Created ? new Date(man.Created).toLocaleString('pt-BR') : 'N/A'}
+Resolução: ${man.ResolutionDate ? new Date(man.ResolutionDate).toLocaleString('pt-BR') : 'Não resolvida'}
+    `.trim();
+    
+    navigator.clipboard.writeText(texto).then(() => {
+        const btn = document.getElementById('btnCopiarDetalhesMAN');
+        const originalText = btn.innerHTML;
+        btn.innerHTML = '<i class="fas fa-check me-1"></i>Copiado!';
+        btn.classList.add('btn-success');
+        btn.classList.remove('btn-primary');
+        
+        setTimeout(() => {
+            btn.innerHTML = originalText;
+            btn.classList.add('btn-primary');
+            btn.classList.remove('btn-success');
+        }, 2000);
+    });
+}
+
+function renderPaginationMans() {
+    const pagination = document.getElementById('paginationMans');
+    const totalPages = Math.ceil(filteredMansData.length / pageSizeMans);
+    
+    pagination.innerHTML = '';
+
+    if (totalPages <= 1) return;
+
+    const prevLi = document.createElement('li');
+    prevLi.className = `page-item ${currentPageMans === 1 ? 'disabled' : ''}`;
+    prevLi.innerHTML = `<a class="page-link" href="#" onclick="changePageMans(${currentPageMans - 1})">Anterior</a>`;
+    pagination.appendChild(prevLi);
+
+    const startPage = Math.max(1, currentPageMans - 2);
+    const endPage = Math.min(totalPages, currentPageMans + 2);
+
+    for (let i = startPage; i <= endPage; i++) {
+        const li = document.createElement('li');
+        li.className = `page-item ${i === currentPageMans ? 'active' : ''}`;
+        li.innerHTML = `<a class="page-link" href="#" onclick="changePageMans(${i})">${i}</a>`;
+        pagination.appendChild(li);
+    }
+
+    const nextLi = document.createElement('li');
+    nextLi.className = `page-item ${currentPageMans === totalPages ? 'disabled' : ''}`;
+    nextLi.innerHTML = `<a class="page-link" href="#" onclick="changePageMans(${currentPageMans + 1})">Próximo</a>`;
+    pagination.appendChild(nextLi);
+}
+
+function changePageMans(page) {
+    const totalPages = Math.ceil(filteredMansData.length / pageSizeMans);
+    if (page >= 1 && page <= totalPages) {
+        currentPageMans = page;
+        renderTableMans();
+    }
+}
+
+function updateTableInfoMans() {
+    const startIndex = (currentPageMans - 1) * pageSizeMans + 1;
+    const endIndex = Math.min(currentPageMans * pageSizeMans, filteredMansData.length);
+    
+    document.getElementById('showingFromMans').textContent = filteredMansData.length > 0 ? startIndex : 0;
+    document.getElementById('showingToMans').textContent = endIndex;
+    document.getElementById('totalRecordsMans').textContent = filteredMansData.length;
+}
+
+function updateTotalRegistrosMans() {
+    document.getElementById('totalRegistrosMans').textContent = `${filteredMansData.length} MANs`;
+}
+
+function showErrorMans(message) {
+    document.getElementById('errorMessageMans').textContent = message;
+    document.getElementById('errorMans').style.display = 'block';
+}
+
+function clearFiltersMans() {
+    mansFilters = {
+        equipe: "",
+        status: "",
+        produto: "",
+        search: "",
+        ano: "",
+        data_inicio: "",
+        data_fim: "",
+        periodo: "ano_atual"
+    };
+
+    document.getElementById('filterEquipeMans').value = '';
+    document.getElementById('filterStatusMans').value = '';
+    document.getElementById('filterProdutoMans').value = '';
+    document.getElementById('searchMans').value = '';
+    document.getElementById('filterPeriodoMans').value = 'ano_atual';
+    document.getElementById('filterDataInicioMans').value = '';
+    document.getElementById('filterDataFimMans').value = '';
+    
+    // Esconder datas personalizadas
+    document.getElementById('datas-personalizadas-mans').style.display = 'none';
+    updatePeriodoTextoMans();
+    applyFiltersMans();
+}
+
+function exportFilteredCSVMans() {
+    console.log('Exportando MANs com filtros:', mansFilters);
+    
+    const params = new URLSearchParams();
+    
+    // Filtros básicos
+    if (mansFilters.equipe) {
+        params.append('equipe', mansFilters.equipe);
+    }
+    
+    if (mansFilters.status) {
+        params.append('status', mansFilters.status);
+    }
+    
+    if (mansFilters.produto) {
+        params.append('produto', mansFilters.produto);
+    }
+    
+    if (mansFilters.search) {
+        params.append('busca', mansFilters.search);
+    }
+    
+    if (mansFilters.ano) {
+        params.append('ano', mansFilters.ano);
+    }
+    
+    // Filtros de período
+    if (mansFilters.periodo) {
+        params.append('periodo', mansFilters.periodo);
+    }
+    
+    // Datas personalizadas (se aplicável)
+    if (mansFilters.periodo === 'personalizado') {
+        if (mansFilters.data_inicio) {
+            params.append('data_inicio', mansFilters.data_inicio);
+        }
+        if (mansFilters.data_fim) {
+            params.append('data_fim', mansFilters.data_fim);
+        }
+    }
+    
+    // Adicionar informação sobre quantos registros serão exportados
+    params.append('total_registros', filteredMansData.length);
+    
+    const btnExport = document.getElementById('btnExportCSVMans');
+    const originalText = btnExport.innerHTML;
+    
+    // Feedback visual melhorado
+    btnExport.innerHTML = `<i class="fas fa-spinner fa-spin me-2"></i>Exportando ${filteredMansData.length} MANs...`;
+    btnExport.disabled = true;
+    
+    const url = `/export/mans-filtered?${params.toString()}`;
+    
+    console.log('URL de exportação:', url);
+    
+    // Criar iframe para download
+    const iframe = document.createElement('iframe');
+    iframe.style.display = 'none';
+    iframe.src = url;
+    document.body.appendChild(iframe);
+    
+    // Restaurar botão após delay
+    setTimeout(() => {
+        btnExport.innerHTML = originalText;
+        btnExport.disabled = false;
+        document.body.removeChild(iframe);
+        
+        // Mostrar mensagem de sucesso
+        showExportSuccessMans(filteredMansData.length);
+    }, 2000);
+}
+
+function showExportSuccessMans(totalRegistros) {
+    // Criar toast de sucesso
+    const toast = document.createElement('div');
+    toast.className = 'toast align-items-center text-white bg-success border-0 position-fixed';
+    toast.style.cssText = 'top: 20px; right: 20px; z-index: 9999;';
+    toast.setAttribute('role', 'alert');
+    toast.innerHTML = `
+        <div class="d-flex">
+            <div class="toast-body">
+                <i class="fas fa-check-circle me-2"></i>
+                Exportação de MANs concluída! ${totalRegistros} registros exportados.
+            </div>
+            <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+        </div>
+    `;
+    
+    document.body.appendChild(toast);
+    
+    // Mostrar toast
+    const bsToast = new bootstrap.Toast(toast, {
+        autohide: true,
+        delay: 4000
+    });
+    bsToast.show();
+    
+    // Remover toast após ser ocultado
+    toast.addEventListener('hidden.bs.toast', () => {
+        document.body.removeChild(toast);
+    });
+}
+
+function updatePeriodoTextoMans() {
+    const periodoTexto = document.getElementById('periodo-texto-mans');
+    const periodo = mansFilters.periodo;
+    
+    const today = new Date();
+    const currentYear = today.getFullYear();
+    
+    let texto = '';
+    switch(periodo) {
+        case 'ano_atual':
+            texto = `${currentYear}`;
+            break;
+        case 'q1':
+            texto = `Q1 ${currentYear} (Jan-Mar)`;
+            break;
+        case 'q2':
+            texto = `Q2 ${currentYear} (Abr-Jun)`;
+            break;
+        case 'q3':
+            texto = `Q3 ${currentYear} (Jul-Set)`;
+            break;
+        case 'q4':
+            texto = `Q4 ${currentYear} (Out-Dez)`;
+            break;
+        case '6_meses':
+            texto = 'Últimos 6 Meses';
+            break;
+        case '3_meses':
+            texto = 'Últimos 3 Meses';
+            break;
+        case 'mes_atual':
+            texto = today.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+            break;
+        case 'personalizado':
+            if (mansFilters.data_inicio && mansFilters.data_fim) {
+                texto = `${mansFilters.data_inicio} até ${mansFilters.data_fim}`;
+            } else if (mansFilters.data_inicio) {
+                texto = `A partir de ${mansFilters.data_inicio}`;
+            } else if (mansFilters.data_fim) {
+                texto = `Até ${mansFilters.data_fim}`;
+            } else {
+                texto = 'Personalizado (sem datas)';
+            }
+            break;
+        default:
+            texto = 'Todos os Períodos';
+    }
+    
+    if (periodoTexto) {
+        periodoTexto.textContent = texto;
+    }
+}
+
+// Event Listeners
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('Inicializando página de MANs...');
+    
+    // Event listeners para filtros (aplicar automaticamente após mudança)
+    document.getElementById('filterEquipeMans').addEventListener('change', applyFiltersMans);
+    document.getElementById('filterStatusMans').addEventListener('change', applyFiltersMans);
+    document.getElementById('filterProdutoMans').addEventListener('change', applyFiltersMans);
+    
+    // Para a busca, aplicar com pequeno delay para evitar muitas requisições
+   // let searchTimeout;
+   // document.getElementById('searchMans').addEventListener('input', function() {
+   //     clearTimeout(searchTimeout);
+   //     searchTimeout = setTimeout(applyFiltersMans, 3000);
+   // });
+
+    // Para a busca, aplicar apenas quando sair do campo
+    document.getElementById('searchMans').addEventListener('blur', function() {
+        applyFiltersMans();
+    });
+
+    // Opcional: também aplicar quando pressionar Enter
+    document.getElementById('searchMans').addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+            this.blur(); // Remove o foco, que já vai acionar o applyFiltersMans
+        }
+    });
+
+    // Event listener para período (aplicar automaticamente)
+    document.getElementById('filterPeriodoMans').addEventListener('change', function() {
+        const periodo = this.value;
+        const datasPersonalizadas = document.getElementById('datas-personalizadas-mans');
+
+        if (periodo === 'personalizado') {
+            datasPersonalizadas.style.display = 'block';
+
+            const anoAtual = new Date().getFullYear();
+            const dataInicio = `${anoAtual}-01-01`;
+            const dataFim = `${anoAtual}-12-31`;
+
+            document.getElementById('filterDataInicioMans').value = dataInicio;
+            document.getElementById('filterDataFimMans').value = dataFim;
+        } else {
+            datasPersonalizadas.style.display = 'none';
+            document.getElementById('filterDataInicioMans').value = '';
+            document.getElementById('filterDataFimMans').value = '';
+        }
+
+        // Aplicar filtros automaticamente quando o período mudar
+        applyFiltersMans();
+    });
+
+    // Event listeners para datas personalizadas
+    document.getElementById('filterDataInicioMans').addEventListener('change', function() {
+        if (mansFilters.periodo === 'personalizado') {
+            applyFiltersMans();
+        }
+    });
+    
+    document.getElementById('filterDataFimMans').addEventListener('change', function() {
+        if (mansFilters.periodo === 'personalizado') {
+            applyFiltersMans();
+        }
+    });
+
+    // Event listeners para botões
+    document.getElementById('btnAplicarFiltrosMans').addEventListener('click', applyFiltersMans);
+    document.getElementById('btnLimparFiltrosMans').addEventListener('click', clearFiltersMans);
+
+    // Event listener para tamanho da página
+    document.getElementById('pageSizeMans').addEventListener('change', function() {
+        pageSizeMans = parseInt(this.value);
+        currentPageMans = 1;
+        renderTableMans();
+    });
+
+    // Event listeners para botões de ação
+    document.getElementById('btnRefreshMans').addEventListener('click', function() {
+        document.getElementById('tableContainerMans').style.display = 'none';
+        document.getElementById('errorMans').style.display = 'none';
+        document.getElementById('loadingMans').style.display = 'block';
+        loadMansData();
+    });
+
+    document.getElementById('btnExportCSVMans').addEventListener('click', exportFilteredCSVMans);
+
+    // Carregar dados iniciais
+    loadMansData();
+});
+
+
+// Event listeners atualizados
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('Inicializando gráfico detalhado...');
+    
+   
+    
+    //  Hook para quando os filtros principais mudarem
+   
+    const originalApplyFrontend = window.applyFrontendFiltersMans;
+    if (originalApplyFrontend) {
+        window.applyFrontendFiltersMans = function() {
+            // Executar a função original
+            originalApplyFrontend.apply(this, arguments);
+            
+           
+        };
+    }
+});
+
+
+</script>
+{% endblock %}

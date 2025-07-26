@@ -119,31 +119,21 @@
 {% block content %}
 <div class="row">
     <div class="col-12">
-        <div class="card">
-            <div class="card-header d-flex justify-content-between align-items-center">
-                <h5 class="card-title mb-0 text-primary-custom">
-                    <i class="fas fa-list-alt me-2"></i>
-                    Dados dos Épicos
-                </h5>
-                <div class="d-flex gap-2">
-                    <button id="btnExportCSV" class="btn btn-success btn-sm modern-btn">
-                        <i class="fas fa-file-csv me-2"></i>
-                        Exportar CSV
-                    </button>
-                    <button id="btnRefresh" class="btn btn-primary btn-sm modern-btn">
-                        <i class="fas fa-sync-alt me-2"></i>
-                        Atualizar
-                    </button>
-                </div>
-            </div>
-            <div class="card-body">
+        <div class="card shadow-sm border-0">
+            <div class="card-header bg-white justify-content-between align-items-center">
                 <!-- Filtros Personalizados -->
-                <div class="filtros-container">
+                <div class="filtros-container" style="position: relative;">
                     <h6 class="mb-3 text-primary-custom">
                         <i class="fas fa-filter me-2"></i>
                         Filtros Avançados
                     </h6>
-                    
+                    <div style="position: absolute; top: 10px; right: 20px; z-index: 10;">
+                            <div class="d-flex align-items-end gap-2 h-100">
+                                <div class="badge-contador">
+                                    <span id="totalRegistrosEpicos" class="badge-registros">0 registros</span>
+                                </div>
+                            </div>
+                        </div>
                     <!-- Período de Análise -->
                     <div class="alert periodo-info py-2 mb-3 border-0 shadow-sm">
                         <div class="d-flex align-items-center">
@@ -185,13 +175,7 @@
                             </label>
                             <input type="text" id="searchEpicos" class="form-control form-control-sm modern-input" placeholder="Buscar por número ou resumo...">
                         </div>
-                        <div class="col-md-3">
-                            <div class="d-flex align-items-end gap-2 h-100">
-                                <div class="badge-contador">
-                                    <span id="totalRegistrosEpicos" class="badge-registros">0 registros</span>
-                                </div>
-                            </div>
-                        </div>
+                        
                     </div>
                     
                     <!-- Filtros de período -->
@@ -234,7 +218,30 @@
                         </div>
                     </div>
                 </div>
-
+                </div>
+        </div>
+    </div>
+</div 
+ <div class="row">
+    <div class="col-12">  
+            <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="card-title mb-0 text-primary-custom">
+                    <i class="fas fa-list-alt me-2"></i>
+                    Dados dos Épicos
+                </h5>
+                <div class="d-flex gap-2">
+                    <button id="btnExportCSV" class="btn btn-success btn-sm modern-btn">
+                        <i class="fas fa-file-csv me-2"></i>
+                        Exportar CSV
+                    </button>
+                    <button id="btnRefresh" class="btn btn-primary btn-sm modern-btn">
+                        <i class="fas fa-sync-alt me-2"></i>
+                        Atualizar
+                    </button>
+                </div>
+            </div>
+            <div class="card-body">
                 <!-- Loading -->
                 <div id="loadingEpicos" class="loading">
                     <div class="spinner-border text-primary" role="status">

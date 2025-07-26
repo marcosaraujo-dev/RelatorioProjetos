@@ -1,0 +1,2304 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard de MANs - Sistema de Projetos{% endblock %}
+{% block mans_active %}active{% endblock %}
+{% block page_title %}<i class="fas fa-wrench me-2"></i> Dashboard de MANs (Manutenções){% endblock %}
+
+{% block filtros_display %}display: none;{% endblock %}
+
+{% block head %}
+<style>
+/* Estilos específicos para cards de MANs */
+.card-mans {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border: none;
+    box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.card-mans:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 12px 35px rgba(0,0,0,0.2);
+}
+
+.card-mans-success {
+    background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+}
+
+.card-mans-warning {
+    background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+}
+
+.card-mans-info {
+    background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+}
+
+.card-mans-danger {
+    background: linear-gradient(135deg, #ff6b6b 0%, #ee5a52 100%);
+}
+
+.card-mans-secondary {
+    background: linear-gradient(135deg, #74b9ff 0%, #0984e3 100%);
+}
+
+.mans-chart-container {
+    background: white;
+    border-radius: 12px;
+    padding: 20px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    margin-bottom: 20px;
+    transition: box-shadow 0.3s ease;
+}
+
+.mans-chart-container:hover {
+    box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+}
+
+/* Indicadores de tendência */
+.trend-indicator {
+    font-size: 0.85rem;
+    margin-top: 8px;
+}
+
+.trend-up {
+    color: #28a745;
+}
+
+.trend-down {
+    color: #dc3545;
+}
+
+.trend-stable {
+    color: #6c757d;
+}
+
+/* Melhorias nos filtros */
+.filtros-container {
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    border-radius: 12px;
+    padding: 20px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+}
+
+
+.periodo-info {
+    background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
+    border-left: 4px solid #2196f3;
+}
+
+/* Loading melhorado */
+.loading {
+    text-align: center;
+    padding: 40px;
+    color: #6c757d;
+}
+
+.loading .spinner-border {
+    width: 3rem;
+    height: 3rem;
+}
+
+/* Responsividade melhorada */
+@media (max-width: 768px) {
+    .filtros-container {
+        padding: 15px;
+    }
+    
+    .mans-chart-container {
+        padding: 15px;
+        margin-bottom: 15px;
+    }
+    
+    .card-mans .h4 {
+        font-size: 1.5rem;
+    }
+}
+
+/* Animações suaves */
+.fade-in {
+    animation: fadeIn 0.5s ease-in;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+
+<!-- Filtros e Controles -->
+<div class="row mb-4 fade-in">
+    <div class="col-12">
+        <div class="card shadow-sm border-0">
+            <div class="card-header bg-white">
+                <div class="filtros-container" style="position: relative;">
+                    <h6 class="mb-3 text-primary-custom">
+                        <i class="fas fa-filter me-2"></i>
+                        Filtros para Dashboard de MANs
+                    </h6>
+                    <div style="position: absolute; top: 10px; right: 20px; z-index: 10;">
+                        <div class="d-flex align-items-end gap-2 h-100">
+                            <span id="totalRegistrosMans" class="badge-registros">0 MANs</span>
+                        </div>
+                    </div>
+                    
+                    <!-- Período de Análise -->
+                    <div class="alert periodo-info py-2 mb-3 border-0 shadow-sm">
+                        <div class="d-flex align-items-center">
+                            <i class="fas fa-calendar-alt me-2 text-primary"></i>
+                            <strong>Período de Análise:</strong>
+                            <span id="periodo-texto-mans" class="ms-2 periodo-badge">Ano Atual</span>
+                        </div>
+                    </div>
+                    
+                    <!-- Filtros básicos -->
+                    <div class="row mb-3">
+                        <div class="col-md-3">
+                            <label for="filterEquipeMans" class="form-label small fw-bold text-dark">
+                                <i class="fas fa-users me-1 text-primary"></i>Equipe
+                            </label>
+                            <select id="filterEquipeMans" class="form-select form-select-sm modern-select">
+                                <option value="">Todas as Equipes</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label for="filterStatusMans" class="form-label small fw-bold text-dark">
+                                <i class="fas fa-flag me-1 text-success"></i>Status
+                            </label>
+                            <select id="filterStatusMans" class="form-select form-select-sm modern-select">
+                                <option value="">Todos os Status</option>
+                                <option value="Closed">Fechado</option>
+                                <option value="Done">Concluído</option>
+                                <option value="Resolved">Resolvido</option>
+                                <option value="In Progress">Em Progresso</option>
+                                <option value="Open">Aberto</option>
+                                <option value="To Do">A Fazer</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label for="filterProdutoMans" class="form-label small fw-bold text-dark">
+                                <i class="fas fa-box me-1 text-info"></i>Produto
+                            </label>
+                            <select id="filterProdutoMans" class="form-select form-select-sm modern-select">
+                                <option value="">Todos os Produtos</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label for="searchMans" class="form-label small fw-bold text-dark">
+                                <i class="fas fa-search me-1 text-warning"></i>Buscar
+                            </label>
+                            <input type="text" id="searchMans" class="form-control form-control-sm modern-input" placeholder="Buscar por número ou resumo...">
+                        </div>
+                    </div>
+                    
+                    <!-- Filtros de período -->
+                    <div class="row">
+                        <div class="col-md-3">
+                            <label for="filterPeriodoMans" class="form-label small fw-bold text-dark">
+                                <i class="fas fa-clock me-1 text-info"></i>Período
+                            </label>
+                            <select id="filterPeriodoMans" class="form-select form-select-sm modern-select">
+                                <option value="ano_atual">Ano Atual</option>
+                                <option value="q1">Q1 - Jan a Mar</option>
+                                <option value="q2">Q2 - Abr a Jun</option>
+                                <option value="q3">Q3 - Jul a Set</option>
+                                <option value="q4">Q4 - Out a Dez</option>
+                                <option value="6_meses">Últimos 6 Meses</option>
+                                <option value="3_meses">Últimos 3 Meses</option>
+                                <option value="mes_atual">Mês Atual</option>
+                                <option value="personalizado">Personalizado</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4" id="datas-personalizadas-mans" style="display: none">
+                            <div class="row">
+                                <div class="col-6">
+                                    <label for="filterDataInicioMans" class="form-label small fw-bold text-dark">Data Início</label>
+                                    <input type="date" id="filterDataInicioMans" class="form-control form-control-sm modern-input">
+                                </div>
+                                <div class="col-6">
+                                    <label for="filterDataFimMans" class="form-label small fw-bold text-dark">Data Fim</label>
+                                    <input type="date" id="filterDataFimMans" class="form-control form-control-sm modern-input">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-5">
+                            <div class="d-flex align-items-end gap-2 h-100">
+                                <button type="button" id="btnAplicarFiltrosMans" class="btn btn-primary btn-sm modern-btn">
+                                    <i class="fas fa-search me-1"></i>
+                                    APLICAR
+                                </button>
+                                <button type="button" id="btnLimparFiltrosMans" class="btn btn-outline-secondary btn-sm modern-btn">
+                                    <i class="fas fa-times me-1"></i>
+                                    LIMPAR
+                                </button>
+                                <button type="button" id="btnRefreshMans" class="btn btn-outline-primary btn-sm modern-btn">
+                                    <i class="fas fa-sync-alt me-1"></i>
+                                    ATUALIZAR
+                                </button>
+                                <button id="btnExportCSVMans" class="btn btn-success btn-sm modern-btn">
+                                    <i class="fas fa-file-csv me-1"></i>
+                                    EXPORTAR
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Loading -->
+<div id="loadingMans" class="loading fade-in">
+    <div class="spinner-border text-primary" role="status">
+        <span class="visually-hidden">Carregando...</span>
+    </div>
+    <p class="mt-3">Carregando dados das MANs...</p>
+</div>
+
+<!-- Erro -->
+<div id="errorMans" style="display: none;" class="alert alert-danger fade-in">
+    <i class="fas fa-exclamation-triangle me-2"></i>
+    <span id="errorMessageMans"></span>
+</div>
+
+<!-- Cards de Estatísticas das MANs -->
+<div id="cardsContainerMans" style="display: none;" class="fade-in">
+    <div class="row mb-4">
+        <div class="col-xl-3 col-lg-6 col-md-6 mb-3">
+            <div class="card card-mans border-0 h-100">
+                <div class="card-body">
+                    <div class="row align-items-center">
+                        <div class="col">
+                            <div class="text-xs font-weight-bold text-uppercase mb-1">
+                                Total de MANs
+                            </div>
+                            <div class="h4 mb-0 font-weight-bold" id="totalMansCard">0</div>
+                            <div class="trend-indicator">
+                                <span class="small">
+                                    <i class="fas fa-tools me-1"></i><span id="equipesEnvolvidasMans">0</span> equipes
+                                </span>
+                            </div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-wrench fa-2x opacity-75"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-lg-6 col-md-6 mb-3">
+            <div class="card card-mans-success border-0 h-100">
+                <div class="card-body">
+                    <div class="row align-items-center">
+                        <div class="col">
+                            <div class="text-xs font-weight-bold text-uppercase mb-1">
+                                MANs Resolvidas
+                            </div>
+                            <div class="h4 mb-0 font-weight-bold" id="mansResolvidasCard">0</div>
+                            <div class="progress mt-2" style="height: 6px; background-color: rgba(255,255,255,0.3);">
+                                <div class="progress-bar bg-white" role="progressbar" id="progressResolvidasMans" style="width: 0%"></div>
+                            </div>
+                            <div class="trend-indicator">
+                                <small id="percentualResolvidasText">0% do total</small>
+                            </div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-check-circle fa-2x opacity-75"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-lg-6 col-md-6 mb-3">
+            <div class="card card-mans-warning border-0 h-100">
+                <div class="card-body">
+                    <div class="row align-items-center">
+                        <div class="col">
+                            <div class="text-xs font-weight-bold text-uppercase mb-1">
+                                MANs Pendentes
+                            </div>
+                            <div class="h4 mb-0 font-weight-bold" id="mansPendentesCard">0</div>
+                            <div class="trend-indicator">
+                                <span class="small">
+                                    <i class="fas fa-clock me-1"></i>Aguardando resolução
+                                </span>
+                            </div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-hourglass-half fa-2x opacity-75"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-lg-6 col-md-6 mb-3">
+            <div class="card card-mans-info border-0 h-100">
+                <div class="card-body">
+                    <div class="row align-items-center">
+                        <div class="col">
+                            <div class="text-xs font-weight-bold text-uppercase mb-1">
+                                Tempo Médio
+                            </div>
+                            <div class="h4 mb-0 font-weight-bold" id="tempoMedioMans">0</div>
+                            <div class="trend-indicator">
+                                <span class="small">dias para resolução</span>
+                            </div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-stopwatch fa-2x opacity-75"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Segunda linha de cards - Novos KPIs -->
+    <div class="row mb-4">
+        <div class="col-xl-3 col-lg-6 col-md-6 mb-3">
+            <div class="card card-mans-secondary border-0 h-100">
+                <div class="card-body">
+                    <div class="row align-items-center">
+                        <div class="col">
+                            <div class="text-xs font-weight-bold text-uppercase mb-1">
+                                MANs Críticas
+                            </div>
+                            <div class="h4 mb-0 font-weight-bold" id="mansCriticasCard">0</div>
+                            <div class="trend-indicator">
+                                <span class="small">
+                                    <i class="fas fa-exclamation-triangle me-1"></i>Alta prioridade
+                                </span>
+                            </div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-exclamation-triangle fa-2x opacity-75"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-lg-6 col-md-6 mb-3">
+            <div class="card card-mans-danger border-0 h-100">
+                <div class="card-body">
+                    <div class="row align-items-center">
+                        <div class="col">
+                            <div class="text-xs font-weight-bold text-uppercase mb-1">
+                                SLA Atrasado
+                            </div>
+                            <div class="h4 mb-0 font-weight-bold" id="slaAtrasadoCard">0</div>
+                            <div class="trend-indicator">
+                                <span class="small">
+                                    <i class="fas fa-clock me-1"></i>Fora do prazo
+                                </span>
+                            </div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-clock fa-2x opacity-75"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-lg-6 col-md-6 mb-3">
+            <div class="card card-mans border-0 h-100">
+                <div class="card-body">
+                    <div class="row align-items-center">
+                        <div class="col">
+                            <div class="text-xs font-weight-bold text-uppercase mb-1">
+                                Taxa Resolução
+                            </div>
+                            <div class="h4 mb-0 font-weight-bold" id="taxaResolucaoCard">0%</div>
+                            <div class="trend-indicator">
+                                <span class="small">
+                                    <i class="fas fa-percentage me-1"></i>Eficiência do período
+                                </span>
+                            </div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-chart-line fa-2x opacity-75"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-lg-6 col-md-6 mb-3">
+            <div class="card card-mans-success border-0 h-100">
+                <div class="card-body">
+                    <div class="row align-items-center">
+                        <div class="col">
+                            <div class="text-xs font-weight-bold text-uppercase mb-1">
+                                Backlog Total
+                            </div>
+                            <div class="h4 mb-0 font-weight-bold" id="backlogTotalCard">0</div>
+                            <div class="trend-indicator">
+                                <span class="small">
+                                    <i class="fas fa-list me-1"></i>MANs acumuladas
+                                </span>
+                            </div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-list fa-2x opacity-75"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Gráficos de MANs -->
+<div id="chartsContainerMans" style="display: none;" class="fade-in">
+    <div class="row mb-4">
+        <!-- Gráfico de Backlog por Equipe -->
+        <div class="col-xl-6 col-lg-12 mb-4">
+            <div class="mans-chart-container">
+                <h6 class="text-primary fw-bold mb-3">
+                    <i class="fas fa-chart-bar me-2"></i>Backlog de MANs por Equipe
+                </h6>
+                <div id="mansBacklogChart" style="height: 400px;">
+                    <div class="text-center text-muted p-4">
+                        <div class="spinner-border text-primary mb-3" role="status">
+                            <span class="visually-hidden">Carregando...</span>
+                        </div>
+                        <br>
+                        <strong>Carregando dados do backlog...</strong>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Gráfico de Tendência Mensal -->
+        <div class="col-xl-6 col-lg-12 mb-4">
+            <div class="mans-chart-container">
+                <h6 class="text-primary fw-bold mb-3">
+                    <i class="fas fa-chart-line me-2"></i>Tendência de Abertura/Fechamento
+                </h6>
+                <div id="mansTendenciaChart" style="height: 400px;">
+                    <div class="text-center text-muted p-4">
+                        <div class="spinner-border text-primary mb-3" role="status">
+                            <span class="visually-hidden">Carregando...</span>
+                        </div>
+                        <br>
+                        <strong>Carregando tendência...</strong>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Gráfico de Performance por Equipe -->
+    <div class="row mb-4">
+        <div class="col-xl-8 col-lg-12 mb-4">
+            <div class="mans-chart-container">
+                <h6 class="text-primary fw-bold mb-3">
+                    <i class="fas fa-chart-area me-2"></i>Performance de Resolução por Equipe
+                </h6>
+                <div id="mansPerformanceChart" style="height: 450px;">
+                    <div class="text-center text-muted p-4">
+                        <div class="spinner-border text-primary mb-3" role="status">
+                            <span class="visually-hidden">Carregando...</span>
+                        </div>
+                        <br>
+                        <strong>Carregando performance...</strong>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Gráfico de Distribuição por Status -->
+        <div class="col-xl-4 col-lg-12 mb-4">
+            <div class="mans-chart-container">
+                <h6 class="text-primary fw-bold mb-3">
+                    <i class="fas fa-chart-pie me-2"></i>Distribuição por Status
+                </h6>
+                <div id="mansStatusChart" style="height: 450px;">
+                    <div class="text-center text-muted p-4">
+                        <div class="spinner-border text-primary mb-3" role="status">
+                            <span class="visually-hidden">Carregando...</span>
+                        </div>
+                        <br>
+                        <strong>Carregando distribuição...</strong>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Gráfico Detalhado por Equipe e Mês -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="mans-chart-container">
+                <h6 class="text-primary fw-bold mb-3">
+                    <i class="fas fa-chart-area me-2"></i>Evolução Detalhada por Equipe e Mês
+                </h6>
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <label for="tipoVisualizacaoMans" class="form-label small fw-bold">
+                            <i class="fas fa-eye me-1"></i>Tipo de Visualização:
+                        </label>
+                        <select id="tipoVisualizacaoMans" class="form-select form-select-sm">
+                            <option value="agrupado">Barras Agrupadas</option>
+                            <option value="empilhado">Barras Empilhadas</option>
+                            <option value="linha">Linhas</option>
+                        </select>
+                    </div>
+                    <div class="col-md-6">
+                        <small class="text-muted">
+                            <i class="fas fa-info-circle me-1"></i>
+                            Use o filtro de equipe no topo da página para filtrar dados específicos
+                        </small>
+                    </div>
+                </div>
+                <div id="mansDetalhadoChart" style="height: 500px;">
+                    <div class="text-center text-muted p-4">
+                        <div class="spinner-border text-primary mb-3" role="status">
+                            <span class="visually-hidden">Carregando...</span>
+                        </div>
+                        <br>
+                        <strong>Carregando dados detalhados...</strong>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Legenda e Informações Detalhadas -->
+<div class="row mt-4 fade-in">
+    <div class="col-12">
+        <div class="card shadow-sm border-0">
+            <div class="card-header bg-white border-bottom">
+                <h6 class="card-title mb-0 text-primary">
+                    <i class="fas fa-info-circle me-2"></i>
+                    Guia dos Indicadores e Métricas do Dashboard de MANs
+                </h6>
+            </div>
+            <div class="card-body p-0">
+                <div class="accordion" id="accordionLegendaMans">
+                    
+                    <!-- Cards e Métricas -->
+                    <div class="accordion-item">
+                        <h2 class="accordion-header" id="headingCards">
+                            <button class="accordion-button collapsed text-primary" type="button" data-bs-toggle="collapse" data-bs-target="#collapseCards">
+                                <i class="fas fa-dashboard me-2"></i>
+                                <strong>Explicação dos Cards e Métricas</strong>
+                            </button>
+                        </h2>
+                        <div id="collapseCards" class="accordion-collapse collapse" data-bs-parent="#accordionLegendaMans">
+                            <div class="accordion-body">
+                                <div class="row">
+                                    <!-- Primeira linha de cards -->
+                                    <div class="col-md-6 mb-3">
+                                        <div class="card border-primary h-100">
+                                            <div class="card-header bg-primary bg-opacity-10">
+                                                <h6 class="card-title mb-0 text-primary">
+                                                    <i class="fas fa-wrench me-2"></i>Total de MANs
+                                                </h6>
+                                            </div>
+                                            <div class="card-body">
+                                                <p><strong>Definição:</strong> Quantidade total de manutenções (MANs) no período selecionado.</p>
+                                                <p><strong>Cálculo:</strong> COUNT de todas as MANs criadas no período filtrado.</p>
+                                                <p><strong>Utilidade:</strong> Visão geral do volume de manutenções que a equipe precisa lidar.</p>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="col-md-6 mb-3">
+                                        <div class="card border-success h-100">
+                                            <div class="card-header bg-success bg-opacity-10">
+                                                <h6 class="card-title mb-0 text-success">
+                                                    <i class="fas fa-check-circle me-2"></i>MANs Resolvidas
+                                                </h6>
+                                            </div>
+                                            <div class="card-body">
+                                                <p><strong>Definição:</strong> MANs com status "Closed", "Done" ou "Resolved".</p>
+                                                <p><strong>Cálculo:</strong> COUNT de MANs com ResolutionDate preenchida.</p>
+                                                <p><strong>Utilidade:</strong> Mede a capacidade de resolução da equipe.</p>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="col-md-6 mb-3">
+                                        <div class="card border-warning h-100">
+                                            <div class="card-header bg-warning bg-opacity-10">
+                                                <h6 class="card-title mb-0 text-warning">
+                                                    <i class="fas fa-hourglass-half me-2"></i>MANs Pendentes
+                                                </h6>
+                                            </div>
+                                            <div class="card-body">
+                                                <p><strong>Definição:</strong> MANs ainda em aberto (sem ResolutionDate).</p>
+                                                <p><strong>Cálculo:</strong> Total MANs - MANs Resolvidas.</p>
+                                                <p><strong>Utilidade:</strong> Identifica o backlog atual de trabalho pendente.</p>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="col-md-6 mb-3">
+                                        <div class="card border-info h-100">
+                                            <div class="card-header bg-info bg-opacity-10">
+                                                <h6 class="card-title mb-0 text-info">
+                                                    <i class="fas fa-stopwatch me-2"></i>Tempo Médio de Resolução
+                                                </h6>
+                                            </div>
+                                            <div class="card-body">
+                                                <p><strong>Definição:</strong> Tempo médio em dias entre abertura e resolução.</p>
+                                                <p><strong>Cálculo:</strong> AVG(ResolutionDate - Created) para MANs resolvidas.</p>
+                                                <p><strong>Utilidade:</strong> Avalia eficiência do processo de resolução.</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Segunda linha de cards -->
+                                <div class="row mt-3">
+                                    <div class="col-md-6 mb-3">
+                                        <div class="card border-secondary h-100">
+                                            <div class="card-header bg-secondary bg-opacity-10">
+                                                <h6 class="card-title mb-0 text-secondary">
+                                                    <i class="fas fa-exclamation-triangle me-2"></i>MANs Críticas
+                                                </h6>
+                                            </div>
+                                            <div class="card-body">
+                                                <p><strong>Definição:</strong> MANs com alta prioridade ou complexidade elevada.</p>
+                                                <p><strong>Cálculo:</strong> COUNT de MANs com Priority = 'High' ou 'Critical'.</p>
+                                                <p><strong>Utilidade:</strong> Identifica manutenções que precisam de atenção imediata.</p>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="col-md-6 mb-3">
+                                        <div class="card border-danger h-100">
+                                            <div class="card-header bg-danger bg-opacity-10">
+                                                <h6 class="card-title mb-0 text-danger">
+                                                    <i class="fas fa-clock me-2"></i>SLA Atrasado
+                                                </h6>
+                                            </div>
+                                            <div class="card-body">
+                                                <p><strong>Definição:</strong> MANs que ultrapassaram o tempo esperado de resolução.</p>
+                                                <p><strong>Cálculo:</strong> COUNT de MANs abertas há mais de X dias (definido por tipo).</p>
+                                                <p><strong>Utilidade:</strong> Monitora cumprimento de SLAs e prazos.</p>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="col-md-6 mb-3">
+                                        <div class="card border-primary h-100">
+                                            <div class="card-header bg-primary bg-opacity-10">
+                                                <h6 class="card-title mb-0 text-primary">
+                                                    <i class="fas fa-chart-line me-2"></i>Taxa de Resolução
+                                                </h6>
+                                            </div>
+                                            <div class="card-body">
+                                                <p><strong>Definição:</strong> Percentual de MANs resolvidas no período.</p>
+                                                <p><strong>Cálculo:</strong> (MANs Resolvidas / Total MANs) × 100.</p>
+                                                <p><strong>Utilidade:</strong> Mede eficiência geral da equipe no período.</p>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="col-md-6 mb-3">
+                                        <div class="card border-success h-100">
+                                            <div class="card-header bg-success bg-opacity-10">
+                                                <h6 class="card-title mb-0 text-success">
+                                                    <i class="fas fa-list me-2"></i>Backlog Total
+                                                </h6>
+                                            </div>
+                                            <div class="card-body">
+                                                <p><strong>Definição:</strong> Total de MANs acumuladas em aberto (todas as datas).</p>
+                                                <p><strong>Cálculo:</strong> COUNT de todas as MANs sem ResolutionDate.</p>
+                                                <p><strong>Utilidade:</strong> Visão do acúmulo histórico de manutenções pendentes.</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Gráficos -->
+                    <div class="accordion-item">
+                        <h2 class="accordion-header" id="headingGraficos">
+                            <button class="accordion-button collapsed text-primary" type="button" data-bs-toggle="collapse" data-bs-target="#collapseGraficos">
+                                <i class="fas fa-chart-bar me-2"></i>
+                                <strong>Explicação dos Gráficos e Visualizações</strong>
+                            </button>
+                        </h2>
+                        <div id="collapseGraficos" class="accordion-collapse collapse" data-bs-parent="#accordionLegendaMans">
+                            <div class="accordion-body">
+                                <div class="row">
+                                    <div class="col-md-6 mb-4">
+                                        <div class="card border-info h-100">
+                                            <div class="card-header bg-info bg-opacity-10">
+                                                <h6 class="card-title mb-0 text-info">
+                                                    <i class="fas fa-chart-bar me-2"></i>Backlog por Equipe
+                                                </h6>
+                                            </div>
+                                            <div class="card-body">
+                                                <p><strong>Objetivo:</strong> Comparar volume de MANs entre equipes.</p>
+                                                <p><strong>Visualização:</strong> Gráfico de barras agrupadas mostrando:</p>
+                                                <ul>
+                                                    <li><span class="badge bg-warning">Barras Amarelas</span>: MANs Abertas no período</li>
+                                                    <li><span class="badge bg-success">Barras Verdes</span>: MANs Fechadas no período</li>
+                                                    <li><span class="badge bg-danger">Linha Vermelha</span>: Saldo (Abertas - Fechadas)</li>
+                                                </ul>
+                                                <p><strong>Interpretação:</strong></p>
+                                                <ul>
+                                                    <li>Saldo positivo = mais aberturas que fechamentos</li>
+                                                    <li>Saldo negativo = mais fechamentos que aberturas</li>
+                                                </ul>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="col-md-6 mb-4">
+                                        <div class="card border-success h-100">
+                                            <div class="card-header bg-success bg-opacity-10">
+                                                <h6 class="card-title mb-0 text-success">
+                                                    <i class="fas fa-chart-line me-2"></i>Tendência Mensal
+                                                </h6>
+                                            </div>
+                                            <div class="card-body">
+                                                <p><strong>Objetivo:</strong> Acompanhar evolução temporal das MANs.</p>
+                                                <p><strong>Visualização:</strong> Gráfico de linhas mostrando:</p>
+                                                <ul>
+                                                    <li><span class="badge bg-warning">Linha Amarela</span>: MANs Abertas por mês</li>
+                                                    <li><span class="badge bg-success">Linha Verde</span>: MANs Fechadas no mesmo mês</li>
+                                                </ul>
+                                                <p><strong>Interpretação:</strong></p>
+                                                <ul>
+                                                    <li>Tendência crescente de aberturas pode indicar problemas sistêmicos</li>
+                                                    <li>Linhas convergentes indicam equilíbrio</li>
+                                                </ul>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="col-md-6 mb-4">
+                                        <div class="card border-primary h-100">
+                                            <div class="card-header bg-primary bg-opacity-10">
+                                                <h6 class="card-title mb-0 text-primary">
+                                                    <i class="fas fa-chart-area me-2"></i>Performance por Equipe
+                                                </h6>
+                                            </div>
+                                            <div class="card-body">
+                                                <p><strong>Objetivo:</strong> Avaliar eficiência de resolução por equipe.</p>
+                                                <p><strong>Métricas exibidas:</strong></p>
+                                                <ul>
+                                                    <li>Tempo médio de resolução</li>
+                                                    <li>Taxa de resolução (%)</li>
+                                                    <li>Volume vs. Capacidade</li>
+                                                </ul>
+                                                <p><strong>Interpretação:</strong></p>
+                                                <ul>
+                                                    <li>Barras maiores = melhor performance</li>
+                                                    <li>Compara eficiência entre equipes</li>
+                                                </ul>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="col-md-6 mb-4">
+                                        <div class="card border-warning h-100">
+                                            <div class="card-header bg-warning bg-opacity-10">
+                                                <h6 class="card-title mb-0 text-warning">
+                                                    <i class="fas fa-chart-pie me-2"></i>Distribuição por Status
+                                                </h6>
+                                            </div>
+                                            <div class="card-body">
+                                                <p><strong>Objetivo:</strong> Visualizar proporção de MANs em cada status.</p>
+                                                <p><strong>Visualização:</strong> Gráfico de pizza/rosca com cores:</p>
+                                                <ul>
+                                                    <li><span class="badge bg-success">Verde</span>: Closed/Done/Resolved</li>
+                                                    <li><span class="badge bg-primary">Azul</span>: In Progress</li>
+                                                    <li><span class="badge bg-warning">Amarelo</span>: Open/To Do</li>
+                                                    <li><span class="badge bg-secondary">Cinza</span>: Outros status</li>
+                                                </ul>
+                                                <p><strong>Interpretação:</strong></p>
+                                                <ul>
+                                                    <li>Muito verde = boa resolução</li>
+                                                    <li>Muito amarelo = acúmulo de pendências</li>
+                                                </ul>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Indicadores e Alertas -->
+                    <div class="accordion-item">
+                        <h2 class="accordion-header" id="headingIndicadores">
+                            <button class="accordion-button collapsed text-primary" type="button" data-bs-toggle="collapse" data-bs-target="#collapseIndicadores">
+                                <i class="fas fa-traffic-light me-2"></i>
+                                <strong>Indicadores de Saúde e Alertas</strong>
+                            </button>
+                        </h2>
+                        <div id="collapseIndicadores" class="accordion-collapse collapse" data-bs-parent="#accordionLegendaMans">
+                            <div class="accordion-body">
+                                <div class="row">
+                                    <div class="col-md-4">
+                                        <div class="card border-success h-100">
+                                            <div class="card-header bg-success bg-opacity-10">
+                                                <h6 class="card-title mb-0 text-success">
+                                                    <i class="fas fa-check-circle me-2"></i>Situação Saudável
+                                                </h6>
+                                            </div>
+                                            <div class="card-body">
+                                                <ul class="mb-0">
+                                                    <li><strong>Taxa de resolução:</strong> > 80%</li>
+                                                    <li><strong>Tempo médio:</strong> Dentro do SLA</li>
+                                                    <li><strong>Tendência:</strong> Fechamentos >= Aberturas</li>
+                                                    <li><strong>Backlog:</strong> Estável ou decrescente</li>
+                                                </ul>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="col-md-4">
+                                        <div class="card border-warning h-100">
+                                            <div class="card-header bg-warning bg-opacity-10">
+                                                <h6 class="card-title mb-0 text-warning">
+                                                    <i class="fas fa-exclamation-triangle me-2"></i>Atenção Necessária
+                                                </h6>
+                                            </div>
+                                            <div class="card-body">
+                                                <ul class="mb-0">
+                                                    <li><strong>Taxa de resolução:</strong> 60-80%</li>
+                                                    <li><strong>Tempo médio:</strong> Próximo ao limite do SLA</li>
+                                                    <li><strong>Tendência:</strong> Leve aumento de aberturas</li>
+                                                    <li><strong>Backlog:</strong> Crescimento moderado</li>
+                                                </ul>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="col-md-4">
+                                        <div class="card border-danger h-100">
+                                            <div class="card-header bg-danger bg-opacity-10">
+                                                <h6 class="card-title mb-0 text-danger">
+                                                    <i class="fas fa-times-circle me-2"></i>Situação Crítica
+                                                </h6>
+                                            </div>
+                                            <div class="card-body">
+                                                <ul class="mb-0">
+                                                    <li><strong>Taxa de resolução:</strong> < 60%</li>
+                                                    <li><strong>Tempo médio:</strong> Acima do SLA</li>
+                                                    <li><strong>Tendência:</strong> Mais aberturas que fechamentos</li>
+                                                    <li><strong>Backlog:</strong> Crescimento acelerado</li>
+                                                </ul>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Ações Recomendadas -->
+                                <div class="row mt-4">
+                                    <div class="col-12">
+                                        <h6 class="text-primary mb-3">
+                                            <i class="fas fa-lightbulb me-2"></i>Ações Recomendadas por Cenário
+                                        </h6>
+                                        <div class="alert alert-info">
+                                            <div class="row">
+                                                <div class="col-md-4">
+                                                    <strong>🟢 Situação Saudável:</strong><br>
+                                                    <small>
+                                                        • Manter processos atuais<br>
+                                                        • Documentar boas práticas<br>
+                                                        • Monitorar preventivamente<br>
+                                                        • Revisar SLAs se necessário
+                                                    </small>
+                                                </div>
+                                                <div class="col-md-4">
+                                                    <strong>🟡 Atenção Necessária:</strong><br>
+                                                    <small>
+                                                        • Revisar processos internos<br>
+                                                        • Identificar gargalos<br>
+                                                        • Realocar recursos se possível<br>
+                                                        • Aumentar frequência de reviews
+                                                    </small>
+                                                </div>
+                                                <div class="col-md-4">
+                                                    <strong>🔴 Situação Crítica:</strong><br>
+                                                    <small>
+                                                        • Ação imediata necessária<br>
+                                                        • Analisar causas raiz<br>
+                                                        • Reforçar equipe temporariamente<br>
+                                                        • Escalar para gestão superior
+                                                    </small>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Dicas de Uso -->
+                    <div class="accordion-item">
+                        <h2 class="accordion-header" id="headingDicas">
+                            <button class="accordion-button collapsed text-primary" type="button" data-bs-toggle="collapse" data-bs-target="#collapseDicas">
+                                <i class="fas fa-tips me-2"></i>
+                                <strong>Dicas de Uso e Interpretação</strong>
+                            </button>
+                        </h2>
+                        <div id="collapseDicas" class="accordion-collapse collapse" data-bs-parent="#accordionLegendaMans">
+                            <div class="accordion-body">
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <h6 class="text-primary mb-3">
+                                            <i class="fas fa-filter me-2"></i>Como Usar os Filtros
+                                        </h6>
+                                        <div class="bg-light p-3 rounded mb-3">
+                                            <small>
+                                                <strong>Filtro de Equipe:</strong> Use para análise específica por time<br>
+                                                <strong>Filtro de Período:</strong> Compare diferentes janelas temporais<br>
+                                                <strong>Filtro de Status:</strong> Foque em MANs de interesse específico<br>
+                                                <strong>Filtro de Produto:</strong> Analise por área de negócio<br>
+                                                <strong>Busca:</strong> Encontre MANs específicas por número/resumo
+                                            </small>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <h6 class="text-primary mb-3">
+                                            <i class="fas fa-chart-line me-2"></i>Interpretação dos Dados
+                                        </h6>
+                                        <div class="bg-light p-3 rounded mb-3">
+                                            <small>
+                                                <strong>Compare períodos:</strong> Use filtros para análise temporal<br>
+                                                <strong>Analise por equipe:</strong> Identifique padrões específicos<br>
+                                                <strong>Monitore tendências:</strong> Observe direção das curvas<br>
+                                                <strong>Atenção aos alertas:</strong> Cards vermelhos precisam ação<br>
+                                                <strong>Use exportação:</strong> Para análises detalhadas offline
+                                            </small>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="row">
+                                    <div class="col-12">
+                                        <h6 class="text-success mb-3">
+                                            <i class="fas fa-star me-2"></i>Melhores Práticas
+                                        </h6>
+                                        <div class="alert alert-success">
+                                            <div class="row">
+                                                <div class="col-md-4">
+                                                    <strong>📊 Monitoramento:</strong><br>
+                                                    <small>
+                                                        • Revisar dashboard diariamente<br>
+                                                        • Focar nos cards de alerta<br>
+                                                        • Acompanhar tendências semanais<br>
+                                                        • Comparar com períodos anteriores
+                                                    </small>
+                                                </div>
+                                                <div class="col-md-4">
+                                                    <strong>🎯 Análise:</strong><br>
+                                                    <small>
+                                                        • Investigar picos anômalos<br>
+                                                        • Correlacionar com eventos externos<br>
+                                                        • Identificar padrões sazonais<br>
+                                                        • Validar dados com equipes
+                                                    </small>
+                                                </div>
+                                                <div class="col-md-4">
+                                                    <strong>🚀 Ação:</strong><br>
+                                                    <small>
+                                                        • Definir metas baseadas em dados<br>
+                                                        • Implementar melhorias graduais<br>
+                                                        • Documentar lições aprendidas<br>
+                                                        • Celebrar conquistas da equipe
+                                                    </small>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+<script>
+let mansData = [];
+let allMansData = [];
+let filteredMansData = [];
+
+let mansFilters = {
+    equipe: "",
+    status: "",
+    produto: "",
+    search: "",
+    data_inicio: "",
+    data_fim: "",
+    periodo: "ano_atual"
+};
+
+// Dados para gráficos
+let mansChartData = {
+    backlog: { equipes: [], abertas: [], fechadas: [], saldo: [] },
+    tendencia: { meses: [], abertas: [], fechadas: [] }
+};
+
+function loadMansData() {
+    console.log('Carregando dados do dashboard de MANs...');
+    
+    // Usar período padrão (ano atual) na primeira carga
+    const currentYear = new Date().getFullYear();
+    const params = new URLSearchParams({
+        periodo: 'ano_atual',
+        data_inicio: `${currentYear}-01-01`,
+        data_fim: `${currentYear}-12-31`
+    });
+    
+    console.log('Parâmetros da requisição:', params.toString());
+    
+    // Carregar dados da tabela E dados dos gráficos
+    Promise.all([
+        fetch(`/api/mans-table-data?${params}`)
+            .then(response => {
+                console.log('Resposta mans-table-data status:', response.status);
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                return response.json();
+            }),
+        fetch(`/api/mans-data-charts?${params}`)
+            .then(response => {
+                console.log('Resposta mans-data-charts status:', response.status);
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                return response.json();
+            })
+    ])
+    .then(([tableResponse, chartResponse]) => {
+        console.log('Ambas as respostas recebidas:', {tableResponse, chartResponse});
+        
+        document.getElementById('loadingMans').style.display = 'none';
+        
+        // Verificar se há erros em qualquer uma das respostas
+        if ((tableResponse && tableResponse.error) || (chartResponse && chartResponse.error)) {
+            const error = tableResponse?.error || chartResponse?.error || 'Erro desconhecido';
+            showErrorMans(error);
+            return;
+        }
+        
+        // Verificar se as respostas são válidas
+        if (!tableResponse || !chartResponse) {
+            showErrorMans('Respostas inválidas do servidor');
+            return;
+        }
+        
+        console.log('Dados da tabela:', tableResponse.mans?.length || 0, 'MANs');
+        console.log('Dados dos gráficos:', chartResponse.graficos || 'Nenhum gráfico');
+        
+        // Dados da tabela
+        allMansData = tableResponse.mans || [];
+        mansData = allMansData;
+        
+        // Dados dos gráficos
+        mansChartData = chartResponse.graficos || {
+            backlog: { equipes: [], abertas: [], fechadas: [], saldo: [] },
+            tendencia: { meses: [], abertas: [], fechadas: [] }
+        };
+        
+        // Atualizar cards com estatísticas
+        updateMansCards(tableResponse.stats || {});
+        
+        // Criar gráficos
+        createMansCharts();
+        
+        // Aplicar filtros iniciais
+        applyFrontendFiltersMans();
+        populateFiltersMans();
+        
+        // Mostrar containers
+        document.getElementById('cardsContainerMans').style.display = 'block';
+        document.getElementById('chartsContainerMans').style.display = 'block';
+    })
+    .catch(error => {
+        console.error('Erro completo:', error);
+        document.getElementById('loadingMans').style.display = 'none';
+        showErrorMans('Erro ao carregar dados: ' + error.message);
+    });
+}
+
+function updateMansCards(stats) {
+    console.log('Atualizando cards de MANs:', stats);
+    
+    // Total de MANs
+    const totalMans = document.getElementById('totalMansCard');
+    if (totalMans) {
+        totalMans.textContent = stats.total_mans || 0;
+    }
+    
+    // Total de equipes
+    const equipesEnvolvidas = document.getElementById('equipesEnvolvidasMans');
+    if (equipesEnvolvidas) {
+        equipesEnvolvidas.textContent = stats.total_equipes || 0;
+    }
+    
+    // MANs resolvidas
+    const mansResolvidas = document.getElementById('mansResolvidasCard');
+    const progressResolvidas = document.getElementById('progressResolvidasMans');
+    const percentualResolvidasText = document.getElementById('percentualResolvidasText');
+    if (mansResolvidas) {
+        const resolvidas = stats.mans_fechadas || 0;
+        const total = stats.total_mans || 0;
+        const percentual = total > 0 ? ((resolvidas / total) * 100).toFixed(1) : 0;
+        
+        mansResolvidas.textContent = resolvidas;
+        
+        if (progressResolvidas) {
+            progressResolvidas.style.width = percentual + '%';
+        }
+        
+        if (percentualResolvidasText) {
+            percentualResolvidasText.textContent = `${percentual}% do total`;
+        }
+    }
+    
+    // MANs pendentes
+    const mansPendentes = document.getElementById('mansPendentesCard');
+    if (mansPendentes) {
+        mansPendentes.textContent = stats.mans_abertas || 0;
+    }
+    
+    // Tempo médio
+    const tempoMedio = document.getElementById('tempoMedioMans');
+    if (tempoMedio) {
+        const tempo = stats.tempo_medio_resolucao || 0;
+        tempoMedio.textContent = tempo.toFixed(1);
+    }
+    
+    // Novos cards - segunda linha
+    updateMansSecondRowCards(stats);
+}
+
+function updateMansSecondRowCards(stats) {
+    // MANs Críticas (simulação - você pode ajustar conforme sua regra de negócio)
+    const mansCriticas = document.getElementById('mansCriticasCard');
+    if (mansCriticas) {
+        // Por exemplo: MANs abertas há mais de 30 dias
+        const criticas = Math.round((stats.total_mans || 0) * 0.15); // 15% como exemplo
+        mansCriticas.textContent = criticas;
+    }
+    
+    // SLA Atrasado (simulação)
+    const slaAtrasado = document.getElementById('slaAtrasadoCard');
+    if (slaAtrasado) {
+        // Por exemplo: MANs abertas há mais de 15 dias
+        const atrasadas = Math.round((stats.mans_abertas || 0) * 0.25); // 25% como exemplo
+        slaAtrasado.textContent = atrasadas;
+    }
+    
+    // Taxa de Resolução
+    const taxaResolucao = document.getElementById('taxaResolucaoCard');
+    if (taxaResolucao) {
+        const total = stats.total_mans || 0;
+        const resolvidas = stats.mans_fechadas || 0;
+        const taxa = total > 0 ? ((resolvidas / total) * 100).toFixed(1) : 0;
+        taxaResolucao.textContent = `${taxa}%`;
+    }
+    
+    // Backlog Total (todas as MANs abertas, não só do período)
+    const backlogTotal = document.getElementById('backlogTotalCard');
+    if (backlogTotal) {
+        // Este valor deveria vir de uma query separada que conte todas as MANs abertas
+        // Por enquanto, usar as pendentes do período
+        backlogTotal.textContent = stats.mans_abertas || 0;
+    }
+}
+
+function createMansCharts() {
+    console.log('Criando gráficos de MANs...', mansChartData);
+    
+    try {
+        createMansBacklogChart();
+        createMansTendenciaChart();
+        createMansPerformanceChart();
+        createMansStatusChart();
+    } catch (error) {
+        console.error('Erro ao criar gráficos de MANs:', error);
+    }
+}
+
+function createMansBacklogChart() {
+    const chartElement = document.getElementById('mansBacklogChart');
+    if (!chartElement) {
+        console.error('Elemento mansBacklogChart não encontrado');
+        return;
+    }
+    
+    chartElement.innerHTML = '';
+    
+    const backlog = mansChartData.backlog || {};
+    console.log('Dados do backlog:', backlog);
+    
+    if (!backlog.equipes || backlog.equipes.length === 0) {
+        chartElement.innerHTML = `
+            <div class="text-center text-muted p-4">
+                <i class="fas fa-chart-bar fa-3x mb-3"></i>
+                <p>Nenhum dado de backlog disponível para o período selecionado</p>
+            </div>
+        `;
+        return;
+    }
+    
+    const equipes = backlog.equipes || [];
+    const abertas = backlog.abertas || [];
+    const fechadas = backlog.fechadas || [];
+    const saldo = backlog.saldo || [];
+    
+    const data = [
+        {
+            x: equipes,
+            y: abertas,
+            name: 'MANs Abertas',
+            type: 'bar',
+            marker: { color: '#ffc107' },
+            text: abertas.map(val => `${val}`),
+            textposition: 'auto',
+            hovertemplate: '<b>%{x}</b><br>Abertas: %{y}<extra></extra>'
+        },
+        {
+            x: equipes,
+            y: fechadas,
+            name: 'MANs Fechadas',
+            type: 'bar',
+            marker: { color: '#28a745' },
+            text: fechadas.map(val => `${val}`),
+            textposition: 'auto',
+            hovertemplate: '<b>%{x}</b><br>Fechadas: %{y}<extra></extra>'
+        },
+        {
+            x: equipes,
+            y: saldo,
+            name: 'Saldo (Abertas - Fechadas)',
+            type: 'scatter',
+            mode: 'lines+markers',
+            yaxis: 'y2',
+            line: { color: '#dc3545', width: 4 },
+            marker: { size: 10, color: '#dc3545', symbol: 'diamond' },
+            hovertemplate: '<b>%{x}</b><br>Saldo: %{y}<extra></extra>'
+        }
+    ];
+    
+    const layout = {
+        title: {
+            text: `Backlog por Equipe (${mansChartData.periodo_aplicado?.periodo || 'Período Atual'})`,
+            font: { size: 14 }
+        },
+        barmode: 'group',
+        xaxis: {
+            title: 'Equipes',
+            tickangle: -45,
+            automargin: true
+        },
+        yaxis: {
+            title: 'Quantidade de MANs',
+            side: 'left',
+            rangemode: 'tozero'
+        },
+        yaxis2: {
+            title: 'Saldo',
+            side: 'right',
+            overlaying: 'y',
+            zeroline: true,
+            zerolinecolor: '#000',
+            zerolinewidth: 2,
+            tickcolor: '#dc3545',
+            titlefont: { color: '#dc3545' },
+            tickfont: { color: '#dc3545' }
+        },
+        legend: {
+            orientation: 'h',
+            y: -0.25,
+            x: 0.5,
+            xanchor: 'center'
+        },
+        margin: { t: 50, b: 100, l: 60, r: 80 },
+        plot_bgcolor: 'rgba(0,0,0,0)',
+        paper_bgcolor: 'rgba(0,0,0,0)',
+        font: { family: 'Arial, sans-serif', size: 12 }
+    };
+    
+    Plotly.newPlot('mansBacklogChart', data, layout, {
+        responsive: true,
+        displayModeBar: false
+    }).then(() => {
+        console.log('Gráfico de backlog criado com sucesso');
+    }).catch(error => {
+        console.error('Erro ao criar gráfico de backlog:', error);
+        chartElement.innerHTML = `
+            <div class="text-center text-danger p-4">
+                <i class="fas fa-exclamation-triangle fa-2x mb-3"></i>
+                <p>Erro ao carregar gráfico de backlog</p>
+            </div>
+        `;
+    });
+}
+
+function createMansTendenciaChart() {
+    const chartElement = document.getElementById('mansTendenciaChart');
+    if (!chartElement) {
+        console.error('Elemento mansTendenciaChart não encontrado');
+        return;
+    }
+    
+    chartElement.innerHTML = '';
+    
+    const tendencia = mansChartData.tendencia || {};
+    console.log('Dados da tendência:', tendencia);
+    
+    if (!tendencia.meses || tendencia.meses.length === 0) {
+        chartElement.innerHTML = `
+            <div class="text-center text-muted p-4">
+                <i class="fas fa-chart-line fa-3x mb-3"></i>
+                <p>Nenhum dado de tendência disponível para o período selecionado</p>
+            </div>
+        `;
+        return;
+    }
+    
+    const meses = tendencia.meses || [];
+    const abertas = tendencia.abertas || [];
+    const fechadas = tendencia.fechadas || [];
+    
+    const data = [
+        {
+            x: meses,
+            y: abertas,
+            name: 'MANs Abertas',
+            type: 'scatter',
+            mode: 'lines+markers',
+            line: { color: '#ffc107', width: 3 },
+            marker: { size: 8, color: '#ffc107' },
+            hovertemplate: '<b>%{x}</b><br>Abertas: %{y}<extra></extra>'
+        },
+        {
+            x: meses,
+            y: fechadas,
+            name: 'MANs Fechadas (no mesmo mês)',
+            type: 'scatter',
+            mode: 'lines+markers',
+            line: { color: '#28a745', width: 3 },
+            marker: { size: 8, color: '#28a745' },
+            hovertemplate: '<b>%{x}</b><br>Fechadas: %{y}<extra></extra>'
+        }
+    ];
+    
+    const layout = {
+        title: {
+            text: `Tendência Mensal (${mansChartData.periodo_aplicado?.periodo || 'Período Atual'})`,
+            font: { size: 14 }
+        },
+        xaxis: {
+            title: 'Mês',
+            type: 'category'
+        },
+        yaxis: {
+            title: 'Quantidade de MANs',
+            rangemode: 'tozero'
+        },
+        legend: {
+            orientation: 'h',
+            y: -0.2,
+            x: 0.5,
+            xanchor: 'center'
+        },
+        margin: { t: 50, b: 80, l: 60, r: 60 },
+        plot_bgcolor: 'rgba(0,0,0,0)',
+        paper_bgcolor: 'rgba(0,0,0,0)',
+        font: { family: 'Arial, sans-serif', size: 12 }
+    };
+    
+    Plotly.newPlot('mansTendenciaChart', data, layout, {
+        responsive: true,
+        displayModeBar: false
+    }).then(() => {
+        console.log('Gráfico de tendência criado com sucesso');
+    }).catch(error => {
+        console.error('Erro ao criar gráfico de tendência:', error);
+        chartElement.innerHTML = `
+            <div class="text-center text-danger p-4">
+                <i class="fas fa-exclamation-triangle fa-2x mb-3"></i>
+                <p>Erro ao carregar gráfico de tendência</p>
+            </div>
+        `;
+    });
+}
+
+function createMansPerformanceChart() {
+    const chartElement = document.getElementById('mansPerformanceChart');
+    if (!chartElement) {
+        console.error('Elemento mansPerformanceChart não encontrado');
+        return;
+    }
+    
+    chartElement.innerHTML = '';
+    
+    const backlog = mansChartData.backlog || {};
+    
+    if (!backlog.equipes || backlog.equipes.length === 0) {
+        chartElement.innerHTML = `
+            <div class="text-center text-muted p-4">
+                <i class="fas fa-chart-area fa-3x mb-3"></i>
+                <p>Nenhum dado de performance disponível</p>
+            </div>
+        `;
+        return;
+    }
+    
+    const equipes = backlog.equipes || [];
+    const abertas = backlog.abertas || [];
+    const fechadas = backlog.fechadas || [];
+    
+    // Calcular taxa de resolução por equipe
+    const taxasResolucao = equipes.map((equipe, index) => {
+        const totalAbertas = abertas[index] || 0;
+        const totalFechadas = fechadas[index] || 0;
+        const total = totalAbertas + totalFechadas;
+        return total > 0 ? ((totalFechadas / total) * 100).toFixed(1) : 0;
+    });
+    
+    const data = [
+        {
+            x: equipes,
+            y: taxasResolucao,
+            type: 'bar',
+            marker: {
+                color: taxasResolucao.map(taxa => {
+                    if (taxa >= 80) return '#28a745'; // Verde
+                    if (taxa >= 60) return '#ffc107'; // Amarelo
+                    return '#dc3545'; // Vermelho
+                }),
+                opacity: 0.8
+            },
+            text: taxasResolucao.map(taxa => `${taxa}%`),
+            textposition: 'auto',
+            hovertemplate: '<b>%{x}</b><br>Taxa de Resolução: %{y}%<extra></extra>'
+        }
+    ];
+    
+    const layout = {
+        title: {
+            text: 'Performance de Resolução por Equipe (%)',
+            font: { size: 14 }
+        },
+        xaxis: {
+            title: 'Equipes',
+            tickangle: -45,
+            automargin: true
+        },
+        yaxis: {
+            title: 'Taxa de Resolução (%)',
+            range: [0, 100]
+        },
+        margin: { t: 50, b: 100, l: 60, r: 40 },
+        plot_bgcolor: 'rgba(0,0,0,0)',
+        paper_bgcolor: 'rgba(0,0,0,0)',
+        font: { family: 'Arial, sans-serif', size: 12 }
+    };
+    
+    Plotly.newPlot('mansPerformanceChart', data, layout, {
+        responsive: true,
+        displayModeBar: false
+    }).then(() => {
+        console.log('Gráfico de performance criado com sucesso');
+    }).catch(error => {
+        console.error('Erro ao criar gráfico de performance:', error);
+        chartElement.innerHTML = `
+            <div class="text-center text-danger p-4">
+                <i class="fas fa-exclamation-triangle fa-2x mb-3"></i>
+                <p>Erro ao carregar gráfico de performance</p>
+            </div>
+        `;
+    });
+}
+
+function createMansStatusChart() {
+    const chartElement = document.getElementById('mansStatusChart');
+    if (!chartElement) {
+        console.error('Elemento mansStatusChart não encontrado');
+        return;
+    }
+    
+    chartElement.innerHTML = '';
+    
+    // Simular dados de distribuição por status baseado nos dados disponíveis
+    // Em uma implementação real, estes dados viriam do backend
+    const statusData = {
+        'Closed': Math.round((mansData.length || 0) * 0.4),
+        'In Progress': Math.round((mansData.length || 0) * 0.25),
+        'Open': Math.round((mansData.length || 0) * 0.2),
+        'Resolved': Math.round((mansData.length || 0) * 0.1),
+        'To Do': Math.round((mansData.length || 0) * 0.05)
+    };
+    
+    const labels = Object.keys(statusData);
+    const values = Object.values(statusData);
+    const colors = ['#28a745', '#17a2b8', '#ffc107', '#6f42c1', '#6c757d'];
+    
+    if (values.every(v => v === 0)) {
+        chartElement.innerHTML = `
+            <div class="text-center text-muted p-4">
+                <i class="fas fa-chart-pie fa-3x mb-3"></i>
+                <p>Nenhum dado de status disponível</p>
+            </div>
+        `;
+        return;
+    }
+    
+    const data = [{
+        labels: labels,
+        values: values,
+        type: 'pie',
+        hole: 0.4,
+        marker: {
+            colors: colors
+        },
+        textinfo: 'label+percent',
+        textposition: 'auto',
+        hovertemplate: '<b>%{label}</b><br>Quantidade: %{value}<br>Percentual: %{percent}<extra></extra>'
+    }];
+    
+    const layout = {
+        title: {
+            text: 'Distribuição por Status',
+            font: { size: 14 }
+        },
+        margin: { t: 50, b: 20, l: 20, r: 20 },
+        plot_bgcolor: 'rgba(0,0,0,0)',
+        paper_bgcolor: 'rgba(0,0,0,0)',
+        font: { family: 'Arial, sans-serif', size: 12 },
+        showlegend: true,
+        legend: {
+            orientation: 'v',
+            x: 1.05,
+            y: 0.5
+        }
+    };
+    
+    Plotly.newPlot('mansStatusChart', data, layout, {
+        responsive: true,
+        displayModeBar: false
+    }).then(() => {
+        console.log('Gráfico de status criado com sucesso');
+    }).catch(error => {
+        console.error('Erro ao criar gráfico de status:', error);
+        chartElement.innerHTML = `
+            <div class="text-center text-danger p-4">
+                <i class="fas fa-exclamation-triangle fa-2x mb-3"></i>
+                <p>Erro ao carregar gráfico de status</p>
+            </div>
+        `;
+    });
+}
+
+function createMansDetalhadoChart() {
+    const chartElement = document.getElementById('mansDetalhadoChart');
+    if (!chartElement) {
+        console.log('Elemento mansDetalhadoChart não encontrado');
+        return;
+    }
+    
+    console.log('Criando gráfico detalhado de MANs...');
+    
+    // Usar o filtro de equipe existente da tela principal
+    const equipeFiltro = mansFilters.equipe || '';
+    const tipoVisualizacao = document.getElementById('tipoVisualizacaoMans')?.value || 'agrupado';
+    
+    chartElement.innerHTML = '';
+    
+    const dadosDetalhados = mansChartData.equipe_mes_detalhado || [];
+    console.log('Dados detalhados disponíveis:', dadosDetalhados.length);
+    
+    if (dadosDetalhados.length === 0) {
+        chartElement.innerHTML = `
+            <div class="text-center text-muted p-4">
+                <i class="fas fa-chart-area fa-3x mb-3"></i>
+                <p>Nenhum dado detalhado disponível para o período selecionado</p>
+                <small class="text-muted">Filtros aplicados: ${JSON.stringify(mansFilters)}</small>
+            </div>
+        `;
+        return;
+    }
+    
+    // Filtrar por equipe se selecionada no filtro principal
+    let dadosFiltrados = dadosDetalhados;
+    if (equipeFiltro) {
+        dadosFiltrados = dadosDetalhados.filter(item => item.Equipe === equipeFiltro);
+        console.log(`Filtrando por equipe '${equipeFiltro}':`, dadosFiltrados.length, 'registros');
+    }
+    
+    if (dadosFiltrados.length === 0) {
+        chartElement.innerHTML = `
+            <div class="text-center text-muted p-4">
+                <i class="fas fa-filter fa-3x mb-3"></i>
+                <p>Nenhum dado encontrado para a equipe selecionada: <strong>${equipeFiltro}</strong></p>
+                <small class="text-muted">Limpe o filtro de equipe para ver todas as equipes</small>
+            </div>
+        `;
+        return;
+    }
+    
+    // Agrupar dados por mês
+    const dadosPorMes = {};
+    dadosFiltrados.forEach(item => {
+        const mes = item.MesAno;
+        if (!dadosPorMes[mes]) {
+            dadosPorMes[mes] = {};
+        }
+        dadosPorMes[mes][item.Equipe] = {
+            abertas: item.TotalAbertas || 0,
+            fechadas: item.TotalFechadas || item.FechadasNoMesmo || 0
+        };
+    });
+    
+    const meses = Object.keys(dadosPorMes).sort();
+    const equipes = [...new Set(dadosFiltrados.map(item => item.Equipe))].sort();
+    
+    console.log('Processando dados:', {
+        meses: meses.length,
+        equipes: equipes.length,
+        tipoVisualizacao
+    });
+    
+    let data = [];
+    
+    if (tipoVisualizacao === 'linha') {
+        // Visualização em linhas
+        equipes.forEach((equipe, index) => {
+            const cores = ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd', '#8c564b'];
+            const corBase = cores[index % cores.length];
+            
+            const abertasPorMes = meses.map(mes => dadosPorMes[mes][equipe]?.abertas || 0);
+            const fechadasPorMes = meses.map(mes => dadosPorMes[mes][equipe]?.fechadas || 0);
+            
+            data.push({
+                x: meses,
+                y: abertasPorMes,
+                name: `${equipe} - Abertas`,
+                type: 'scatter',
+                mode: 'lines+markers',
+                line: { width: 3, color: corBase },
+                marker: { size: 8, color: corBase },
+                hovertemplate: `<b>${equipe}</b><br>%{x}<br>Abertas: %{y}<extra></extra>`
+            });
+            
+            data.push({
+                x: meses,
+                y: fechadasPorMes,
+                name: `${equipe} - Fechadas`,
+                type: 'scatter',
+                mode: 'lines+markers',
+                line: { width: 3, dash: 'dot', color: corBase },
+                marker: { size: 8, symbol: 'square', color: corBase },
+                hovertemplate: `<b>${equipe}</b><br>%{x}<br>Fechadas: %{y}<extra></extra>`
+            });
+        });
+    } else {
+        // Visualização em barras
+        equipes.forEach((equipe, index) => {
+            const cores = ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd', '#8c564b'];
+            const corBase = cores[index % cores.length];
+            
+            const abertasPorMes = meses.map(mes => dadosPorMes[mes][equipe]?.abertas || 0);
+            const fechadasPorMes = meses.map(mes => dadosPorMes[mes][equipe]?.fechadas || 0);
+            
+            data.push({
+                x: meses,
+                y: abertasPorMes,
+                name: `${equipe} - Abertas`,
+                type: 'bar',
+                marker: { color: corBase, opacity: 0.8 },
+                hovertemplate: `<b>${equipe}</b><br>%{x}<br>Abertas: %{y}<extra></extra>`
+            });
+            
+            data.push({
+                x: meses,
+                y: fechadasPorMes,
+                name: `${equipe} - Fechadas`,
+                type: 'bar',
+                marker: { color: corBase, opacity: 0.6, pattern: { shape: '/', size: 8 } },
+                hovertemplate: `<b>${equipe}</b><br>%{x}<br>Fechadas: %{y}<extra></extra>`
+            });
+        });
+    }
+    
+    const layout = {
+        title: {
+            text: `Evolução Detalhada ${equipeFiltro ? `- ${equipeFiltro}` : '- Todas as Equipes'} (${mansFilters.periodo || 'Período Atual'})`,
+            font: { size: 14 }
+        },
+        barmode: tipoVisualizacao === 'empilhado' ? 'stack' : 'group',
+        xaxis: {
+            title: 'Mês',
+            type: 'category',
+            tickangle: -45
+        },
+        yaxis: {
+            title: 'Quantidade de MANs',
+            rangemode: 'tozero'
+        },
+        legend: {
+            orientation: 'v',
+            y: 1,
+            x: 1.02,
+            xanchor: 'left'
+        },
+        margin: { t: 60, b: 80, l: 60, r: 150 },
+        plot_bgcolor: 'rgba(0,0,0,0)',
+        paper_bgcolor: 'rgba(0,0,0,0)',
+        font: { family: 'Arial, sans-serif', size: 11 },
+        hovermode: 'x unified'
+    };
+    
+    console.log('Dados do gráfico detalhado:', data.length, 'series');
+    
+    Plotly.newPlot('mansDetalhadoChart', data, layout, {
+        responsive: true,
+        displayModeBar: false
+    }).then(() => {
+        console.log('Gráfico detalhado criado com sucesso');
+    }).catch(error => {
+        console.error('Erro ao criar gráfico detalhado:', error);
+        chartElement.innerHTML = `
+            <div class="text-center text-danger p-4">
+                <i class="fas fa-exclamation-triangle fa-2x mb-3"></i>
+                <p>Erro ao carregar gráfico detalhado</p>
+                <small>${error.message}</small>
+            </div>
+        `;
+    });
+}
+    
+
+function populateFiltersMans() {
+    // Preencher filtro de equipes
+    const equipeSelect = document.getElementById('filterEquipeMans');
+    const equipes = [...new Set(mansData.map(item => item.Equipe).filter(e => e))];
+    
+    while (equipeSelect.children.length > 1) {
+        equipeSelect.removeChild(equipeSelect.lastChild);
+    }
+    
+    equipes.sort().forEach(equipe => {
+        const option = document.createElement('option');
+        option.value = equipe;
+        option.textContent = equipe;
+        equipeSelect.appendChild(option);
+    });
+
+    // Preencher filtro de produtos
+    const produtoSelect = document.getElementById('filterProdutoMans');
+    const produtos = [...new Set(mansData.map(item => item.Produto).filter(p => p))];
+    
+    while (produtoSelect.children.length > 1) {
+        produtoSelect.removeChild(produtoSelect.lastChild);
+    }
+    
+    produtos.sort().forEach(produto => {
+        const option = document.createElement('option');
+        option.value = produto;
+        option.textContent = produto;
+        produtoSelect.appendChild(option);
+    });
+}
+
+function applyFiltersMans() {
+    // Capturar todos os valores dos filtros
+    mansFilters.equipe = document.getElementById('filterEquipeMans').value;
+    mansFilters.status = document.getElementById('filterStatusMans').value;
+    mansFilters.produto = document.getElementById('filterProdutoMans').value;
+    mansFilters.search = document.getElementById('searchMans').value.toLowerCase();
+    mansFilters.periodo = document.getElementById('filterPeriodoMans').value;
+    
+    // Calcular datas baseadas no período selecionado
+    const today = new Date();
+    const currentYear = today.getFullYear();
+    
+    if (mansFilters.periodo === 'personalizado') {
+        mansFilters.data_inicio = document.getElementById('filterDataInicioMans').value;
+        mansFilters.data_fim = document.getElementById('filterDataFimMans').value;
+    } else {
+        // Calcular datas automaticamente baseadas no período
+        switch(mansFilters.periodo) {
+            case 'ano_atual':
+                mansFilters.data_inicio = `${currentYear}-01-01`;
+                mansFilters.data_fim = `${currentYear}-12-31`;
+                break;
+            case 'q1':
+                mansFilters.data_inicio = `${currentYear}-01-01`;
+                mansFilters.data_fim = `${currentYear}-03-31`;
+                break;
+            case 'q2':
+                mansFilters.data_inicio = `${currentYear}-04-01`;
+                mansFilters.data_fim = `${currentYear}-06-30`;
+                break;
+            case 'q3':
+                mansFilters.data_inicio = `${currentYear}-07-01`;
+                mansFilters.data_fim = `${currentYear}-09-30`;
+                break;
+            case 'q4':
+                mansFilters.data_inicio = `${currentYear}-10-01`;
+                mansFilters.data_fim = `${currentYear}-12-31`;
+                break;
+            case '6_meses':
+                const seisMesesAtras = new Date();
+                seisMesesAtras.setMonth(today.getMonth() - 6);
+                mansFilters.data_inicio = seisMesesAtras.toISOString().split('T')[0];
+                mansFilters.data_fim = today.toISOString().split('T')[0];
+                break;
+            case '3_meses':
+                const tresMesesAtras = new Date();
+                tresMesesAtras.setMonth(today.getMonth() - 3);
+                mansFilters.data_inicio = tresMesesAtras.toISOString().split('T')[0];
+                mansFilters.data_fim = today.toISOString().split('T')[0];
+                break;
+            case 'mes_atual':
+                mansFilters.data_inicio = `${currentYear}-${(today.getMonth() + 1).toString().padStart(2, '0')}-01`;
+                mansFilters.data_fim = today.toISOString().split('T')[0];
+                break;
+            default:
+                mansFilters.data_inicio = '';
+                mansFilters.data_fim = '';
+        }
+    }
+
+    console.log('Filtros aplicados:', mansFilters);
+
+    // Desabilitar campos durante processamento
+    disableFiltersMans(true);
+
+    // Se for um período que requer nova consulta ao backend, recarregar dados
+    if (mansFilters.periodo !== 'ano_atual' || mansFilters.data_inicio || mansFilters.data_fim) {
+        reloadDataWithFiltersMans();
+    } else {
+        // Aplicar filtros apenas no frontend (dados já carregados)
+        applyFrontendFiltersMans();
+    }
+}
+
+function reloadDataWithFiltersMans() {
+    console.log('Recarregando dados de MANs com filtros de período...');
+    
+    document.getElementById('loadingMans').style.display = 'block';
+    document.getElementById('cardsContainerMans').style.display = 'none';
+    document.getElementById('chartsContainerMans').style.display = 'none';
+    document.getElementById('errorMans').style.display = 'none';
+
+    // Construir parâmetros para a API
+    const params = new URLSearchParams({
+        periodo: mansFilters.periodo || 'ano_atual',
+        data_inicio: mansFilters.data_inicio || '',
+        data_fim: mansFilters.data_fim || '',
+        equipe: mansFilters.equipe || '',
+        status: mansFilters.status || '',
+        produto: mansFilters.produto || '',
+        search: mansFilters.search || ''
+    });
+
+    console.log('Parâmetros de recarga:', params.toString());
+
+    // Carregar dados da tabela E dados dos gráficos
+    Promise.all([
+        fetch(`/api/mans-table-data?${params}`)
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                return response.json();
+            }),
+        fetch(`/api/mans-data-charts?${params}`)
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                return response.json();
+            })
+    ])
+    .then(([tableResponse, chartResponse]) => {
+        document.getElementById('loadingMans').style.display = 'none';
+        
+        if ((tableResponse && tableResponse.error) || (chartResponse && chartResponse.error)) {
+            const error = tableResponse?.error || chartResponse?.error || 'Erro desconhecido';
+            showErrorMans(error);
+            disableFiltersMans(false);
+            return;
+        }
+        
+        if (!tableResponse || !chartResponse) {
+            showErrorMans('Respostas inválidas do servidor');
+            disableFiltersMans(false);
+            return;
+        }
+        
+        console.log('Dados recarregados - Tabela:', tableResponse.mans?.length || 0, 'MANs');
+        console.log('Dados recarregados - Gráficos:', chartResponse.graficos || 'Nenhum');
+        
+        // Atualizar dados com os novos resultados
+        mansData = tableResponse.mans || [];
+        allMansData = mansData;
+        
+        // Atualizar dados dos gráficos
+        mansChartData = chartResponse.graficos || {
+            backlog: { equipes: [], abertas: [], fechadas: [], saldo: [] },
+            tendencia: { meses: [], abertas: [], fechadas: [] }
+        };
+        
+        // Atualizar cards
+        updateMansCards(tableResponse.stats || {});
+        
+        // Recriar gráficos com novos dados
+        setTimeout(() => {
+            createMansCharts();
+        }, 100);
+        
+        // Aplicar filtros de frontend nos novos dados
+        applyFrontendFiltersMans();
+        
+        // Reabilitar campos
+        setTimeout(() => {
+            disableFiltersMans(false);
+        }, 500);
+        
+        document.getElementById('cardsContainerMans').style.display = 'block';
+        document.getElementById('chartsContainerMans').style.display = 'block';
+    })
+    .catch(error => {
+        console.error('Erro ao recarregar dados de MANs:', error);
+        document.getElementById('loadingMans').style.display = 'none';
+        showErrorMans('Erro ao recarregar dados: ' + error.message);
+        disableFiltersMans(false);
+    });
+}
+
+function applyFrontendFiltersMans() {
+    // Aplicar filtros básicos nos dados já carregados
+    filteredMansData = mansData.filter(item => {
+        let matches = (!mansFilters.equipe || item.Equipe === mansFilters.equipe) &&
+                     (!mansFilters.status || item.Status === mansFilters.status) &&
+                     (!mansFilters.produto || item.Produto === mansFilters.produto) &&
+                     (!mansFilters.search || 
+                      (item.Number && item.Number.toLowerCase().includes(mansFilters.search)) ||
+                      (item.Summary && item.Summary.toLowerCase().includes(mansFilters.search)));
+        
+        return matches;
+    });
+
+    updateTotalRegistrosMans();
+    updatePeriodoTextoMans();
+}
+
+function disableFiltersMans(disable) {
+    const elements = [
+        'filterEquipeMans',
+        'filterStatusMans', 
+        'filterProdutoMans',
+        'searchMans',
+        'filterPeriodoMans',
+        'filterDataInicioMans',
+        'filterDataFimMans',
+        'btnAplicarFiltrosMans',
+        'btnLimparFiltrosMans'
+    ];
+    
+    elements.forEach(id => {
+        const element = document.getElementById(id);
+        if (element) {
+            element.disabled = disable;
+            if (disable) {
+                element.style.opacity = '0.6';
+            } else {
+                element.style.opacity = '1';
+            }
+        }
+    });
+}
+
+function updateTotalRegistrosMans() {
+    document.getElementById('totalRegistrosMans').textContent = `${filteredMansData.length} MANs`;
+}
+
+function showErrorMans(message) {
+    document.getElementById('errorMessageMans').textContent = message;
+    document.getElementById('errorMans').style.display = 'block';
+}
+
+function clearFiltersMans() {
+    mansFilters = {
+        equipe: "",
+        status: "",
+        produto: "",
+        search: "",
+        data_inicio: "",
+        data_fim: "",
+        periodo: "ano_atual"
+    };
+
+    document.getElementById('filterEquipeMans').value = '';
+    document.getElementById('filterStatusMans').value = '';
+    document.getElementById('filterProdutoMans').value = '';
+    document.getElementById('searchMans').value = '';
+    document.getElementById('filterPeriodoMans').value = 'ano_atual';
+    document.getElementById('filterDataInicioMans').value = '';
+    document.getElementById('filterDataFimMans').value = '';
+    
+    // Esconder datas personalizadas
+    document.getElementById('datas-personalizadas-mans').style.display = 'none';
+    updatePeriodoTextoMans();
+    applyFiltersMans();
+}
+
+function exportFilteredCSVMans() {
+    console.log('Exportando MANs com filtros:', mansFilters);
+    
+    const params = new URLSearchParams();
+    
+    // Filtros básicos
+    if (mansFilters.equipe) {
+        params.append('equipe', mansFilters.equipe);
+    }
+    
+    if (mansFilters.status) {
+        params.append('status', mansFilters.status);
+    }
+    
+    if (mansFilters.produto) {
+        params.append('produto', mansFilters.produto);
+    }
+    
+    if (mansFilters.search) {
+        params.append('busca', mansFilters.search);
+    }
+    
+    // Filtros de período
+    if (mansFilters.periodo) {
+        params.append('periodo', mansFilters.periodo);
+    }
+    
+    // Datas personalizadas (se aplicável)
+    if (mansFilters.periodo === 'personalizado') {
+        if (mansFilters.data_inicio) {
+            params.append('data_inicio', mansFilters.data_inicio);
+        }
+        if (mansFilters.data_fim) {
+            params.append('data_fim', mansFilters.data_fim);
+        }
+    }
+    
+    // Adicionar informação sobre quantos registros serão exportados
+    params.append('total_registros', filteredMansData.length);
+    
+    const btnExport = document.getElementById('btnExportCSVMans');
+    const originalText = btnExport.innerHTML;
+    
+    // Feedback visual melhorado
+    btnExport.innerHTML = `<i class="fas fa-spinner fa-spin me-2"></i>Exportando ${filteredMansData.length} MANs...`;
+    btnExport.disabled = true;
+    
+    const url = `/export/mans-filtered?${params.toString()}`;
+    
+    console.log('URL de exportação:', url);
+    
+    // Criar iframe para download
+    const iframe = document.createElement('iframe');
+    iframe.style.display = 'none';
+    iframe.src = url;
+    document.body.appendChild(iframe);
+    
+    // Restaurar botão após delay
+    setTimeout(() => {
+        btnExport.innerHTML = originalText;
+        btnExport.disabled = false;
+        document.body.removeChild(iframe);
+        
+        // Mostrar mensagem de sucesso
+        showExportSuccessMans(filteredMansData.length);
+    }, 2000);
+}
+
+function showExportSuccessMans(totalRegistros) {
+    // Criar toast de sucesso
+    const toast = document.createElement('div');
+    toast.className = 'toast align-items-center text-white bg-success border-0 position-fixed';
+    toast.style.cssText = 'top: 20px; right: 20px; z-index: 9999;';
+    toast.setAttribute('role', 'alert');
+    toast.innerHTML = `
+        <div class="d-flex">
+            <div class="toast-body">
+                <i class="fas fa-check-circle me-2"></i>
+                Exportação de MANs concluída! ${totalRegistros} registros exportados.
+            </div>
+            <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+        </div>
+    `;
+    
+    document.body.appendChild(toast);
+    
+    // Mostrar toast
+    const bsToast = new bootstrap.Toast(toast, {
+        autohide: true,
+        delay: 4000
+    });
+    bsToast.show();
+    
+    // Remover toast após ser ocultado
+    toast.addEventListener('hidden.bs.toast', () => {
+        document.body.removeChild(toast);
+    });
+}
+
+function updatePeriodoTextoMans() {
+    const periodoTexto = document.getElementById('periodo-texto-mans');
+    const periodo = mansFilters.periodo;
+    
+    const today = new Date();
+    const currentYear = today.getFullYear();
+    
+    let texto = '';
+    switch(periodo) {
+        case 'ano_atual':
+            texto = `${currentYear}`;
+            break;
+        case 'q1':
+            texto = `Q1 ${currentYear} (Jan-Mar)`;
+            break;
+        case 'q2':
+            texto = `Q2 ${currentYear} (Abr-Jun)`;
+            break;
+        case 'q3':
+            texto = `Q3 ${currentYear} (Jul-Set)`;
+            break;
+        case 'q4':
+            texto = `Q4 ${currentYear} (Out-Dez)`;
+            break;
+        case '6_meses':
+            texto = 'Últimos 6 Meses';
+            break;
+        case '3_meses':
+            texto = 'Últimos 3 Meses';
+            break;
+        case 'mes_atual':
+            texto = today.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+            break;
+        case 'personalizado':
+            if (mansFilters.data_inicio && mansFilters.data_fim) {
+                texto = `${mansFilters.data_inicio} até ${mansFilters.data_fim}`;
+            } else if (mansFilters.data_inicio) {
+                texto = `A partir de ${mansFilters.data_inicio}`;
+            } else if (mansFilters.data_fim) {
+                texto = `Até ${mansFilters.data_fim}`;
+            } else {
+                texto = 'Personalizado (sem datas)';
+            }
+            break;
+        default:
+            texto = 'Todos os Períodos';
+    }
+    
+    if (periodoTexto) {
+        periodoTexto.textContent = texto;
+    }
+}
+
+// Event Listeners
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('Inicializando dashboard de MANs...');
+    
+    // Event listeners para filtros (aplicar automaticamente após mudança)
+    document.getElementById('filterEquipeMans').addEventListener('change', applyFiltersMans);
+    document.getElementById('filterStatusMans').addEventListener('change', applyFiltersMans);
+    document.getElementById('filterProdutoMans').addEventListener('change', applyFiltersMans);
+    
+    // Para a busca, aplicar com pequeno delay para evitar muitas requisições
+    let searchTimeout;
+    document.getElementById('searchMans').addEventListener('input', function() {
+        clearTimeout(searchTimeout);
+        searchTimeout = setTimeout(applyFiltersMans, 300);
+    });
+
+    // Event listener para período (aplicar automaticamente)
+    document.getElementById('filterPeriodoMans').addEventListener('change', function() {
+        const periodo = this.value;
+        const datasPersonalizadas = document.getElementById('datas-personalizadas-mans');
+
+        if (periodo === 'personalizado') {
+            datasPersonalizadas.style.display = 'block';
+
+            const anoAtual = new Date().getFullYear();
+            const dataInicio = `${anoAtual}-01-01`;
+            const dataFim = `${anoAtual}-12-31`;
+
+            document.getElementById('filterDataInicioMans').value = dataInicio;
+            document.getElementById('filterDataFimMans').value = dataFim;
+        } else {
+            datasPersonalizadas.style.display = 'none';
+            document.getElementById('filterDataInicioMans').value = '';
+            document.getElementById('filterDataFimMans').value = '';
+        }
+
+        // Aplicar filtros automaticamente quando o período mudar
+        applyFiltersMans();
+    });
+
+    // Event listeners para datas personalizadas
+    document.getElementById('filterDataInicioMans').addEventListener('change', function() {
+        if (mansFilters.periodo === 'personalizado') {
+            applyFiltersMans();
+        }
+    });
+    
+    document.getElementById('filterDataFimMans').addEventListener('change', function() {
+        if (mansFilters.periodo === 'personalizado') {
+            applyFiltersMans();
+        }
+    });
+
+    // Event listeners para botões
+    document.getElementById('btnAplicarFiltrosMans').addEventListener('click', applyFiltersMans);
+    document.getElementById('btnLimparFiltrosMans').addEventListener('click', clearFiltersMans);
+
+    // Event listeners para botões de ação
+    document.getElementById('btnRefreshMans').addEventListener('click', function() {
+        document.getElementById('cardsContainerMans').style.display = 'none';
+        document.getElementById('chartsContainerMans').style.display = 'none';
+        loadMansData();
+    });
+
+    document.getElementById('btnExportCSVMans').addEventListener('click', exportFilteredCSVMans);
+
+    // Event listener para mudança de tipo de visualização do gráfico detalhado
+    const selectTipoViz = document.getElementById('tipoVisualizacaoMans');
+    if (selectTipoViz) {
+        selectTipoViz.addEventListener('change', function() {
+            console.log('Tipo de visualização alterado para:', this.value);
+            createMansDetalhadoChart();
+        });
+    }
+    // Carregar dados iniciais
+    loadMansData();
+});
+</script>
+{% endblock %}

@@ -517,7 +517,167 @@
             background-color: rgba(0, 0, 0, 0.075);
         }
 
+
+        .table-hybrid {
+            table-layout: fixed;
+            width: 100%;
+        }
+
+        .table-hybrid th,
+        .table-hybrid td {
+            vertical-align: middle;
+            padding: 0.75rem 0.5rem;
+        }
+
+        .truncate-text {
+            display: block;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            cursor: help;
+        }
+
+        .truncate-text:hover {
+            white-space: normal;
+            overflow: visible;
+            background-color: #f8f9fa;
+            border-radius: 4px;
+            padding: 4px;
+            position: relative;
+            z-index: 10;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+        }
+
+
         /* ===================================
+           SubTasks
+        =================================== */
+        /* Estilos específicos para manter o grid da tabela consistente */
+        #tableSubtasks {
+            table-layout: fixed;
+            width: 100%;
+        }
+
+        #tableSubtasks th,
+        #tableSubtasks td {
+            word-wrap: break-word;
+            vertical-align: middle;
+            padding: 0.75rem 0.5rem;
+        }
+
+        /* Larguras específicas das colunas para manter consistência */
+        #tableSubtasks th:nth-child(1), #tableSubtasks td:nth-child(1) { width: 8%; }
+        #tableSubtasks th:nth-child(2), #tableSubtasks td:nth-child(2) { width: 20%; }
+        #tableSubtasks th:nth-child(3), #tableSubtasks td:nth-child(3) { width: 10%; }
+        #tableSubtasks th:nth-child(4), #tableSubtasks td:nth-child(4) { width: 8%; }
+        #tableSubtasks th:nth-child(5), #tableSubtasks td:nth-child(5) { width: 8%; }
+        #tableSubtasks th:nth-child(6), #tableSubtasks td:nth-child(6) { width: 8%; }
+        #tableSubtasks th:nth-child(7), #tableSubtasks td:nth-child(7) { width: 10%; }
+        #tableSubtasks th:nth-child(8), #tableSubtasks td:nth-child(8) { width: 8%; }
+        #tableSubtasks th:nth-child(9), #tableSubtasks td:nth-child(9) { width: 8%; }
+        #tableSubtasks th:nth-child(10), #tableSubtasks td:nth-child(10) { width: 8%; }
+        #tableSubtasks th:nth-child(11), #tableSubtasks td:nth-child(11) { width: 8%; }
+        #tableSubtasks th:nth-child(12), #tableSubtasks td:nth-child(12) { width: 6%; }
+
+        /* Modal */
+        #modalDetalheSubtask .modal-body {
+            max-height: 70vh !important;
+            overflow-y: auto !important;
+            overflow-x: hidden !important;
+            padding-right: 15px !important;
+        }
+
+        #modalDetalheSubtask .modal-dialog {
+            max-height: 90vh !important;
+            margin: 1.75rem auto !important;
+        }
+
+        #modalDetalheSubtask .modal-content {
+            max-height: 85vh !important;
+            display: flex !important;
+            flex-direction: column !important;
+        }
+
+        #modalDetalheSubtask .modal-body {
+            flex: 1 1 auto !important;
+        }
+
+        #modalDetalheSubtask .modal-body::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        #modalDetalheSubtask .modal-body::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 4px;
+        }
+
+        #modalDetalheSubtask .modal-body::-webkit-scrollbar-thumb {
+            background: #888;
+            border-radius: 4px;
+        }
+
+        #modalDetalheSubtask .modal-body::-webkit-scrollbar-thumb:hover {
+            background: #555;
+        }
+
+        @media (max-width: 768px) {
+            #modalDetalheSubtask .modal-body {
+                max-height: 60vh !important;
+            }
+            
+            #modalDetalheSubtask .modal-dialog {
+                margin: 0.5rem !important;
+            }
+            
+            #tableSubtasks {
+                table-layout: auto;
+                font-size: 0.875rem;
+            }
+        }
+        
+        /* ===================================
+           Estilos específicos para MANs
+        =================================== */
+        
+            .bg-gradient-primary {
+                background: linear-gradient(87deg, #3957b8ff 0, #3d07d1ff 100%) !important;
+            }
+
+            #mansBacklogChart, #mansTendenciaChart {
+                min-height: 400px;
+            }
+
+            .mans-loading {
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                min-height: 300px;
+                color: #6c757d;
+            }
+
+            .mans-error {
+                text-align: center;
+                color: #dc3545;
+                padding: 2rem;
+            }
+
+            #tabelaMansEquipes .table-dark th {
+                background-color: #343a40;
+                border-color: #454d55;
+            }
+
+            .progress-mans {
+                height: 1rem;
+                background-color: rgba(255, 255, 255, 0.3);
+            }
+
+            .badge-mans {
+                font-size: 0.75rem;
+                padding: 0.375rem 0.75rem;
+            }
+        
+        /* ===================================
+
            RESPONSIVIDADE
         =================================== */
         @media (max-width: 576px) {
@@ -599,15 +759,87 @@
                 <span class="navbar-toggler-icon"></span>
             </button>
             <div class="collapse navbar-collapse" id="navbarNav">
-                <ul class="navbar-nav ms-auto">
-                    <li class="nav-item">
-                        <span class="navbar-text">
-                            <i class="fas fa-user me-1"></i>
-                            Sistema Interno
-                        </span>
-                    </li>
-                </ul>
+    <ul class="navbar-nav ms-auto">
+        <li class="nav-item dropdown">
+            <div class="user-dropdown dropdown">
+                <a class="dropdown-toggle" href="#" id="userDropdown" role="button" 
+                   data-bs-toggle="dropdown" aria-expanded="false" style="color: white; text-decoration: none; display: flex; align-items: center; gap: 8px;">
+                    <i class="{{ current_user.icon }}"></i>
+                    <span class="user-name-display">{{ current_user.name }}</span>
+                    <span class="status-indicator"></span>
+                </a>
+                
+                <div class="dropdown-menu dropdown-menu-end user-info-dropdown" aria-labelledby="userDropdown">
+                    <!-- Header do Usuário -->
+                    <div class="user-info-header">
+                        <div class="d-flex align-items-center">
+                            <i class="{{ current_user.icon }} fa-2x me-3"></i>
+                            <div>
+                                <div class="fw-bold">{{ current_user.name }}</div>
+                                <small class="opacity-75">{{ current_user.user_type }}</small>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Informações Detalhadas -->
+                    <div class="user-info-body">
+                        <div class="user-info-item">
+                            <span class="user-info-label">
+                                <i class="fas fa-user text-primary"></i>
+                                Usuário:
+                            </span>
+                            <span class="user-info-value">{{ current_user.username }}</span>
+                        </div>
+                        
+                        <div class="user-info-item">
+                            <span class="user-info-label">
+                                <i class="fas fa-desktop text-info"></i>
+                                Máquina:
+                            </span>
+                            <span class="user-info-value">{{ current_user.computer_name }}</span>
+                        </div>
+                        
+                        {% if current_user.is_domain_user %}
+                        <div class="user-info-item">
+                            <span class="user-info-label">
+                                <i class="fas fa-network-wired text-warning"></i>
+                                Domínio:
+                            </span>
+                            <span class="user-info-value">{{ current_user.domain }}</span>
+                        </div>
+                        {% endif %}
+                        
+                        <div class="user-info-item">
+                            <span class="user-info-label">
+                                <i class="fas fa-clock text-success"></i>
+                                Acesso:
+                            </span>
+                            <span class="user-info-value">{{ current_user.timestamp }}</span>
+                        </div>
+                        
+                        <div class="user-info-item">
+                            <span class="user-info-label">
+                                <i class="fas fa-cog text-secondary"></i>
+                                Sistema:
+                            </span>
+                            <span class="user-info-value">{{ current_user.system }}</span>
+                        </div>
+                    </div>
+
+                    <!-- Status do Sistema -->
+                    <div class="system-status">
+                        <i class="fas fa-check-circle me-1"></i>
+                        {% if current_user.is_domain_user %}
+                            Sistema Online - Conexão de Domínio
+                        {% else %}
+                            Sistema Local - Acesso Direto
+                        {% endif %}
+                    </div>
+                </div>
             </div>
+        </li>
+    </ul>
+</div>
         </div>
     </nav>
 
@@ -635,6 +867,15 @@
                                 Relatório Épicos
                             </a>
                         </li>
+                        <a href="/dashboard-mans" class="nav-link">
+                            <i class="fas fa-wrench me-2"></i>Dashboard MANs
+                        </a>
+                        <li class="nav-item">
+                            <a class="nav-link {% block mans_active %}{% endblock %}" href="/relatorio-mans">
+                                <i class="fas fa-wrench me-2"></i>
+                                Relatório Mans
+                            </a>
+                        </li>
                         <li class="nav-item">
                             <a class="nav-link {% block subtasks_active %}{% endblock %}" href="/relatorio-subtasks">
                                 <i class="fas fa-tasks me-2"></i>
@@ -653,8 +894,22 @@
 
                 <!-- Sistema de Filtros Reutilizável -->
                 {% block filtros %}
-                <!-- Este bloco pode ser sobrescrito pelas páginas filhas se precisar de filtros customizados -->
-                <div id="sistema-filtros" class="filtros-container" style="{% block filtros_display %}display: block;{% endblock %}">
+                <div id="sistema-filtros" class="filtros-container" style="position: relative; {% block filtros_display %}display: block;{% endblock %}">
+                   
+                    <h6 class="mb-3 text-primary-custom">
+                        <i class="fas fa-filter me-2"></i>
+                        Filtros Avançados
+                    </h6>
+                    <div style="position: absolute; top: 10px; right: 20px; z-index: 10;">
+                            <div class="d-flex align-items-end gap-2 h-100">
+                                <div class="badge-contador">
+                                    <span id="totalRegistros" class="badge-registros">0 registros</span>
+                                </div>
+                            </div>
+                    </div>
+                    
+               
+
                     <!-- Período de Análise -->
                     <div id="periodo-info" class="alert periodo-info py-2 mb-3 border-0 shadow-sm">
                         <div class="d-flex align-items-center">
@@ -722,9 +977,7 @@
                                         LIMPAR
                                     </button>
                                 </div>
-                                <div class="badge-contador">
-                                    <span id="totalRegistros" class="badge-registros">0 registros</span>
-                                </div>
+                                
                             </div>
                         </div>
                     </div>

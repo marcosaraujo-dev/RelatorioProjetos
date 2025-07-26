@@ -2,96 +2,242 @@
 
 {% block title %}Relatório de SubTasks - Sistema de Projetos{% endblock %}
 {% block subtasks_active %}active{% endblock %}
-{% block page_title %}Relatório de SubTasks{% endblock %}
+{% block page_title %}<i class="fas fa-tasks me-2"></i> Relatório de SubTasks{% endblock %}
+
+{% block filtros_display %}display: none;{% endblock %}
+
+{% block head %}
+<style>
+/* Estilos específicos para manter o grid da tabela consistente */
+#tableSubtasks {
+    table-layout: fixed;
+    width: 100%;
+}
+
+#tableSubtasks th,
+#tableSubtasks td {
+    word-wrap: break-word;
+    vertical-align: middle;
+    padding: 0.75rem 0.5rem;
+}
+
+/* Larguras específicas das colunas para manter consistência */
+#tableSubtasks th:nth-child(1), #tableSubtasks td:nth-child(1) { width: 8%; }
+#tableSubtasks th:nth-child(2), #tableSubtasks td:nth-child(2) { width: 20%; }
+#tableSubtasks th:nth-child(3), #tableSubtasks td:nth-child(3) { width: 10%; }
+#tableSubtasks th:nth-child(4), #tableSubtasks td:nth-child(4) { width: 8%; }
+#tableSubtasks th:nth-child(5), #tableSubtasks td:nth-child(5) { width: 8%; }
+#tableSubtasks th:nth-child(6), #tableSubtasks td:nth-child(6) { width: 8%; }
+#tableSubtasks th:nth-child(7), #tableSubtasks td:nth-child(7) { width: 10%; }
+#tableSubtasks th:nth-child(8), #tableSubtasks td:nth-child(8) { width: 8%; }
+#tableSubtasks th:nth-child(9), #tableSubtasks td:nth-child(9) { width: 8%; }
+#tableSubtasks th:nth-child(10), #tableSubtasks td:nth-child(10) { width: 8%; }
+#tableSubtasks th:nth-child(11), #tableSubtasks td:nth-child(11) { width: 8%; }
+#tableSubtasks th:nth-child(12), #tableSubtasks td:nth-child(12) { width: 6%; }
+
+/* Modal */
+#modalDetalheSubtask .modal-body {
+    max-height: 80vh !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    padding-right: 15px !important;
+}
+
+#modalDetalheSubtask .modal-dialog {
+    max-height: 95vh !important;
+    margin: 1rem auto !important;
+}
+
+#modalDetalheSubtask .modal-content {
+    max-height: 90vh !important;
+    display: flex !important;
+    flex-direction: column !important;
+}
+
+#modalDetalheSubtask .modal-body {
+    flex: 1 1 auto !important;
+}
+
+#modalDetalheSubtask .modal-body::-webkit-scrollbar {
+    width: 8px;
+}
+
+#modalDetalheSubtask .modal-body::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 4px;
+}
+
+#modalDetalheSubtask .modal-body::-webkit-scrollbar-thumb {
+    background: #888;
+    border-radius: 4px;
+}
+
+#modalDetalheSubtask .modal-body::-webkit-scrollbar-thumb:hover {
+    background: #555;
+}
+
+@media (max-width: 768px) {
+    #modalDetalheSubtask .modal-body {
+        max-height: 70vh !important;
+    }
+    
+    #modalDetalheSubtask .modal-dialog {
+        margin: 0.5rem !important;
+    }
+    
+    #tableSubtasks {
+        table-layout: auto;
+        font-size: 0.875rem;
+    }
+}
+</style>
+{% endblock %}
 
 {% block content %}
 <div class="row">
     <div class="col-12">
+        <div class="card shadow-sm border-0">
+            <div class="card-header bg-white justify-content-between align-items-center">
+                <!-- Filtros Personalizados -->
+                <div class="filtros-container" style="position: relative;">
+                    <h6 class="mb-3 text-primary-custom">
+                        <i class="fas fa-filter me-2"></i>
+                        Filtros Avançados
+                    </h6>
+                     <div style="position: absolute; top: 10px; right: 20px; z-index: 10;">
+                            <div class="d-flex align-items-end gap-2 h-100">
+                                <div class="badge-contador">
+                                    <span id="totalRegistrosSubtasks" class="badge-registros">0 registros</span>
+                                </div>
+                            </div>
+                        </div>
+                    <!-- Período de Análise -->
+                    <div class="alert periodo-info py-2 mb-3 border-0 shadow-sm">
+                        <div class="d-flex align-items-center">
+                            <i class="fas fa-calendar-alt me-2 text-primary"></i>
+                            <strong>Período de Análise:</strong>
+                            <span id="periodo-texto-subtasks" class="ms-2 periodo-badge">Ano Atual</span>
+                        </div>
+                    </div>
+                    
+                    <!-- Filtros básicos -->
+                    <div class="row mb-3">
+                        <div class="col-md-2">
+                            <label for="filterEquipeSubtasks" class="form-label small fw-bold text-dark">
+                                <i class="fas fa-users me-1 text-primary"></i>Equipe
+                            </label>
+                            <select id="filterEquipeSubtasks" class="form-select form-select-sm modern-select">
+                                <option value="">Todas as Equipes</option>
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <label for="filterStatusSubtasks" class="form-label small fw-bold text-dark">
+                                <i class="fas fa-flag me-1 text-success"></i>Status
+                            </label>
+                            <select id="filterStatusSubtasks" class="form-select form-select-sm modern-select">
+                                <option value="">Todos os Status</option>
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <label for="filterTipoSubtasks" class="form-label small fw-bold text-dark">
+                                <i class="fas fa-tag me-1 text-info"></i>Tipo
+                            </label>
+                            <select id="filterTipoSubtasks" class="form-select form-select-sm modern-select">
+                                <option value="">Todos os Tipos</option>
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <label for="filterSubTipoSubtasks" class="form-label small fw-bold text-dark">
+                                <i class="fas fa-step-forward me-1 text-warning"></i>SubTipo
+                            </label>
+                            <select id="filterSubTipoSubtasks" class="form-select form-select-sm modern-select">
+                                <option value="">Todas as SubTipos</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label for="searchSubtasks" class="form-label small fw-bold text-dark">
+                                <i class="fas fa-search me-1 text-warning"></i>Buscar
+                            </label>
+                            <input type="text" id="searchSubtasks" class="form-control form-control-sm modern-input" placeholder="Buscar por número ou resumo...">
+                        </div>
+                        
+                    </div>
+                    
+                    <!-- Filtros de período -->
+                    <div class="row">
+                       
+                        <div class="col-md-2">
+                            <label for="filterPeriodoSubtasks" class="form-label small fw-bold text-dark">
+                                <i class="fas fa-clock me-1 text-info"></i>Período
+                            </label>
+                            <select id="filterPeriodoSubtasks" class="form-select form-select-sm modern-select">
+                                <option value="ano_atual">Ano Atual</option>
+                                <option value="q1">Q1 - Jan a Mar</option>
+                                <option value="q2">Q2 - Abr a Jun</option>
+                                <option value="q3">Q3 - Jul a Set</option>
+                                <option value="q4">Q4 - Out a Dez</option>
+                                <option value="6_meses">Últimos 6 Meses</option>
+                                <option value="3_meses">Últimos 3 Meses</option>
+                                <option value="mes_atual">Mês Atual</option>
+                                <option value="personalizado">Personalizado</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3" id="datas-personalizadas-subtasks" style="display: none">
+                            <div class="row">
+                                <div class="col-6">
+                                    <label for="filterDataInicioSubtask" class="form-label small fw-bold text-dark">Data Início</label>
+                                    <input type="date" id="filterDataInicioSubtask" class="form-control form-control-sm modern-input">
+                                </div>
+                                <div class="col-6">
+                                    <label for="filterDataFimSubtask" class="form-label small fw-bold text-dark">Data Fim</label>
+                                    <input type="date" id="filterDataFimSubtask" class="form-control form-control-sm modern-input">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-5">
+                            <div class="d-flex align-items-end gap-2 h-100">
+                                <div class="botoes-filtros">
+                                    <button type="button" id="btnAplicarFiltrosSubtask" class="btn btn-primary btn-sm modern-btn">
+                                        <i class="fas fa-search me-1"></i>
+                                        APLICAR
+                                    </button>
+                                    <button type="button" id="btnLimparFiltrosSubtask" class="btn btn-outline-secondary btn-sm modern-btn">
+                                        <i class="fas fa-times me-1"></i>
+                                        LIMPAR
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                       
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+<div class="row">
+    <div class="col-12">
         <div class="card">
             <div class="card-header d-flex justify-content-between align-items-center">
-                <h5 class="card-title mb-0">
+                <h5 class="card-title mb-0 text-primary-custom">
                     <i class="fas fa-tasks me-2"></i>
                     Dados das SubTasks
                 </h5>
-                <div>
-                    <button id="btnExportCSVSubtasks" class="btn btn-success btn-export">
+                <div class="d-flex gap-2">
+                    <button id="btnExportCSV" class="btn btn-success btn-sm modern-btn">
                         <i class="fas fa-file-csv me-2"></i>
-                        Exportar CSV Filtrado
+                        Exportar CSV
                     </button>
-                    <button id="btnRefreshSubtasks" class="btn btn-primary">
+                    <button id="btnRefresh" class="btn btn-primary btn-sm modern-btn">
                         <i class="fas fa-sync-alt me-2"></i>
                         Atualizar
                     </button>
                 </div>
             </div>
             <div class="card-body">
-                <!-- Filtros Melhorados -->
-                <div class="filter-section bg-light p-3 rounded mb-4">
-                    <h6 class="mb-3">
-                        <i class="fas fa-filter me-2"></i>
-                        Filtros
-                    </h6>
-                    
-                    <!-- Linha 1: Filtros básicos -->
-                    <div class="row mb-3">
-                        <div class="col-md-2">
-                            <label for="filterEquipeSubtasks" class="form-label">Equipe</label>
-                            <select id="filterEquipeSubtasks" class="form-select">
-                                <option value="">Todas as Equipes</option>
-                            </select>
-                        </div>
-                        <div class="col-md-2">
-                            <label for="filterStatusSubtasks" class="form-label">Status</label>
-                            <select id="filterStatusSubtasks" class="form-select">
-                                <option value="">Todos os Status</option>
-                            </select>
-                        </div>
-                        <div class="col-md-2">
-                            <label for="filterTipoSubtasks" class="form-label">Tipo</label>
-                            <select id="filterTipoSubtasks" class="form-select">
-                                <option value="">Todos os Tipos</option>
-                            </select>
-                        </div>
-                        <div class="col-md-3">
-                            <label for="filterDataInicioSubtasks" class="form-label">Data Início</label>
-                            <input type="date" id="filterDataInicioSubtasks" class="form-control" value="">
-                        </div>
-                        <div class="col-md-3">
-                            <label for="filterDataFimSubtasks" class="form-label">Data Fim</label>
-                            <input type="date" id="filterDataFimSubtasks" class="form-control" value="">
-                        </div>
-                    </div>
-                    
-                    <!-- Linha 2: Mais filtros e busca -->
-                    <div class="row mb-3">
-                        <div class="col-md-2">
-                            <label for="filterEtapaSubtasks" class="form-label">Etapa</label>
-                            <select id="filterEtapaSubtasks" class="form-select">
-                                <option value="">Todas as Etapas</option>
-                            </select>
-                        </div>
-                        <div class="col-md-4">
-                            <label for="searchSubtasks" class="form-label">Buscar</label>
-                            <input type="text" id="searchSubtasks" class="form-control" placeholder="Buscar por número ou resumo...">
-                        </div>
-                        <div class="col-md-6 d-flex align-items-end">
-                            <button type="button" id="btnAnoAtualSubtasks" class="btn btn-info me-2">
-                                <i class="fas fa-calendar me-1"></i>
-                                Ano Atual
-                            </button>
-                            <button type="button" id="btnUltimos6MesesSubtasks" class="btn btn-warning me-2">
-                                <i class="fas fa-calendar-alt me-1"></i>
-                                Últimos 6 Meses
-                            </button>
-                            <button type="button" id="btnLimparFiltrosSubtasks" class="btn btn-secondary me-2">
-                                <i class="fas fa-times me-1"></i>
-                                Limpar Filtros
-                            </button>
-                            <span id="totalRegistrosSubtasks" class="badge bg-primary ms-3 fs-6">0 registros</span>
-                        </div>
-                    </div>
-                </div>
-
+                
                 <!-- Loading -->
                 <div id="loadingSubtasks" class="loading">
                     <div class="spinner-border text-primary" role="status">
@@ -112,17 +258,18 @@
                         <table class="table table-striped table-hover" id="tableSubtasks">
                             <thead class="table-dark">
                                 <tr>
-                                    <th>Número</th>
-                                    <th>Resumo</th>
-                                    <th>Equipe</th>
-                                    <th>Tipo</th>
-                                    <th>Etapa</th>
-                                    <th>Status</th>
-                                    <th>Responsável</th>
-                                    <th>Início Planejado</th>
-                                    <th>Fim Planejado</th>
-                                    <th>% Concluído</th>
-                                    <th>Épico</th>
+                                    <th><i class="fas fa-hashtag me-1"></i>Número</th>
+                                    <th><i class="fas fa-align-left me-1"></i>Resumo</th>
+                                    <th><i class="fas fa-users me-1"></i>Equipe</th>
+                                    <th><i class="fas fa-tag me-1"></i>Tipo</th>
+                                    <th><i class="fas fa-step-forward me-1"></i>SubTipo</th>
+                                    <th><i class="fas fa-flag me-1"></i>Status</th>
+                                    <th><i class="fas fa-user me-1"></i>Responsável</th>
+                                    <th><i class="fas fa-calendar-plus me-1"></i>Início</th>
+                                    <th><i class="fas fa-calendar-check me-1"></i>Fim</th>
+                                    <th><i class="fas fa-percent me-1"></i>Progresso</th>
+                                    <th><i class="fas fa-project-diagram me-1"></i>Épico</th>
+                                    <th><i class="fas fa-cog me-1"></i>Ações</th>
                                 </tr>
                             </thead>
                             <tbody id="tbodySubtasks">
@@ -131,30 +278,542 @@
                     </div>
 
                     <!-- Paginação -->
-                    <nav aria-label="Paginação">
+                    <nav aria-label="Paginação" class="mt-3">
                         <ul class="pagination justify-content-center" id="paginationSubtasks">
                         </ul>
                     </nav>
 
                     <!-- Info da tabela -->
-                    <div class="row">
+                    <div class="row mt-3">
                         <div class="col-md-6">
                             <small class="text-muted">
-                                Mostrando <span id="showingFromSubtasks">0</span> a <span id="showingToSubtasks">0</span> 
-                                de <span id="totalRecordsSubtasks">0</span> registros
+                                Mostrando <span id="showingFromSubtasks" class="fw-bold text-primary">0</span> a 
+                                <span id="showingToSubtasks" class="fw-bold text-primary">0</span> 
+                                de <span id="totalRecordsSubtasks" class="fw-bold text-primary">0</span> registros
                             </small>
                         </div>
                         <div class="col-md-6 text-end">
-                            <label for="pageSizeSubtasks" class="form-label me-2">Registros por página:</label>
-                            <select id="pageSizeSubtasks" class="form-select d-inline-block w-auto">
+                            <label for="pageSizeSubtasks" class="form-label me-2 small">Registros por página:</label>
+                            <select id="pageSizeSubtasks" class="form-select form-select-sm d-inline-block w-auto modern-select">
                                 <option value="25">25</option>
                                 <option value="50">50</option>
                                 <option value="100">100</option>
-                                <option value="200">200</option>
                             </select>
                         </div>
                     </div>
                 </div>
+            </div>
+        </div>
+    </div>
+</div>
+<!-- Legenda e Informações Detalhadas no Rodapé -->
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card shadow-sm border-0">
+            <div class="card-header bg-white border-bottom">
+                <h6 class="card-title mb-0 text-primary">
+                    <i class="fas fa-info-circle me-2"></i>
+                    Regras de Cálculo e Indicadores das SubTasks
+                </h6>
+            </div>
+            <div class="card-body p-0">
+                <div class="accordion" id="accordionLegendas">
+                    
+                    <!-- Cálculos dos Percentuais -->
+                    <div class="accordion-item">
+                        <h2 class="accordion-header" id="headingPercentuais">
+                            <button class="accordion-button collapsed text-primary" type="button" data-bs-toggle="collapse" data-bs-target="#collapsePercentuais">
+                                <i class="fas fa-calculator me-2"></i>
+                                <strong>Regras de Cálculo dos Percentuais (% Planejado, % Realizado, % Concluído)</strong>
+                            </button>
+                        </h2>
+                        <div id="collapsePercentuais" class="accordion-collapse collapse" data-bs-parent="#accordionLegendas">
+                            <div class="accordion-body">
+                                <div class="row">
+                                    <!-- Percentual Planejado -->
+                                    <div class="col-md-4 mb-3">
+                                        <div class="card border-info h-100">
+                                            <div class="card-header bg-info bg-opacity-10">
+                                                <h6 class="card-title mb-0 text-info">
+                                                    <i class="fas fa-calendar-alt me-2"></i>% Planejado
+                                                </h6>
+                                            </div>
+                                            <div class="card-body">
+                                                <div class="mb-2">
+                                                    <small class="text-muted fw-bold">
+                                                        <i class="fas fa-calendar-check me-1 text-success"></i>Se Data Fim ≤ Hoje:
+                                                    </small>
+                                                    <div><small>100% (prazo já vencido)</small></div>
+                                                </div>
+                                                <div class="mb-2">
+                                                    <small class="text-muted fw-bold">
+                                                        <i class="fas fa-calendar-plus me-1 text-warning"></i>Se Data Início > Hoje:
+                                                    </small>
+                                                    <div><small>0% (ainda não iniciou)</small></div>
+                                                </div>
+                                                <div class="mb-0">
+                                                    <small class="text-muted fw-bold">
+                                                        <i class="fas fa-percent me-1 text-info"></i>Em Andamento:
+                                                    </small>
+                                                    <div><small>(Dias úteis desde início / Total dias úteis planejados) × 100</small></div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Percentual Realizado -->
+                                    <div class="col-md-4 mb-3">
+                                        <div class="card border-warning h-100">
+                                            <div class="card-header bg-warning bg-opacity-10">
+                                                <h6 class="card-title mb-0 text-warning">
+                                                    <i class="fas fa-cogs me-2"></i>% Realizado
+                                                </h6>
+                                            </div>
+                                            <div class="card-body">
+                                                <div class="mb-2">
+                                                    <small class="text-muted fw-bold">
+                                                        <i class="fas fa-calendar-times me-1 text-danger"></i>Se Início Real > Hoje:
+                                                    </small>
+                                                    <div><small>0% (trabalho ainda não iniciado)</small></div>
+                                                </div>
+                                                <div class="mb-2">
+                                                    <small class="text-muted fw-bold">
+                                                        <i class="fas fa-calculator me-1 text-info"></i>Fórmula:
+                                                    </small>
+                                                    <div><small>(Horas Trabalhadas / Horas Planejadas) × 100</small></div>
+                                                </div>
+                                                <div class="mb-0">
+                                                    <small class="text-muted fw-bold">
+                                                        <i class="fas fa-info-circle me-1 text-primary"></i>Origem:
+                                                    </small>
+                                                    <div><small>TaskTimeSpends registrado no Jira</small></div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Percentual Concluído -->
+                                    <div class="col-md-4 mb-3">
+                                        <div class="card border-success h-100">
+                                            <div class="card-header bg-success bg-opacity-10">
+                                                <h6 class="card-title mb-0 text-success">
+                                                    <i class="fas fa-check-circle me-2"></i>% Concluído
+                                                </h6>
+                                            </div>
+                                            <div class="card-body">
+                                                <div class="mb-2">
+                                                    <small class="text-muted fw-bold">
+                                                        <i class="fas fa-flag-checkered me-1 text-success"></i>Se Status = Done/Closed:
+                                                    </small>
+                                                    <div><small>100% (tarefa concluída)</small></div>
+                                                </div>
+                                                <div class="mb-2">
+                                                    <small class="text-muted fw-bold">
+                                                        <i class="fas fa-exclamation-triangle me-1 text-warning"></i>Se % Realizado ≥ 90% e Status ≠ Done:
+                                                    </small>
+                                                    <div><small>90% (limite máximo para tarefas em aberto)</small></div>
+                                                </div>
+                                                <div class="mb-0">
+                                                    <small class="text-muted fw-bold">
+                                                        <i class="fas fa-equals me-1 text-info"></i>Demais Casos:
+                                                    </small>
+                                                    <div><small>Igual ao % Realizado</small></div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Indicadores de Andamento -->
+                    <div class="accordion-item">
+                        <h2 class="accordion-header" id="headingIndicadores">
+                            <button class="accordion-button collapsed text-primary" type="button" data-bs-toggle="collapse" data-bs-target="#collapseIndicadores">
+                                <i class="fas fa-traffic-light me-2"></i>
+                                <strong>Lógica dos Indicadores de Andamento (Verde, Amarelo, Vermelho)</strong>
+                            </button>
+                        </h2>
+                        <div id="collapseIndicadores" class="accordion-collapse collapse" data-bs-parent="#accordionLegendas">
+                            <div class="accordion-body">
+                                <div class="row">
+                                    <div class="col-md-4">
+                                        <div class="card border-success h-100">
+                                            <div class="card-header bg-success bg-opacity-10">
+                                                <h6 class="card-title mb-0 text-success">
+                                                    <i class="fas fa-check-circle me-2"></i>Verde (No Prazo)
+                                                </h6>
+                                            </div>
+                                            <div class="card-body">
+                                                <ul class="mb-0" style="font-size: 0.9rem;">
+                                                    <li><strong>Task concluída:</strong> Status = Done ou Closed</li>
+                                                    <li><strong>Ainda não iniciou:</strong> Data início > hoje</li>
+                                                    <li><strong>Adiantada:</strong> (% Planejado - % Realizado) > 5%</li>
+                                                </ul>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <div class="card border-warning h-100">
+                                            <div class="card-header bg-warning bg-opacity-10">
+                                                <h6 class="card-title mb-0 text-warning">
+                                                    <i class="fas fa-exclamation-triangle me-2"></i>Amarelo (Atenção)
+                                                </h6>
+                                            </div>
+                                            <div class="card-body">
+                                                <ul class="mb-0" style="font-size: 0.9rem;">
+                                                    <li><strong>Próximo do limite:</strong> (% Planejado - % Realizado) ≤ 5%</li>
+                                                    <li><strong>Situação:</strong> Progresso próximo ao esperado</li>
+                                                    <li><strong>Ação:</strong> Acompanhar de perto</li>
+                                                </ul>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <div class="card border-danger h-100">
+                                            <div class="card-header bg-danger bg-opacity-10">
+                                                <h6 class="card-title mb-0 text-danger">
+                                                    <i class="fas fa-times-circle me-2"></i>Vermelho (Crítico)
+                                                </h6>
+                                            </div>
+                                            <div class="card-body">
+                                                <ul class="mb-0" style="font-size: 0.9rem;">
+                                                    <li><strong>Atrasada:</strong> (% Planejado - % Realizado) < 0%</li>
+                                                    <li><strong>Prazo vencido:</strong> 100% planejado e Status ≠ Done</li>
+                                                    <li><strong>Data fim passada:</strong> Data fim < hoje e Status ≠ Done</li>
+                                                </ul>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Detalhes Técnicos -->
+                    <div class="accordion-item">
+                        <h2 class="accordion-header" id="headingTecnicos">
+                            <button class="accordion-button collapsed text-primary" type="button" data-bs-toggle="collapse" data-bs-target="#collapseTecnicos">
+                                <i class="fas fa-cog me-2"></i>
+                                <strong>Detalhes Técnicos e Exemplo de Cálculo</strong>
+                            </button>
+                        </h2>
+                        <div id="collapseTecnicos" class="accordion-collapse collapse" data-bs-parent="#accordionLegendas">
+                            <div class="accordion-body">
+                                <!-- Detalhes Técnicos -->
+                                <div class="row mb-4">
+                                    <div class="col-md-6">
+                                        <h6 class="text-primary mb-3">
+                                            <i class="fas fa-database me-2"></i>Origem dos Dados
+                                        </h6>
+                                        <div class="bg-light p-3 rounded">
+                                            <small class="text-muted">
+                                                <i class="fas fa-calendar me-1"></i>
+                                                <strong>Dias Úteis:</strong> Função RetornarTotalDiasUteisPeriodo<br>
+                                                <i class="fas fa-clock me-1"></i>
+                                                <strong>Horas Planejadas:</strong> Dias úteis × 8 horas<br>
+                                                <i class="fas fa-play me-1"></i>
+                                                <strong>Início Real:</strong> Primeiro status "In Progress" (ID=3)<br>
+                                                <i class="fas fa-stop me-1"></i>
+                                                <strong>Fim Real:</strong> Status Done/Resolved/Rejeitado (IDs: 10001,6,10002)
+                                            </small>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <h6 class="text-primary mb-3">
+                                            <i class="fas fa-filter me-2"></i>Filtros e Processamento
+                                        </h6>
+                                        <div class="bg-light p-3 rounded">
+                                            <small class="text-muted">
+                                                <i class="fas fa-filter me-1"></i>
+                                                <strong>Filtros Aplicados:</strong> US com Status ≠ "Rejeitado"<br>
+                                                <i class="fas fa-sync me-1"></i>
+                                                <strong>Processamento:</strong> Procedure BI_JiraProcessarSubTasksDatasGrafico<br>
+                                                <i class="fas fa-calendar-alt me-1"></i>
+                                                <strong>Épicos Incluídos:</strong> InicioPlanejado >= '2022-01-01'<br>
+                                                <i class="fas fa-link me-1"></i>
+                                                <strong>Relacionamento:</strong> Via ProjectKey entre épicos e tasks
+                                            </small>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Exemplo de Cálculo -->
+                                <div class="row">
+                                    <div class="col-12">
+                                        <h6 class="text-success mb-3">
+                                            <i class="fas fa-lightbulb me-2"></i>Exemplo Prático de Cálculo
+                                        </h6>
+                                        <div class="alert alert-info">
+                                            <div class="row">
+                                                <div class="col-md-6">
+                                                    <strong>📋 Cenário:</strong><br>
+                                                    <small>
+                                                        • Task planejada: 5 dias úteis (40h)<br>
+                                                        • Hoje: 3º dia de execução<br>
+                                                        • Horas trabalhadas: 20h registradas no Jira
+                                                    </small>
+                                                </div>
+                                                <div class="col-md-6">
+                                                    <strong>🧮 Cálculos:</strong><br>
+                                                    <small>
+                                                        • <strong>% Planejado:</strong> (3 dias / 5 dias) × 100 = <span class="badge bg-info">60%</span><br>
+                                                        • <strong>% Realizado:</strong> (20h / 40h) × 100 = <span class="badge bg-warning text-dark">50%</span><br>
+                                                        • <strong>Diferença:</strong> 60% - 50% = 10% → <span class="badge bg-success">Verde</span> (>5%)
+                                                    </small>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Detalhes da SubTask -->
+<div class="modal fade" id="modalDetalheSubtask" tabindex="-1">
+    <div class="modal-dialog modal-xl modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title">
+                    <i class="fas fa-info-circle me-2"></i>
+                    Detalhes da SubTask
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                
+                <!-- Dados Básicos da SubTask -->
+                <div class="row">
+                    <div class="col-12">
+                        <h6 class="text-primary fw-bold">
+                            <i class="fas fa-info-circle me-1"></i>Dados Básicos da SubTask
+                        </h6>
+                        <hr>
+                        <div class="card border-primary mb-4">
+                            <div class="row mb-4 p-3">
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label class="form-label fw-bold text-primary">
+                                            <i class="fas fa-hashtag me-1"></i>Número da Task:
+                                        </label>
+                                        <p id="detalheNumeroTask" class="form-control-plaintext border p-2 bg-light rounded"></p>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label fw-bold text-primary">
+                                            <i class="fas fa-users me-1"></i>Equipe:
+                                        </label>
+                                        <p id="detalheEquipeTask" class="form-control-plaintext border p-2 bg-light rounded"></p>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label fw-bold text-primary">
+                                            <i class="fas fa-tag me-1"></i>Tipo:
+                                        </label>
+                                        <p id="detalheTipoTask" class="form-control-plaintext border p-2 bg-light rounded"></p>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label class="form-label fw-bold text-primary">
+                                            <i class="fas fa-flag me-1"></i>Status:
+                                        </label>
+                                        <p id="detalheStatusTask" class="form-control-plaintext border p-2 bg-light rounded"></p>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label fw-bold text-primary">
+                                            <i class="fas fa-user me-1"></i>Responsável:
+                                        </label>
+                                        <p id="detalheResponsavelTask" class="form-control-plaintext border p-2 bg-light rounded"></p>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label fw-bold text-primary">
+                                            <i class="fas fa-step-forward me-1"></i>SubTipo:
+                                        </label>
+                                        <p id="detalheSubTipoTask" class="form-control-plaintext border p-2 bg-light rounded"></p>
+                                    </div>
+                                </div>
+
+                                <div class="col-12">
+                                    <label class="form-label fw-bold text-primary">
+                                        <i class="fas fa-align-left me-1"></i>Resumo:
+                                    </label>
+                                    <div id="detalheResumoTask" class="border p-3 bg-light rounded" style="min-height: 60px;"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Dados de Planejamento e Execução -->
+                <div class="row mt-4">
+                    <div class="col-12">
+                        <h6 class="text-primary fw-bold">
+                            <i class="fas fa-calendar-alt me-1"></i>Planejamento e Execução
+                        </h6>
+                        <hr>
+                        <div class="card border-info mb-4">
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <h6 class="text-info mb-3">📅 Datas Planejadas</h6>
+                                        <div class="mb-2">
+                                            <small class="text-muted fw-bold">Início Planejado:</small>
+                                            <div id="detalheInicioPlanejeado" class="border p-2 bg-light rounded"></div>
+                                        </div>
+                                        <div class="mb-2">
+                                            <small class="text-muted fw-bold">Fim Planejado:</small>
+                                            <div id="detalheFimPlanejado" class="border p-2 bg-light rounded"></div>
+                                        </div>
+                                        <div class="mb-2">
+                                            <small class="text-muted fw-bold">Duração Planejada:</small>
+                                            <div id="detalheDuracaoPlaneejada" class="border p-2 bg-light rounded"></div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <h6 class="text-success mb-3">✅ Dados Realizados</h6>
+                                        <div class="mb-2">
+                                            <small class="text-muted fw-bold">Início Realizado:</small>
+                                            <div id="detalheInicioRealizado" class="border p-2 bg-light rounded"></div>
+                                        </div>
+                                        <div class="mb-2">
+                                            <small class="text-muted fw-bold">Fim Realizado:</small>
+                                            <div id="detalheFimRealizado" class="border p-2 bg-light rounded"></div>
+                                        </div>
+                                        <div class="mb-2">
+                                            <small class="text-muted fw-bold">Duração Realizada:</small>
+                                            <div id="detalheDuracaoRealizada" class="border p-2 bg-light rounded"></div>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <!-- Progresso -->
+                                <div class="row mt-3">
+                                    <div class="col-md-4">
+                                        <small class="text-muted fw-bold">% Planejado:</small>
+                                        <div class="progress mt-1" style="height: 20px;">
+                                            <div id="progressoPlanejado" class="progress-bar bg-info" style="width: 0%"></div>
+                                        </div>
+                                        <small id="textProgressoPlanejado" class="text-center d-block mt-1">0%</small>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <small class="text-muted fw-bold">% Realizado:</small>
+                                        <div class="progress mt-1" style="height: 20px;">
+                                            <div id="progressoRealizado" class="progress-bar bg-warning" style="width: 0%"></div>
+                                        </div>
+                                        <small id="textProgressoRealizado" class="text-center d-block mt-1">0%</small>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <small class="text-muted fw-bold">% Concluído:</small>
+                                        <div class="progress mt-1" style="height: 20px;">
+                                            <div id="progressoConcluido" class="progress-bar bg-success" style="width: 0%"></div>
+                                        </div>
+                                        <small id="textProgressoConcluido" class="text-center d-block mt-1">0%</small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Informações da US (User Story) -->
+                <div class="row mt-4">
+                    <div class="col-12">
+                        <h6 class="text-primary fw-bold">
+                            <i class="fas fa-user-story me-1"></i>User Story Relacionada
+                        </h6>
+                        <hr>
+                        <div class="card border-success mb-4">
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="mb-2">
+                                            <small class="text-muted fw-bold">Número da US:</small>
+                                            <div id="detalheNumeroUS" class="border p-2 bg-light rounded"></div>
+                                        </div>
+                                        <div class="mb-2">
+                                            <small class="text-muted fw-bold">Equipe da US:</small>
+                                            <div id="detalheEquipeUS" class="border p-2 bg-light rounded"></div>
+                                        </div>
+                                        <div class="mb-2">
+                                            <small class="text-muted fw-bold">Tipo da US:</small>
+                                            <div id="detalheTipoUS" class="border p-2 bg-light rounded"></div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="mb-2">
+                                            <small class="text-muted fw-bold">Status da US:</small>
+                                            <div id="detalheStatusUS" class="border p-2 bg-light rounded"></div>
+                                        </div>
+                                        <div class="mb-2">
+                                            <small class="text-muted fw-bold">Produto da US:</small>
+                                            <div id="detalheProdutoUS" class="border p-2 bg-light rounded"></div>
+                                        </div>
+                                        <div class="mb-2">
+                                            <small class="text-muted fw-bold">Responsável da US:</small>
+                                            <div id="detalheResponsavelUS" class="border p-2 bg-light rounded"></div>
+                                        </div>
+                                    </div>
+                                    <div class="col-12 mt-2">
+                                        <small class="text-muted fw-bold">Resumo da US:</small>
+                                        <div id="detalheResumoUS" class="border p-3 bg-light rounded"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Informações do Épico -->
+                <div class="row mt-4">
+                    <div class="col-12">
+                        <h6 class="text-primary fw-bold">
+                            <i class="fas fa-project-diagram me-1"></i>Épico Relacionado
+                        </h6>
+                        <hr>
+                        <div class="card border-warning mb-4">
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="mb-2">
+                                            <small class="text-muted fw-bold">Número do Épico:</small>
+                                            <div id="detalheNumeroEpico" class="border p-2 bg-light rounded"></div>
+                                        </div>
+                                        <div class="mb-2">
+                                            <small class="text-muted fw-bold">Equipe do Épico:</small>
+                                            <div id="detalheEquipeEpico" class="border p-2 bg-light rounded"></div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="mb-2">
+                                            <small class="text-muted fw-bold">Status do Épico:</small>
+                                            <div id="detalheStatusEpico" class="border p-2 bg-light rounded"></div>
+                                        </div>
+                                        <div class="mb-2">
+                                            <small class="text-muted fw-bold">Produto do Épico:</small>
+                                            <div id="detalheProdutoEpico" class="border p-2 bg-light rounded"></div>
+                                        </div>
+                                    </div>
+                                    <div class="col-12 mt-2">
+                                        <small class="text-muted fw-bold">Resumo do Épico:</small>
+                                        <div id="detalheResumoEpico" class="border p-3 bg-light rounded"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer bg-light">
+                <button type="button" class="btn btn-secondary modern-btn" data-bs-dismiss="modal">
+                    <i class="fas fa-times me-1"></i>
+                    Fechar
+                </button>
             </div>
         </div>
     </div>
@@ -164,19 +823,34 @@
 {% block scripts %}
 <script>
 let subtasksData = [];
-let filteredSubtasksData = [];
-let currentPageSubtasks = 1;
-let pageSizeSubtasks = 25;
+let allSubtasksData = [];
+let filteredData = [];
+let currentPage = 1;
+let pageSize = 25;
 
-// Inicializar datas padrão (ano atual)
-function initializeDefaultDatesSubtasks() {
-    const currentYear = new Date().getFullYear();
-    document.getElementById('filterDataInicioSubtasks').value = `${currentYear}-01-01`;
-    document.getElementById('filterDataFimSubtasks').value = `${currentYear}-12-31`;
-}
+let subtasksFilters = {
+    equipe: "",
+    status: "",
+    tipo: "",
+    subtipo: "",
+    search: "",
+    data_inicio: "",
+    data_fim: "",
+    periodo: "ano_atual"
+};
 
 function loadSubtasksData() {
-    fetch('/api/subtasks-data')
+    console.log('Carregando dados das subtasks...');
+    
+    // Usar período padrão (ano atual) na primeira carga
+    const currentYear = new Date().getFullYear();
+    const params = new URLSearchParams({
+        periodo: 'ano_atual',
+        data_inicio: `${currentYear}-01-01`,
+        data_fim: `${currentYear}-12-31`
+    });
+    
+    fetch(`/api/subtasks-data?${params}`)
         .then(response => response.json())
         .then(data => {
             document.getElementById('loadingSubtasks').style.display = 'none';
@@ -184,8 +858,14 @@ function loadSubtasksData() {
             if (data.error) {
                 showErrorSubtasks(data.error);
             } else {
-                subtasksData = data;
-                applyFiltersSubtasks(); // Aplicar filtros após carregar
+                console.log('Dados recebidos:', data.length, 'registros');
+                
+                allSubtasksData = data;
+                subtasksData = data; // Para as subtasks, usar todos os dados
+                console.log('Dados carregados:', subtasksData.length, 'subtasks');
+                
+                // Aplicar filtros iniciais (apenas frontend, sem período)
+                applyFrontendFilters();
                 populateFiltersSubtasks();
                 document.getElementById('tableContainerSubtasks').style.display = 'block';
             }
@@ -199,6 +879,11 @@ function loadSubtasksData() {
 function populateFiltersSubtasks() {
     const equipeSelect = document.getElementById('filterEquipeSubtasks');
     const equipes = [...new Set(subtasksData.map(item => item.TaskEquipe).filter(e => e))];
+    
+    while (equipeSelect.children.length > 1) {
+        equipeSelect.removeChild(equipeSelect.lastChild);
+    }
+    
     equipes.sort().forEach(equipe => {
         const option = document.createElement('option');
         option.value = equipe;
@@ -208,6 +893,11 @@ function populateFiltersSubtasks() {
 
     const statusSelect = document.getElementById('filterStatusSubtasks');
     const statuses = [...new Set(subtasksData.map(item => item.TaskStatus).filter(s => s))];
+    
+    while (statusSelect.children.length > 1) {
+        statusSelect.removeChild(statusSelect.lastChild);
+    }
+    
     statuses.sort().forEach(status => {
         const option = document.createElement('option');
         option.value = status;
@@ -217,6 +907,11 @@ function populateFiltersSubtasks() {
 
     const tipoSelect = document.getElementById('filterTipoSubtasks');
     const tipos = [...new Set(subtasksData.map(item => item.TaskType).filter(t => t))];
+    
+    while (tipoSelect.children.length > 1) {
+        tipoSelect.removeChild(tipoSelect.lastChild);
+    }
+    
     tipos.sort().forEach(tipo => {
         const option = document.createElement('option');
         option.value = tipo;
@@ -224,65 +919,163 @@ function populateFiltersSubtasks() {
         tipoSelect.appendChild(option);
     });
 
-    const etapaSelect = document.getElementById('filterEtapaSubtasks');
-    const etapas = [...new Set(subtasksData.map(item => item.TaskEtapa).filter(e => e))];
-    etapas.sort().forEach(etapa => {
+    const SubTipoSelect = document.getElementById('filterSubTipoSubtasks');
+    const SubTipos = [...new Set(subtasksData.map(item => item.TaskSubTipo).filter(e => e))];
+    
+    while (SubTipoSelect.children.length > 1) {
+        SubTipoSelect.removeChild(SubTipoSelect.lastChild);
+    }
+    
+    SubTipos.sort().forEach(SubTipo => {
         const option = document.createElement('option');
-        option.value = etapa;
-        option.textContent = etapa;
-        etapaSelect.appendChild(option);
+        option.value = SubTipo;
+        option.textContent = SubTipo;
+        SubTipoSelect.appendChild(option);
     });
 }
 
 function applyFiltersSubtasks() {
-    const equipeFilter = document.getElementById('filterEquipeSubtasks').value;
-    const statusFilter = document.getElementById('filterStatusSubtasks').value;
-    const tipoFilter = document.getElementById('filterTipoSubtasks').value;
-    const etapaFilter = document.getElementById('filterEtapaSubtasks').value;
-    const searchFilter = document.getElementById('searchSubtasks').value.toLowerCase();
-    const dataInicio = document.getElementById('filterDataInicioSubtasks').value;
-    const dataFim = document.getElementById('filterDataFimSubtasks').value;
-
-    filteredSubtasksData = subtasksData.filter(item => {
-        // Filtros básicos
-        let matches = (!equipeFilter || item.TaskEquipe === equipeFilter) &&
-                     (!statusFilter || item.TaskStatus === statusFilter) &&
-                     (!tipoFilter || item.TaskType === tipoFilter) &&
-                     (!etapaFilter || item.TaskEtapa === etapaFilter) &&
-                     (!searchFilter || 
-                      (item.TaskNumberId && item.TaskNumberId.toLowerCase().includes(searchFilter)) ||
-                      (item.TaskSummary && item.TaskSummary.toLowerCase().includes(searchFilter)));
-
-        // Filtro de data (verificar se a subtask está no período)
-        if (matches && (dataInicio || dataFim)) {
-            const taskInicio = item.TaskInicioPlanejado ? parseDate(item.TaskInicioPlanejado) : null;
-            const taskFim = item.TaskFimPlanejado ? parseDate(item.TaskFimPlanejado) : null;
-            
-            if (dataInicio && dataFim) {
-                const filterStart = new Date(dataInicio);
-                const filterEnd = new Date(dataFim);
-                
-                // Subtask deve ter alguma sobreposição com o período filtrado
-                if (taskInicio && taskFim) {
-                    matches = matches && (
-                        (taskFim >= filterStart && taskFim <= filterEnd) ||
-                        (taskInicio >= filterStart && taskInicio <= filterEnd) ||
-                        (taskInicio < filterStart && taskFim > filterEnd)
-                    );
-                } else if (taskInicio) {
-                    matches = matches && (taskInicio >= filterStart && taskInicio <= filterEnd);
-                } else if (taskFim) {
-                    matches = matches && (taskFim >= filterStart && taskFim <= filterEnd);
-                }
-            }
+    // Capturar todos os valores dos filtros
+    subtasksFilters.equipe = document.getElementById('filterEquipeSubtasks').value;
+    subtasksFilters.status = document.getElementById('filterStatusSubtasks').value;
+    subtasksFilters.tipo = document.getElementById('filterTipoSubtasks').value;
+    subtasksFilters.SubTipo = document.getElementById('filterSubTipoSubtasks').value;
+    subtasksFilters.search = document.getElementById('searchSubtasks').value.toLowerCase();
+    subtasksFilters.periodo = document.getElementById('filterPeriodoSubtasks').value;
+    
+    // Calcular datas baseadas no período selecionado
+    const today = new Date();
+    const currentYear = today.getFullYear();
+    
+    if (subtasksFilters.periodo === 'personalizado') {
+        subtasksFilters.data_inicio = document.getElementById('filterDataInicioSubtask').value;
+        subtasksFilters.data_fim = document.getElementById('filterDataFimSubtask').value;
+    } else {
+        // Calcular datas automaticamente baseadas no período
+        switch(subtasksFilters.periodo) {
+            case 'ano_atual':
+                subtasksFilters.data_inicio = `${currentYear}-01-01`;
+                subtasksFilters.data_fim = `${currentYear}-12-31`;
+                break;
+            case 'q1':
+                subtasksFilters.data_inicio = `${currentYear}-01-01`;
+                subtasksFilters.data_fim = `${currentYear}-03-31`;
+                break;
+            case 'q2':
+                subtasksFilters.data_inicio = `${currentYear}-04-01`;
+                subtasksFilters.data_fim = `${currentYear}-06-30`;
+                break;
+            case 'q3':
+                subtasksFilters.data_inicio = `${currentYear}-07-01`;
+                subtasksFilters.data_fim = `${currentYear}-09-30`;
+                break;
+            case 'q4':
+                subtasksFilters.data_inicio = `${currentYear}-10-01`;
+                subtasksFilters.data_fim = `${currentYear}-12-31`;
+                break;
+            case '6_meses':
+                const seisMesesAtras = new Date();
+                seisMesesAtras.setMonth(today.getMonth() - 6);
+                subtasksFilters.data_inicio = seisMesesAtras.toISOString().split('T')[0];
+                subtasksFilters.data_fim = today.toISOString().split('T')[0];
+                break;
+            case '3_meses':
+                const tresMesesAtras = new Date();
+                tresMesesAtras.setMonth(today.getMonth() - 3);
+                subtasksFilters.data_inicio = tresMesesAtras.toISOString().split('T')[0];
+                subtasksFilters.data_fim = today.toISOString().split('T')[0];
+                break;
+            case 'mes_atual':
+                subtasksFilters.data_inicio = `${currentYear}-${(today.getMonth() + 1).toString().padStart(2, '0')}-01`;
+                subtasksFilters.data_fim = today.toISOString().split('T')[0];
+                break;
+            default:
+                subtasksFilters.data_inicio = '';
+                subtasksFilters.data_fim = '';
         }
+    }
 
+    console.log('Filtros aplicados:', subtasksFilters);
+
+    // Desabilitar campos durante processamento
+    disableFilters(true);
+
+    // Se for um período que requer nova consulta ao backend, recarregar dados
+    if (subtasksFilters.periodo !== 'ano_atual' || subtasksFilters.data_inicio || subtasksFilters.data_fim) {
+        // Fazer nova consulta ao backend com os filtros de período
+        reloadDataWithFilters();
+    } else {
+        // Aplicar filtros apenas no frontend (dados já carregados)
+        applyFrontendFilters();
+    }
+}
+
+function reloadDataWithFilters() {
+    console.log('Recarregando dados com filtros de período...');
+    
+    document.getElementById('loadingSubtasks').style.display = 'block';
+    document.getElementById('tableContainerSubtasks').style.display = 'none';
+    document.getElementById('errorSubtasks').style.display = 'none';
+
+    // Construir parâmetros para a API
+    const params = new URLSearchParams({
+        periodo: subtasksFilters.periodo || 'ano_atual',
+        data_inicio: subtasksFilters.data_inicio || '',
+        data_fim: subtasksFilters.data_fim || ''
+    });
+
+    fetch(`/api/subtasks-data?${params}`)
+        .then(response => response.json())
+        .then(data => {
+            document.getElementById('loadingSubtasks').style.display = 'none';
+            
+            if (data.error) {
+                showErrorSubtasks(data.error);
+                disableFilters(false);
+            } else {
+                console.log('Dados recarregados:', data.length, 'registros');
+                
+                // Atualizar dados com os novos resultados
+                subtasksData = data;
+                allSubtasksData = data;
+                
+                // Aplicar filtros de frontend nos novos dados
+                applyFrontendFilters();
+                
+                // Reabilitar campos
+                setTimeout(() => {
+                    disableFilters(false);
+                }, 500);
+                
+                document.getElementById('tableContainerSubtasks').style.display = 'block';
+            }
+        })
+        .catch(error => {
+            console.error('Erro ao recarregar dados:', error);
+            document.getElementById('loadingSubtasks').style.display = 'none';
+            showErrorSubtasks('Erro ao recarregar dados: ' + error.message);
+            disableFilters(false);
+        });
+}
+
+function applyFrontendFilters() {
+    // Aplicar filtros básicos nos dados já carregados
+    filteredData = subtasksData.filter(item => {
+        let matches = (!subtasksFilters.equipe || item.TaskEquipe === subtasksFilters.equipe) &&
+                     (!subtasksFilters.status || item.TaskStatus === subtasksFilters.status) &&
+                     (!subtasksFilters.tipo || item.TaskType === subtasksFilters.tipo) &&
+                     (!subtasksFilters.SubTipo || item.TaskSubTipo === subtasksFilters.SubTipo) &&
+                     (!subtasksFilters.search || 
+                      (item.TaskNumberId && item.TaskNumberId.toLowerCase().includes(subtasksFilters.search)) ||
+                      (item.TaskSummary && item.TaskSummary.toLowerCase().includes(subtasksFilters.search)));
+        
         return matches;
     });
 
-    currentPageSubtasks = 1;
+    currentPage = 1;
     renderTableSubtasks();
-    updateTotalRegistrosSubtasks();
+    updateTotalRegistros();
+    updatePeriodoTexto();
 }
 
 function parseDate(dateString) {
@@ -303,24 +1096,57 @@ function parseDate(dateString) {
     return new Date(dateString);
 }
 
+function disableFilters(disable) {
+    const elements = [
+        'filterEquipeSubtasks',
+        'filterStatusSubtasks', 
+        'filterTipoSubtasks',
+        'filterSubTipoSubtasks',
+        'searchSubtasks',
+        'filterPeriodoSubtasks',
+        'filterDataInicioSubtask',
+        'filterDataFimSubtask',
+        'btnAplicarFiltrosSubtask',
+        'btnLimparFiltrosSubtask'
+    ];
+    
+    elements.forEach(id => {
+        const element = document.getElementById(id);
+        if (element) {
+            element.disabled = disable;
+            if (disable) {
+                element.style.opacity = '0.6';
+            } else {
+                element.style.opacity = '1';
+            }
+        }
+    });
+}
+
 function renderTableSubtasks() {
     const tbody = document.getElementById('tbodySubtasks');
-    const startIndex = (currentPageSubtasks - 1) * pageSizeSubtasks;
-    const endIndex = Math.min(startIndex + pageSizeSubtasks, filteredSubtasksData.length);
-    const pageData = filteredSubtasksData.slice(startIndex, endIndex);
+    const startIndex = (currentPage - 1) * pageSize;
+    const endIndex = Math.min(startIndex + pageSize, filteredData.length);
+    const pageData = filteredData.slice(startIndex, endIndex);
 
     tbody.innerHTML = '';
 
-    pageData.forEach(item => {
+    pageData.forEach((item, index) => {
         const row = document.createElement('tr');
         
+        const truncateText = (text, maxLength = 50) => {
+            if (!text) return 'Sem resumo';
+            if (text.length <= maxLength) return text;
+            return text.substring(0, maxLength) + '...';
+        };
+
         const formatPercentual = (value) => {
             if (!value) return '0%';
             return parseFloat(value).toFixed(1) + '%';
         };
 
         const formatDate = (dateStr) => {
-            if (!dateStr) return '-';
+            if (!dateStr) return 'Não definido';
             return dateStr;
         };
 
@@ -336,29 +1162,28 @@ function renderTableSubtasks() {
         };
 
         row.innerHTML = `
-            <td>${item.TaskNumberId || '-'}</td>
-            <td title="${item.TaskSummary || ''}">
-                ${item.TaskSummary ? (item.TaskSummary.length > 40 ? item.TaskSummary.substring(0, 40) + '...' : item.TaskSummary) : '-'}
-            </td>
-            <td>${item.TaskEquipe || '-'}</td>
-            <td>${item.TaskType || '-'}</td>
-            <td>${item.TaskEtapa || '-'}</td>
-            <td><span class="${getStatusClass(item.TaskStatus)}">${item.TaskStatus || '-'}</span></td>
-            <td>${item.TaskAssignee || '-'}</td>
-            <td>${formatDate(item.TaskInicioPlanejado)}</td>
-            <td>${formatDate(item.TaskFimPlanejado)}</td>
+            <td class="fw-bold text-primary">${item.TaskProjectKey || 'N/A'}</td>
+            <td title="${item.TaskSummary || ''}">${truncateText(item.TaskSummary)}</td>
+            <td><span class="badge bg-info">${item.TaskEquipe || 'Sem Equipe'}</span></td>
+            <td><span class="badge bg-primary truncate-text">${item.TaskType || 'Sem Tipo'}</span></td>
+            <td><span class="badge bg-warning text-dark truncate-text">${item.TaskSubTipo || 'Sem SubTipo'}</span></td>
+            <td><span class="${getStatusClass(item.TaskStatus)}">${item.TaskStatus || 'Indefinido'}</span></td>
+            <td>${item.TaskAssignee || 'Não atribuído'}</td>
+            <td><small>${formatDate(item.TaskInicioPlanejado)}</small></td>
+            <td><small>${formatDate(item.TaskFimPlanejado)}</small></td>
             <td>
-                <div class="progress" style="height: 20px; width: 80px;">
-                    <div class="progress-bar" role="progressbar" 
-                         style="width: ${item.TaskPercentualConcluido || 0}%"
-                         aria-valuenow="${item.TaskPercentualConcluido || 0}" 
-                         aria-valuemin="0" aria-valuemax="100">
-                        ${formatPercentual(item.TaskPercentualConcluido)}
+                <div class="d-flex align-items-center">
+                    <div class="progress me-2" style="width: 60px; height: 15px;">
+                        <div class="progress-bar bg-success" style="width: ${item.TaskPercentualConcluido || 0}%"></div>
                     </div>
+                    <small>${formatPercentual(item.TaskPercentualConcluido)}</small>
                 </div>
             </td>
-            <td title="${item.EpicSummary || ''}">
-                ${item.EpicNumber ? item.EpicNumber : '-'}
+            <td><span class="badge bg-secondary">${item.EpicNumber || 'Sem Épico'}</span></td>
+            <td>
+                <button class="btn btn-sm btn-outline-primary" onclick="showSubtaskDetails(${startIndex + index})">
+                    <i class="fas fa-eye"></i>
+                </button>
             </td>
         `;
         
@@ -369,54 +1194,132 @@ function renderTableSubtasks() {
     updateTableInfoSubtasks();
 }
 
+function showSubtaskDetails(index) {
+    const item = filteredData[index];
+    if (!item) return;
+
+    console.log('Abrindo detalhes para subtask:', item);
+
+    const formatModalData = (data, defaultText = 'Não informado') => {
+        if (!data || data === '' || data === null || data === undefined || data === '-') {
+            return defaultText;
+        }
+        return data;
+    };
+
+    const formatDate = (dateStr) => {
+        if (!dateStr || dateStr === '' || dateStr === '-') {
+            return '<span class="text-muted">Não definida</span>';
+        }
+        return `<span class="text-dark">${dateStr}</span>`;
+    };
+
+    const formatPercentual = (value) => {
+        if (!value) return '<span class="text-muted">0%</span>';
+        return `<span class="fw-bold">${parseFloat(value).toFixed(1)}%</span>`;
+    };
+
+    // Preencher dados básicos da subtask
+    document.getElementById('detalheNumeroTask').textContent = formatModalData(item.TaskProjectKey, 'N/A');
+    document.getElementById('detalheEquipeTask').textContent = formatModalData(item.TaskEquipe, 'Sem equipe');
+    document.getElementById('detalheTipoTask').textContent = formatModalData(item.TaskType, 'Não definido');
+    document.getElementById('detalheStatusTask').textContent = formatModalData(item.TaskStatus, 'Indefinido');
+    document.getElementById('detalheResponsavelTask').textContent = formatModalData(item.TaskAssignee, 'Não atribuído');
+    document.getElementById('detalheSubTipoTask').textContent = formatModalData(item.TaskSubTipo, 'Não definido');
+    document.getElementById('detalheResumoTask').textContent = formatModalData(item.TaskSummary, 'Sem resumo disponível');
+
+    // Preencher dados de planejamento
+    document.getElementById('detalheInicioPlanejeado').innerHTML = formatDate(item.TaskInicioPlanejado);
+    document.getElementById('detalheFimPlanejado').innerHTML = formatDate(item.TaskFimPlanejado);
+    document.getElementById('detalheDuracaoPlaneejada').innerHTML = `<span class="text-dark">${item.TaskDuracaoPlanejadoDias || 0} dias</span>`;
+
+    // Preencher dados realizados
+    document.getElementById('detalheInicioRealizado').innerHTML = formatDate(item.TaskInicioRealizado);
+    document.getElementById('detalheFimRealizado').innerHTML = formatDate(item.TaskFimRealizado);
+    document.getElementById('detalheDuracaoRealizada').innerHTML = `<span class="text-dark">${item.TaskDuracaoRealizadoDias || 0} dias</span>`;
+
+    // Preencher barras de progresso
+    const percentualPlanejado = item.TaskPercentualPlanejado || 0;
+    const percentualRealizado = item.TaskPercentualRealizado || 0;
+    const percentualConcluido = item.TaskPercentualConcluido || 0;
+
+    document.getElementById('progressoPlanejado').style.width = percentualPlanejado + '%';
+    document.getElementById('textProgressoPlanejado').innerHTML = formatPercentual(percentualPlanejado);
+
+    document.getElementById('progressoRealizado').style.width = percentualRealizado + '%';
+    document.getElementById('textProgressoRealizado').innerHTML = formatPercentual(percentualRealizado);
+
+    document.getElementById('progressoConcluido').style.width = percentualConcluido + '%';
+    document.getElementById('textProgressoConcluido').innerHTML = formatPercentual(percentualConcluido);
+
+    // Preencher dados da US (User Story)
+    document.getElementById('detalheNumeroUS').innerHTML = `<span class="text-dark">${formatModalData(item.USNumber, 'Sem US')}</span>`;
+    document.getElementById('detalheEquipeUS').innerHTML = `<span class="text-dark">${formatModalData(item.USEquipe, 'Sem equipe')}</span>`;
+    document.getElementById('detalheTipoUS').innerHTML = `<span class="text-dark">${formatModalData(item.USType, 'Sem tipo')}</span>`;
+    document.getElementById('detalheStatusUS').innerHTML = `<span class="text-dark">${formatModalData(item.USStatus, 'Indefinido')}</span>`;
+    document.getElementById('detalheProdutoUS').innerHTML = `<span class="text-dark">${formatModalData(item.USProduto, 'Sem produto')}</span>`;
+    document.getElementById('detalheResponsavelUS').innerHTML = `<span class="text-dark">${formatModalData(item.USAssignee, 'Não atribuído')}</span>`;
+    document.getElementById('detalheResumoUS').innerHTML = `<span class="text-dark">${formatModalData(item.USSummary, 'Sem resumo disponível')}</span>`;
+
+    // Preencher dados do épico
+    document.getElementById('detalheNumeroEpico').innerHTML = `<span class="text-dark">${formatModalData(item.EpicNumber, 'Sem épico')}</span>`;
+    document.getElementById('detalheEquipeEpico').innerHTML = `<span class="text-dark">${formatModalData(item.EpicEquipe, 'Sem equipe')}</span>`;
+    document.getElementById('detalheStatusEpico').innerHTML = `<span class="text-dark">${formatModalData(item.EpicStatus, 'Indefinido')}</span>`;
+    document.getElementById('detalheProdutoEpico').innerHTML = `<span class="text-dark">${formatModalData(item.EpicProduto, 'Sem produto')}</span>`;
+    document.getElementById('detalheResumoEpico').innerHTML = `<span class="text-dark">${formatModalData(item.EpicSummary, 'Sem resumo disponível')}</span>`;
+
+    const modal = new bootstrap.Modal(document.getElementById('modalDetalheSubtask'));
+    modal.show();
+}
+
 function renderPaginationSubtasks() {
     const pagination = document.getElementById('paginationSubtasks');
-    const totalPages = Math.ceil(filteredSubtasksData.length / pageSizeSubtasks);
+    const totalPages = Math.ceil(filteredData.length / pageSize);
     
     pagination.innerHTML = '';
 
     if (totalPages <= 1) return;
 
     const prevLi = document.createElement('li');
-    prevLi.className = `page-item ${currentPageSubtasks === 1 ? 'disabled' : ''}`;
-    prevLi.innerHTML = `<a class="page-link" href="#" onclick="changePageSubtasks(${currentPageSubtasks - 1})">Anterior</a>`;
+    prevLi.className = `page-item ${currentPage === 1 ? 'disabled' : ''}`;
+    prevLi.innerHTML = `<a class="page-link" href="#" onclick="changePageSubtasks(${currentPage - 1})">Anterior</a>`;
     pagination.appendChild(prevLi);
 
-    const startPage = Math.max(1, currentPageSubtasks - 2);
-    const endPage = Math.min(totalPages, currentPageSubtasks + 2);
+    const startPage = Math.max(1, currentPage - 2);
+    const endPage = Math.min(totalPages, currentPage + 2);
 
     for (let i = startPage; i <= endPage; i++) {
         const li = document.createElement('li');
-        li.className = `page-item ${i === currentPageSubtasks ? 'active' : ''}`;
+        li.className = `page-item ${i === currentPage ? 'active' : ''}`;
         li.innerHTML = `<a class="page-link" href="#" onclick="changePageSubtasks(${i})">${i}</a>`;
         pagination.appendChild(li);
     }
 
     const nextLi = document.createElement('li');
-    nextLi.className = `page-item ${currentPageSubtasks === totalPages ? 'disabled' : ''}`;
-    nextLi.innerHTML = `<a class="page-link" href="#" onclick="changePageSubtasks(${currentPageSubtasks + 1})">Próximo</a>`;
+    nextLi.className = `page-item ${currentPage === totalPages ? 'disabled' : ''}`;
+    nextLi.innerHTML = `<a class="page-link" href="#" onclick="changePageSubtasks(${currentPage + 1})">Próximo</a>`;
     pagination.appendChild(nextLi);
 }
 
 function changePageSubtasks(page) {
-    const totalPages = Math.ceil(filteredSubtasksData.length / pageSizeSubtasks);
+    const totalPages = Math.ceil(filteredData.length / pageSize);
     if (page >= 1 && page <= totalPages) {
-        currentPageSubtasks = page;
+        currentPage = page;
         renderTableSubtasks();
     }
 }
 
 function updateTableInfoSubtasks() {
-    const startIndex = (currentPageSubtasks - 1) * pageSizeSubtasks + 1;
-    const endIndex = Math.min(currentPageSubtasks * pageSizeSubtasks, filteredSubtasksData.length);
+    const startIndex = (currentPage - 1) * pageSize + 1;
+    const endIndex = Math.min(currentPage * pageSize, filteredData.length);
     
-    document.getElementById('showingFromSubtasks').textContent = filteredSubtasksData.length > 0 ? startIndex : 0;
+    document.getElementById('showingFromSubtasks').textContent = filteredData.length > 0 ? startIndex : 0;
     document.getElementById('showingToSubtasks').textContent = endIndex;
-    document.getElementById('totalRecordsSubtasks').textContent = filteredSubtasksData.length;
+    document.getElementById('totalRecordsSubtasks').textContent = filteredData.length;
 }
 
-function updateTotalRegistrosSubtasks() {
-    document.getElementById('totalRegistrosSubtasks').textContent = `${filteredSubtasksData.length} registros`;
+function updateTotalRegistros() {
+    document.getElementById('totalRegistrosSubtasks').textContent = `${filteredData.length} registros`;
 }
 
 function showErrorSubtasks(message) {
@@ -424,83 +1327,267 @@ function showErrorSubtasks(message) {
     document.getElementById('errorSubtasks').style.display = 'block';
 }
 
-function setCurrentYearSubtasks() {
-    const currentYear = new Date().getFullYear();
-    document.getElementById('filterDataInicioSubtasks').value = `${currentYear}-01-01`;
-    document.getElementById('filterDataFimSubtasks').value = `${currentYear}-12-31`;
-    applyFiltersSubtasks();
-}
+function clearFilters() {
+    subtasksFilters = {
+        equipe: "",
+        status: "",
+        tipo: "",
+        SubTipo: "",
+        search: "",
+        data_inicio: "",
+        data_fim: "",
+        periodo: "ano_atual"
+    };
 
-function setLast6MonthsSubtasks() {
-    const hoje = new Date();
-    const seisMesesAtras = new Date();
-    seisMesesAtras.setMonth(hoje.getMonth() - 6);
-    
-    const dataInicio = seisMesesAtras.toISOString().split('T')[0];
-    const dataFim = hoje.toISOString().split('T')[0];
-    
-    document.getElementById('filterDataInicioSubtasks').value = dataInicio;
-    document.getElementById('filterDataFimSubtasks').value = dataFim;
-    applyFiltersSubtasks();
-}
-
-function clearFiltersSubtasks() {
     document.getElementById('filterEquipeSubtasks').value = '';
     document.getElementById('filterStatusSubtasks').value = '';
     document.getElementById('filterTipoSubtasks').value = '';
-    document.getElementById('filterEtapaSubtasks').value = '';
+    document.getElementById('filterSubTipoSubtasks').value = '';
     document.getElementById('searchSubtasks').value = '';
-    document.getElementById('filterDataInicioSubtasks').value = '';
-    document.getElementById('filterDataFimSubtasks').value = '';
+    document.getElementById('filterPeriodoSubtasks').value = 'ano_atual';
+    document.getElementById('filterDataInicioSubtask').value = '';
+    document.getElementById('filterDataFimSubtask').value = '';
+    
+    // Esconder datas personalizadas
+    document.getElementById('datas-personalizadas-subtasks').style.display = 'none';
+    updatePeriodoTexto();
     applyFiltersSubtasks();
 }
 
-function exportFilteredCSVSubtasks() {
-    // Obter parâmetros dos filtros atuais
-    const params = new URLSearchParams({
-        equipe: document.getElementById('filterEquipeSubtasks').value,
-        status: document.getElementById('filterStatusSubtasks').value,
-        tipo: document.getElementById('filterTipoSubtasks').value,
-        etapa: document.getElementById('filterEtapaSubtasks').value,
-        search: document.getElementById('searchSubtasks').value,
-        data_inicio: document.getElementById('filterDataInicioSubtasks').value,
-        data_fim: document.getElementById('filterDataFimSubtasks').value
-    });
+function exportFilteredCSV() {
+    console.log('Exportando com filtros:', subtasksFilters);
     
-    // Abrir URL de export com filtros
-    window.open(`/export/subtasks?${params.toString()}`, '_blank');
+    const params = new URLSearchParams();
+    
+    // Filtros básicos
+    if (subtasksFilters.equipe) {
+        params.append('equipe', subtasksFilters.equipe);
+    }
+    
+    if (subtasksFilters.status) {
+        params.append('status', subtasksFilters.status);
+    }
+    
+    if (subtasksFilters.tipo) {
+        params.append('tipo', subtasksFilters.tipo);
+    }
+    
+    if (subtasksFilters.SubTipo) {
+        params.append('SubTipo', subtasksFilters.SubTipo);
+    }
+    
+    if (subtasksFilters.search) {
+        params.append('search', subtasksFilters.search);
+    }
+    
+    // Filtros de período
+    if (subtasksFilters.periodo) {
+        params.append('periodo', subtasksFilters.periodo);
+    }
+    
+    // Datas personalizadas (se aplicável)
+    if (subtasksFilters.periodo === 'personalizado') {
+        if (subtasksFilters.data_inicio) {
+            params.append('data_inicio', subtasksFilters.data_inicio);
+        }
+        if (subtasksFilters.data_fim) {
+            params.append('data_fim', subtasksFilters.data_fim);
+        }
+    }
+    
+    // Adicionar informação sobre quantos registros serão exportados
+    params.append('total_registros', filteredData.length);
+    
+    const btnExport = document.getElementById('btnExportCSV');
+    const originalText = btnExport.innerHTML;
+    
+    // Feedback visual melhorado
+    btnExport.innerHTML = `<i class="fas fa-spinner fa-spin me-2"></i>Exportando ${filteredData.length} registros...`;
+    btnExport.disabled = true;
+    
+    const url = `/export/subtasks?${params.toString()}`;
+    
+    console.log('URL de exportação:', url);
+    
+    // Criar iframe para download
+    const iframe = document.createElement('iframe');
+    iframe.style.display = 'none';
+    iframe.src = url;
+    document.body.appendChild(iframe);
+    
+    // Restaurar botão após delay
+    setTimeout(() => {
+        btnExport.innerHTML = originalText;
+        btnExport.disabled = false;
+        document.body.removeChild(iframe);
+        
+        // Mostrar mensagem de sucesso
+        showExportSuccess(filteredData.length);
+    }, 2000);
+}
+
+// Função auxiliar para mostrar mensagem de sucesso
+function showExportSuccess(totalRegistros) {
+    // Criar toast de sucesso
+    const toast = document.createElement('div');
+    toast.className = 'toast align-items-center text-white bg-success border-0 position-fixed';
+    toast.style.cssText = 'top: 20px; right: 20px; z-index: 9999;';
+    toast.setAttribute('role', 'alert');
+    toast.innerHTML = `
+        <div class="d-flex">
+            <div class="toast-body">
+                <i class="fas fa-check-circle me-2"></i>
+                Exportação concluída! ${totalRegistros} registros exportados.
+            </div>
+            <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+        </div>
+    `;
+    
+    document.body.appendChild(toast);
+    
+    // Mostrar toast
+    const bsToast = new bootstrap.Toast(toast, {
+        autohide: true,
+        delay: 4000
+    });
+    bsToast.show();
+    
+    // Remover toast após ser ocultado
+    toast.addEventListener('hidden.bs.toast', () => {
+        document.body.removeChild(toast);
+    });
+}
+
+// Função para atualizar o texto do período
+function updatePeriodoTexto() {
+    const periodoTexto = document.getElementById('periodo-texto-subtasks');
+    const periodo = subtasksFilters.periodo;
+    
+    const today = new Date();
+    const currentYear = today.year || new Date().getFullYear();
+    
+    let texto = '';
+    switch(periodo) {
+        case 'ano_atual':
+            texto = `${currentYear}`;
+            break;
+        case 'q1':
+            texto = `Q1 ${currentYear} (Jan-Mar)`;
+            break;
+        case 'q2':
+            texto = `Q2 ${currentYear} (Abr-Jun)`;
+            break;
+        case 'q3':
+            texto = `Q3 ${currentYear} (Jul-Set)`;
+            break;
+        case 'q4':
+            texto = `Q4 ${currentYear} (Out-Dez)`;
+            break;
+        case '6_meses':
+            texto = 'Últimos 6 Meses';
+            break;
+        case '3_meses':
+            texto = 'Últimos 3 Meses';
+            break;
+        case 'mes_atual':
+            texto = today.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+            break;
+        case 'personalizado':
+            if (subtasksFilters.data_inicio && subtasksFilters.data_fim) {
+                texto = `${subtasksFilters.data_inicio} até ${subtasksFilters.data_fim}`;
+            } else if (subtasksFilters.data_inicio) {
+                texto = `A partir de ${subtasksFilters.data_inicio}`;
+            } else if (subtasksFilters.data_fim) {
+                texto = `Até ${subtasksFilters.data_fim}`;
+            } else {
+                texto = 'Personalizado (sem datas)';
+            }
+            break;
+        default:
+            texto = 'Todos os Períodos';
+    }
+    
+    if (periodoTexto) {
+        periodoTexto.textContent = texto;
+    }
 }
 
 // Event Listeners
-document.getElementById('filterEquipeSubtasks').addEventListener('change', applyFiltersSubtasks);
-document.getElementById('filterStatusSubtasks').addEventListener('change', applyFiltersSubtasks);
-document.getElementById('filterTipoSubtasks').addEventListener('change', applyFiltersSubtasks);
-document.getElementById('filterEtapaSubtasks').addEventListener('change', applyFiltersSubtasks);
-document.getElementById('searchSubtasks').addEventListener('input', applyFiltersSubtasks);
-document.getElementById('filterDataInicioSubtasks').addEventListener('change', applyFiltersSubtasks);
-document.getElementById('filterDataFimSubtasks').addEventListener('change', applyFiltersSubtasks);
-
-document.getElementById('btnAnoAtualSubtasks').addEventListener('click', setCurrentYearSubtasks);
-document.getElementById('btnUltimos6MesesSubtasks').addEventListener('click', setLast6MonthsSubtasks);
-document.getElementById('btnLimparFiltrosSubtasks').addEventListener('click', clearFiltersSubtasks);
-
-document.getElementById('pageSizeSubtasks').addEventListener('change', function() {
-    pageSizeSubtasks = parseInt(this.value);
-    currentPageSubtasks = 1;
-    renderTableSubtasks();
-});
-
-document.getElementById('btnRefreshSubtasks').addEventListener('click', function() {
-    document.getElementById('tableContainerSubtasks').style.display = 'none';
-    document.getElementById('errorSubtasks').style.display = 'none';
-    document.getElementById('loadingSubtasks').style.display = 'block';
-    loadSubtasksData();
-});
-
-document.getElementById('btnExportCSVSubtasks').addEventListener('click', exportFilteredCSVSubtasks);
-
 document.addEventListener('DOMContentLoaded', function() {
-    initializeDefaultDatesSubtasks();
+    console.log('Inicializando página de SubTasks...');
+    
+    // Event listeners para filtros (aplicar automaticamente após mudança)
+    document.getElementById('filterEquipeSubtasks').addEventListener('change', applyFiltersSubtasks);
+    document.getElementById('filterStatusSubtasks').addEventListener('change', applyFiltersSubtasks);
+    document.getElementById('filterTipoSubtasks').addEventListener('change', applyFiltersSubtasks);
+    document.getElementById('filterSubTipoSubtasks').addEventListener('change', applyFiltersSubtasks);
+    
+    // Para a busca, aplicar com pequeno delay para evitar muitas requisições
+    let searchTimeout;
+    document.getElementById('searchSubtasks').addEventListener('input', function() {
+        clearTimeout(searchTimeout);
+        searchTimeout = setTimeout(applyFiltersSubtasks, 300);
+    });
+
+    // Event listener para período (aplicar automaticamente)
+    document.getElementById('filterPeriodoSubtasks').addEventListener('change', function() {
+        const periodo = this.value;
+        const datasPersonalizadas = document.getElementById('datas-personalizadas-subtasks');
+
+        if (periodo === 'personalizado') {
+            datasPersonalizadas.style.display = 'block';
+
+            const anoAtual = new Date().getFullYear();
+            const dataInicio = `${anoAtual}-01-01`;
+            const dataFim = `${anoAtual}-12-31`;
+
+            document.getElementById('filterDataInicioSubtask').value = dataInicio;
+            document.getElementById('filterDataFimSubtask').value = dataFim;
+        } else {
+            datasPersonalizadas.style.display = 'none';
+            document.getElementById('filterDataInicioSubtask').value = '';
+            document.getElementById('filterDataFimSubtask').value = '';
+        }
+
+        // Aplicar filtros automaticamente quando o período mudar
+        applyFiltersSubtasks();
+    });
+
+    // Event listeners para datas personalizadas
+    document.getElementById('filterDataInicioSubtask').addEventListener('change', function() {
+        if (subtasksFilters.periodo === 'personalizado') {
+            applyFiltersSubtasks();
+        }
+    });
+    
+    document.getElementById('filterDataFimSubtask').addEventListener('change', function() {
+        if (subtasksFilters.periodo === 'personalizado') {
+            applyFiltersSubtasks();
+        }
+    });
+
+    // Event listeners para botões
+    document.getElementById('btnAplicarFiltrosSubtask').addEventListener('click', applyFiltersSubtasks);
+    document.getElementById('btnLimparFiltrosSubtask').addEventListener('click', clearFilters);
+
+    // Event listener para tamanho da página
+    document.getElementById('pageSizeSubtasks').addEventListener('change', function() {
+        pageSize = parseInt(this.value);
+        currentPage = 1;
+        renderTableSubtasks();
+    });
+
+    // Event listeners para botões de ação
+    document.getElementById('btnRefresh').addEventListener('click', function() {
+        document.getElementById('tableContainerSubtasks').style.display = 'none';
+        document.getElementById('errorSubtasks').style.display = 'none';
+        document.getElementById('loadingSubtasks').style.display = 'block';
+        loadSubtasksData();
+    });
+
+    document.getElementById('btnExportCSV').addEventListener('click', exportFilteredCSV);
+
+    // Carregar dados iniciais
     loadSubtasksData();
 });
 </script>
