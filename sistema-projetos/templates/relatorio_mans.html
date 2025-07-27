@@ -489,190 +489,128 @@ let mansFilters = {
     periodo: "ano_atual"
 };
 
+// ==========================================
+// CARREGAMENTO INICIAL DOS DADOS
+// ==========================================
 
-function loadMansData() {
-    console.log('Carregando dados das MANs...');
+function loadMansData(applyFilters = false, customFilters = null) {
+    console.log('=== CARREGANDO DADOS DAS MANs ===');
+    console.log('applyFilters:', applyFilters);
+    console.log('customFilters:', customFilters);
     
-    // Usar período padrão (ano atual) na primeira carga
-    const currentYear = new Date().getFullYear();
-    const params = new URLSearchParams({
-        periodo: 'ano_atual',
-        data_inicio: `${currentYear}-01-01`,
-        data_fim: `${currentYear}-12-31`
-    });
+    document.getElementById('loadingMans').style.display = 'block';
+    document.getElementById('tableContainerMans').style.display = 'none';
+    document.getElementById('errorMans').style.display = 'none';
     
-    console.log('Parâmetros da requisição:', params.toString());
+    // Construir parâmetros para a API
+    let url = '/api/mans-report-table-data';
+    const params = new URLSearchParams();
     
-    // Carregar dados da tabela E dados dos gráficos
-    Promise.all([
-        fetch(`/api/mans-table-data?${params}`)
-            .then(response => {
-                console.log('Resposta mans-table-data status:', response.status);
-                if (!response.ok) {
-                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-                }
-                return response.json();
-            })
-            .then(data => {
-                console.log('Dados recebidos de mans-table-data:', data);
-                return data;
-            }),
-        fetch(`/api/mans-data-charts?${params}`)
-            .then(response => {
-                console.log('Resposta mans-data-charts status:', response.status);
-                if (!response.ok) {
-                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-                }
-                return response.json();
-            })
-            .then(data => {
-                console.log('Dados recebidos de mans-data-charts:', data);
-                return data;
-            })
-    ])
-    .then(([tableResponse, chartResponse]) => {
-        console.log('Ambas as respostas recebidas:', {tableResponse, chartResponse});
+    if (applyFilters || customFilters) {
+        const filters = customFilters || mansFilters;
         
-        document.getElementById('loadingMans').style.display = 'none';
+        console.log('=== CONSTRUINDO PARÂMETROS DA API ===');
+        console.log('Filtros a serem enviados:', filters);
         
-        // Verificar se há erros em qualquer uma das respostas
-        if ((tableResponse && tableResponse.error) || (chartResponse && chartResponse.error)) {
-            const error = tableResponse?.error || chartResponse?.error || 'Erro desconhecido';
-            showErrorMans(error);
-            return;
+        // Adicionar filtros de período e backend
+        if (filters.periodo) {
+            params.append('periodo', filters.periodo);
         }
         
-        // Verificar se as respostas são válidas
-        if (!tableResponse || !chartResponse) {
-            showErrorMans('Respostas inválidas do servidor');
-            return;
+        if (filters.data_inicio) {
+            params.append('data_inicio', filters.data_inicio);
         }
         
-        console.log('Dados da tabela:', tableResponse.mans?.length || 0, 'MANs');
-        console.log('Dados dos gráficos:', chartResponse.graficos || 'Nenhum gráfico');
+        if (filters.data_fim) {
+            params.append('data_fim', filters.data_fim);
+        }
         
-        // Dados da tabela
-        allMansData = tableResponse.mans || [];
-        mansData = allMansData;
-        
-        
-        
-        // Aplicar filtros iniciais
-        applyFrontendFiltersMans();
-        populateFiltersMans();
-        document.getElementById('tableContainerMans').style.display = 'block';
-    })
-    .catch(error => {
-        console.error('Erro completo:', error);
-        document.getElementById('loadingMans').style.display = 'none';
-        showErrorMans('Erro ao carregar dados: ' + error.message);
-    });
-}
-
-
-
-
-
-
-function renderTableMans() {
-    const tbody = document.getElementById('tbodyMans');
-    const startIndex = (currentPageMans - 1) * pageSizeMans;
-    const endIndex = Math.min(startIndex + pageSizeMans, filteredMansData.length);
-    const pageData = filteredMansData.slice(startIndex, endIndex);
-
-    tbody.innerHTML = '';
-
-    pageData.forEach((item, index) => {
-        const row = document.createElement('tr');
-        
-        const truncateText = (text, maxLength = 40) => {
-            if (!text) return 'Sem resumo';
-            if (text.length <= maxLength) return text;
-            return text.substring(0, maxLength) + '...';
-        };
-
-        const formatDate = (dateStr) => {
-            if (!dateStr) return 'Não definido';
-            try {
-                return new Date(dateStr).toLocaleDateString('pt-BR');
-            } catch {
-                return dateStr;
-            }
-        };
-
-        const getStatusClass = (status) => {
-            switch(status) {
-                case 'Done':
-                case 'Closed':
-                case 'Resolved': return 'badge bg-success';
-                case 'In Progress': return 'badge bg-primary';
-                case 'Open': return 'badge bg-danger';
-                case 'To Do': return 'badge bg-secondary';
-                default: return 'badge bg-light text-dark';
-            }
-        };
-
-        row.innerHTML = `
-            <td class="fw-bold text-primary">${item.ProjectKey || 'N/A'}</td>
-            <td title="${item.Summary || ''}">${truncateText(item.Summary)}</td>
-            <td><span class="badge bg-info">${item.Equipe || 'Sem Equipe'}</span></td>
-            <td><span class="${getStatusClass(item.Status)}">${item.Status || 'Indefinido'}</span></td>
-            <td><span class="badge bg-secondary">${item.Produto || 'N/A'}</span></td>
-            <td>${item.Assignee || 'Não atribuído'}</td>
-            <td><small>${formatDate(item.Created)}</small></td>
-            <td><small>${formatDate(item.ResolutionDate) || '-'}</small></td>
-            <td>
-                <button class="btn btn-sm btn-outline-primary" onclick="showMANDetails(${startIndex + index})">
-                    <i class="fas fa-eye"></i>
-                </button>
-            </td>
-        `;
-        
-        tbody.appendChild(row);
-    });
-
-    renderPaginationMans();
-    updateTableInfoMans();
-}
-
-function populateFiltersMans() {
-    // Preencher filtro de equipes
-    const equipeSelect = document.getElementById('filterEquipeMans');
-    const equipes = [...new Set(mansData.map(item => item.Equipe).filter(e => e))];
-    
-    while (equipeSelect.children.length > 1) {
-        equipeSelect.removeChild(equipeSelect.lastChild);
+        // IMPORTANTE: Para filtros de backend, enviar apenas filtros que alteram volume de dados
+        // Equipe, status, produto serão filtrados no frontend para performance
+        if (filters.search) {
+            params.append('search', filters.search);
+        }
     }
     
-    equipes.sort().forEach(equipe => {
-        const option = document.createElement('option');
-        option.value = equipe;
-        option.textContent = equipe;
-        equipeSelect.appendChild(option);
-    });
-
-    // Preencher filtro de produtos
-    const produtoSelect = document.getElementById('filterProdutoMans');
-    const produtos = [...new Set(mansData.map(item => item.Produto).filter(p => p))];
-    
-    while (produtoSelect.children.length > 1) {
-        produtoSelect.removeChild(produtoSelect.lastChild);
+    if (params.toString()) {
+        url += '?' + params.toString();
     }
     
-    produtos.sort().forEach(produto => {
-        const option = document.createElement('option');
-        option.value = produto;
-        option.textContent = produto;
-        produtoSelect.appendChild(option);
-    });
-
+    console.log('URL final:', url);
     
+    fetch(url)
+        .then(response => {
+            console.log('Resposta status:', response.status);
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+            return response.json();
+        })
+        .then(data => {
+            console.log('Dados recebidos:', data);
+            
+            document.getElementById('loadingMans').style.display = 'none';
+            
+            if (data.error) {
+                showErrorMans(data.error);
+                return;
+            }
+            
+            if (!data.mans) {
+                showErrorMans('Dados inválidos do servidor');
+                return;
+            }
+            
+            console.log('Total de MANs recebidas:', data.mans.length);
+            
+            // Armazenar dados - IMPORTANTE: usar allMansData para filtros frontend
+             allMansData = data.mans || [];
+            mansData = allMansData;
+            
+            // Atualizar período se recebido do backend
+            if (data.filtros_aplicados) {
+                console.log('Filtros aplicados no backend:', data.filtros_aplicados);
+                
+                // Sincronizar filtros frontend com backend
+                if (data.filtros_aplicados.periodo) {
+                    mansFilters.periodo = data.filtros_aplicados.periodo;
+                }
+                if (data.filtros_aplicados.data_inicio) {
+                    mansFilters.data_inicio = data.filtros_aplicados.data_inicio;
+                }
+                if (data.filtros_aplicados.data_fim) {
+                    mansFilters.data_fim = data.filtros_aplicados.data_fim;
+                }
+            }
+            
+            // PRIMEIRO: Popular filtros (preservando valores selecionados)
+            populateFiltersMans();
+            
+            // SEGUNDO: Aplicar filtros frontend
+            applyFrontendFiltersMans();
+            
+            // TERCEIRO: Mostrar tabela
+            document.getElementById('tableContainerMans').style.display = 'block';
+            
+            // QUARTO: Atualizar texto do período
+            updatePeriodoTextoMans();
+            
+        })
+        .catch(error => {
+            console.error('Erro completo:', error);
+            document.getElementById('loadingMans').style.display = 'none';
+            showErrorMans('Erro ao carregar dados: ' + error.message);
+        });
 }
 
+
+// ==========================================
+// FILTROS SIMPLIFICADOS
+// ==========================================
 
 
 function applyFiltersMans() {
-    // Capturar todos os valores dos filtros
+    // Capturar valores dos filtros
     mansFilters.equipe = document.getElementById('filterEquipeMans').value;
     mansFilters.status = document.getElementById('filterStatusMans').value;
     mansFilters.produto = document.getElementById('filterProdutoMans').value;
@@ -680,8 +618,103 @@ function applyFiltersMans() {
     mansFilters.periodo = document.getElementById('filterPeriodoMans').value;
     
     // Calcular datas baseadas no período selecionado
+    calculatePeriodDates();
+    
+    console.log('Filtros aplicados:', mansFilters);
+
+    // Aplicar filtros apenas no frontend (para carregamento inicial)
+    applyFrontendFiltersMans();
+}
+
+
+function applyFiltersWithBackend() {
+    console.log('=== APLICANDO FILTROS COM BACKEND ===');
+    
+    // Capturar TODOS os valores dos filtros
+    mansFilters.equipe = document.getElementById('filterEquipeMans').value;
+    mansFilters.status = document.getElementById('filterStatusMans').value;
+    mansFilters.produto = document.getElementById('filterProdutoMans').value;
+    mansFilters.search = document.getElementById('searchMans').value.toLowerCase();
+    mansFilters.periodo = document.getElementById('filterPeriodoMans').value;
+    
+    console.log('Filtros capturados ANTES de calcular datas:', mansFilters);
+    
+    // Calcular datas baseadas no período selecionado
+    calculatePeriodDates();
+    
+    console.log('Filtros FINAIS para enviar ao backend:', mansFilters);
+    
+    // Recarregar dados com filtros aplicados no backend
+    loadMansData(true, mansFilters);
+}
+
+function applyFrontendFiltersMans() {
+    console.log('=== APLICANDO FILTROS NO FRONTEND ===');
+    
+    // Capturar valores atuais dos filtros
+    const equipeAtual = document.getElementById('filterEquipeMans').value;
+    const statusAtual = document.getElementById('filterStatusMans').value;
+    const produtoAtual = document.getElementById('filterProdutoMans').value;
+    const searchAtual = document.getElementById('searchMans').value.toLowerCase().trim();
+    
+    console.log('Filtros frontend capturados:', {
+        equipe: equipeAtual,
+        status: statusAtual,
+        produto: produtoAtual,
+        search: searchAtual
+    });
+    
+    // Atualizar objeto mansFilters com valores atuais
+    mansFilters.equipe = equipeAtual;
+    mansFilters.status = statusAtual;
+    mansFilters.produto = produtoAtual;
+    mansFilters.search = searchAtual;
+    
+    // Aplicar filtros nos dados carregados (allMansData)
+    filteredMansData = allMansData.filter(item => {
+        
+        // Filtro de equipe
+        const equipeMatch = !mansFilters.equipe || 
+                           (item.Equipe && item.Equipe === mansFilters.equipe);
+        
+        // Filtro de status  
+        const statusMatch = !mansFilters.status || 
+                           (item.Status && item.Status === mansFilters.status);
+        
+        // Filtro de produto
+        const produtoMatch = !mansFilters.produto || 
+                            (item.Produto && item.Produto === mansFilters.produto);
+        
+        // Filtro de busca (número ou resumo)
+        const searchMatch = !mansFilters.search || 
+                           (item.Number && item.Number.toLowerCase().includes(mansFilters.search)) ||
+                           (item.ProjectKey && item.ProjectKey.toLowerCase().includes(mansFilters.search)) ||
+                           (item.Summary && item.Summary.toLowerCase().includes(mansFilters.search));
+        
+        const resultado = equipeMatch && statusMatch && produtoMatch && searchMatch;
+        
+        return resultado;
+    });
+
+    console.log('Filtros aplicados:', {
+        total_original: allMansData.length,
+        total_filtrado: filteredMansData.length,
+        filtros_ativos: mansFilters
+    });
+
+    // Resetar para primeira página
+    currentPageMans = 1;
+    
+    // Atualizar tabela e contadores
+    renderTableMans();
+    updateTotalRegistrosMans();
+}
+
+function calculatePeriodDates() {
     const today = new Date();
     const currentYear = today.getFullYear();
+    
+    console.log('Calculando datas para período:', mansFilters.periodo);
     
     if (mansFilters.periodo === 'personalizado') {
         mansFilters.data_inicio = document.getElementById('filterDataInicioMans').value;
@@ -730,174 +763,139 @@ function applyFiltersMans() {
                 mansFilters.data_fim = '';
         }
     }
-
-    console.log('Filtros aplicados:', mansFilters);
-
-
-    const filtro = mansFilters;
-    filteredMansData = allMansData.filter(man => {
-        let matches = (!filtro.equipe || man.Equipe === filtro.equipe) &&
-                      (!filtro.status || man.Status === filtro.status) &&
-                      (!filtro.produto || man.Produto === filtro.produto) &&
-                      (!filtro.search ||
-                        (man.ProjectKey && man.ProjectKey.toLowerCase().includes(filtro.search)) ||
-                        (man.Summary && man.Summary.toLowerCase().includes(filtro.search)));
-
-        if (filtro.periodo === 'personalizado' && (filtro.data_inicio || filtro.data_fim)) {
-            const itemDate = new Date(item.Created || item.ResolutionDate);
-            
-            if (filtro.data_inicio) {
-                const dataInicio = new Date(filtro.data_inicio);
-                if (itemDate < dataInicio) matches = false;
-            }
-            
-            if (filtro.data_fim) {
-                const dataFim = new Date(filtro.data_fim);
-                if (itemDate > dataFim) matches = false;
-            }
-        }
-
-        return matches;
-        // Você pode adicionar filtragem por data se necessário
-    });
-
-    // Desabilitar campos durante processamento
-    disableFiltersMans(true);
     
-    // Se for um período que requer nova consulta ao backend, recarregar dados
-    if (mansFilters.periodo !== 'ano_atual' || mansFilters.data_inicio || mansFilters.data_fim) {
-        reloadDataWithFiltersMans();
-    } else {
-        // Aplicar filtros apenas no frontend (dados já carregados)
-        applyFrontendFiltersMans();
+    console.log('Datas calculadas:', {
+        periodo: mansFilters.periodo,
+        data_inicio: mansFilters.data_inicio,
+        data_fim: mansFilters.data_fim
+    });
+}
+
+// ==========================================
+// CORREÇÃO: populateFiltersMans - USAR allMansData
+// ==========================================
+
+function populateFiltersMans() {
+    console.log('Populando filtros MANs - preservando valores selecionados...');
+    
+    // VERIFICAR se há dados para popular
+    if (!allMansData || allMansData.length === 0) {
+        console.log('Nenhum dado disponível para popular filtros');
+        return;
     }
-}
-
-function reloadDataWithFiltersMans() {
-    console.log('Recarregando dados de MANs com filtros de período...');
     
-    document.getElementById('loadingMans').style.display = 'block';
-    document.getElementById('tableContainerMans').style.display = 'none';
-    document.getElementById('errorMans').style.display = 'none';
-
-    // Construir parâmetros para a API
-    const params = new URLSearchParams({
-        periodo: mansFilters.periodo || 'ano_atual',
-        data_inicio: mansFilters.data_inicio || '',
-        data_fim: mansFilters.data_fim || '',
-        equipe: mansFilters.equipe || '',
-        status: mansFilters.status || '',
-        produto: mansFilters.produto || '',
-        search: mansFilters.search || '',
-        ano: mansFilters.ano || ''
+    console.log('Dados disponíveis para filtros:', allMansData.length, 'registros');
+    
+    // PRESERVAR valores atualmente selecionados
+    const equipeSelect = document.getElementById('filterEquipeMans');
+    const produtoSelect = document.getElementById('filterProdutoMans');
+    
+    const equipeSelecionada = equipeSelect.value;
+    const produtoSelecionado = produtoSelect.value;
+    
+    console.log('Valores preservados:', {
+        equipe: equipeSelecionada,
+        produto: produtoSelecionado
     });
-
-    console.log('Parâmetros de recarga:', params.toString());
-
-    // Carregar dados da tabela E dados dos gráficos
-    Promise.all([
-        fetch(`/api/mans-table-data?${params}`)
-            .then(response => {
-                if (!response.ok) {
-                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-                }
-                return response.json();
-            }),
-        fetch(`/api/mans-data-charts?${params}`)
-            .then(response => {
-                if (!response.ok) {
-                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-                }
-                return response.json();
-            })
-    ])
-    .then(([tableResponse, chartResponse]) => {
-        document.getElementById('loadingMans').style.display = 'none';
-        
-        if ((tableResponse && tableResponse.error) || (chartResponse && chartResponse.error)) {
-            const error = tableResponse?.error || chartResponse?.error || 'Erro desconhecido';
-            showErrorMans(error);
-            disableFiltersMans(false);
-            return;
-        }
-        
-        if (!tableResponse || !chartResponse) {
-            showErrorMans('Respostas inválidas do servidor');
-            disableFiltersMans(false);
-            return;
-        }
-        
-        console.log('Dados recarregados - Tabela:', tableResponse.mans?.length || 0, 'MANs');
-        console.log('Dados recarregados - Gráficos:', chartResponse.graficos || 'Nenhum');
-        
-        // Atualizar dados com os novos resultados
-        mansData = tableResponse.mans || [];
-        allMansData = mansData;
-        
-        
-        // Aplicar filtros de frontend nos novos dados
-        applyFrontendFiltersMans();
-        
-        // Reabilitar campos
-        setTimeout(() => {
-            disableFiltersMans(false);
-        }, 500);
-        
-        document.getElementById('tableContainerMans').style.display = 'block';
-    })
-    .catch(error => {
-        console.error('Erro ao recarregar dados de MANs:', error);
-        document.getElementById('loadingMans').style.display = 'none';
-        showErrorMans('Erro ao recarregar dados: ' + error.message);
-        disableFiltersMans(false);
+    
+    // *** IMPORTANTE: Usar allMansData em vez de mansData ***
+    
+    // Preencher filtro de equipes
+    const equipes = [...new Set(allMansData.map(item => item.Equipe).filter(e => e && e.trim() !== ''))];
+    
+    console.log('Equipes encontradas:', equipes);
+    
+    // Limpar opções (exceto a primeira "Todas as Equipes")
+    while (equipeSelect.children.length > 1) {
+        equipeSelect.removeChild(equipeSelect.lastChild);
+    }
+    
+    // Adicionar novas opções de equipes
+    equipes.sort().forEach(equipe => {
+        const option = document.createElement('option');
+        option.value = equipe;
+        option.textContent = equipe;
+        equipeSelect.appendChild(option);
     });
+    
+    // RESTAURAR valor selecionado da equipe
+    if (equipeSelecionada && equipes.includes(equipeSelecionada)) {
+        equipeSelect.value = equipeSelecionada;
+        console.log('Valor da equipe restaurado:', equipeSelecionada);
+    }
+
+    // Preencher filtro de produtos
+    const produtos = [...new Set(allMansData.map(item => item.Produto).filter(p => p && p.trim() !== ''))];
+    
+    console.log('Produtos encontrados:', produtos);
+    
+    // Limpar opções (exceto a primeira "Todos os Produtos")
+    while (produtoSelect.children.length > 1) {
+        produtoSelect.removeChild(produtoSelect.lastChild);
+    }
+    
+    // Adicionar novas opções de produtos
+    produtos.sort().forEach(produto => {
+        const option = document.createElement('option');
+        option.value = produto;
+        option.textContent = produto;
+        produtoSelect.appendChild(option);
+    });
+    
+    // RESTAURAR valor selecionado do produto
+    if (produtoSelecionado && produtos.includes(produtoSelecionado)) {
+        produtoSelect.value = produtoSelecionado;
+        console.log('Valor do produto restaurado:', produtoSelecionado);
+    }
+    
+    console.log('Filtros populados com', equipes.length, 'equipes e', produtos.length, 'produtos');
 }
 
-function applyFrontendFiltersMans() {
-    // Aplicar filtros básicos nos dados já carregados
-    filteredMansData = mansData.filter(item => {
-        let matches = (!mansFilters.equipe || item.Equipe === mansFilters.equipe) &&
-                     (!mansFilters.status || item.Status === mansFilters.status) &&
-                     (!mansFilters.produto || item.Produto === mansFilters.produto) &&
-                     (!mansFilters.ano || (item.Created && new Date(item.Created).getFullYear().toString() === mansFilters.ano)) &&
-                     (!mansFilters.search || 
-                      (item.ProjectKey && item.ProjectKey.toLowerCase().includes(mansFilters.search)) ||
-                      (item.Summary && item.Summary.toLowerCase().includes(mansFilters.search)));
-        
-        return matches;
-    });
 
-    currentPageMans = 1;
-    renderTableMans();
-    updateTotalRegistrosMans();
+function clearFiltersMans() {
+    console.log('=== LIMPANDO FILTROS ===');
+    
+    // Resetar filtros para valores padrão
+    mansFilters = {
+        equipe: "",
+        status: "",
+        produto: "",
+        search: "",
+        data_inicio: "",
+        data_fim: "",
+        periodo: "ano_atual"
+    };
+
+    // Limpar campos do formulário
+    document.getElementById('filterEquipeMans').value = '';
+    document.getElementById('filterStatusMans').value = '';
+    document.getElementById('filterProdutoMans').value = '';
+    document.getElementById('searchMans').value = '';
+    document.getElementById('filterPeriodoMans').value = 'ano_atual';
+    document.getElementById('filterDataInicioMans').value = '';
+    document.getElementById('filterDataFimMans').value = '';
+    
+    // Esconder datas personalizadas
+    document.getElementById('datas-personalizadas-mans').style.display = 'none';
+    
+    // Calcular datas do ano atual
+    calculatePeriodDates();
+    
+    console.log('Filtros limpos e datas calculadas:', mansFilters);
+    
+    // Atualizar texto do período
     updatePeriodoTextoMans();
+    
+    // Recarregar dados do backend com filtros limpos
+    loadMansData(true, mansFilters);
 }
 
-function disableFiltersMans(disable) {
-    const elements = [
-        'filterEquipeMans',
-        'filterStatusMans', 
-        'filterProdutoMans',
-        'searchMans',
-        'filterPeriodoMans',
-        'filterDataInicioMans',
-        'filterDataFimMans',
-        'btnAplicarFiltrosMans',
-        'btnLimparFiltrosMans'
-    ];
-    
-    elements.forEach(id => {
-        const element = document.getElementById(id);
-        if (element) {
-            element.disabled = disable;
-            if (disable) {
-                element.style.opacity = '0.6';
-            } else {
-                element.style.opacity = '1';
-            }
-        }
-    });
-}
+
+
+// ==========================================
+// RENDERIZAÇÃO DA TABELA
+// ==========================================
+
 
 function renderTableMans() {
     const tbody = document.getElementById('tbodyMans');
@@ -959,6 +957,114 @@ function renderTableMans() {
     renderPaginationMans();
     updateTableInfoMans();
 }
+
+
+function renderPaginationMans() {
+    const pagination = document.getElementById('paginationMans');
+    const totalPages = Math.ceil(filteredMansData.length / pageSizeMans);
+    
+    pagination.innerHTML = '';
+
+    if (totalPages <= 1) return;
+
+    const prevLi = document.createElement('li');
+    prevLi.className = `page-item ${currentPageMans === 1 ? 'disabled' : ''}`;
+    prevLi.innerHTML = `<a class="page-link" href="#" onclick="changePageMans(${currentPageMans - 1})">Anterior</a>`;
+    pagination.appendChild(prevLi);
+
+    const startPage = Math.max(1, currentPageMans - 2);
+    const endPage = Math.min(totalPages, currentPageMans + 2);
+
+    for (let i = startPage; i <= endPage; i++) {
+        const li = document.createElement('li');
+        li.className = `page-item ${i === currentPageMans ? 'active' : ''}`;
+        li.innerHTML = `<a class="page-link" href="#" onclick="changePageMans(${i})">${i}</a>`;
+        pagination.appendChild(li);
+    }
+
+    const nextLi = document.createElement('li');
+    nextLi.className = `page-item ${currentPageMans === totalPages ? 'disabled' : ''}`;
+    nextLi.innerHTML = `<a class="page-link" href="#" onclick="changePageMans(${currentPageMans + 1})">Próximo</a>`;
+    pagination.appendChild(nextLi);
+}
+
+function changePageMans(page) {
+    const totalPages = Math.ceil(filteredMansData.length / pageSizeMans);
+    if (page >= 1 && page <= totalPages) {
+        currentPageMans = page;
+        renderTableMans();
+    }
+}
+
+function updateTableInfoMans() {
+    const startIndex = (currentPageMans - 1) * pageSizeMans + 1;
+    const endIndex = Math.min(currentPageMans * pageSizeMans, filteredMansData.length);
+    
+    document.getElementById('showingFromMans').textContent = filteredMansData.length > 0 ? startIndex : 0;
+    document.getElementById('showingToMans').textContent = endIndex;
+    document.getElementById('totalRecordsMans').textContent = filteredMansData.length;
+}
+
+function updateTotalRegistrosMans() {
+    document.getElementById('totalRegistrosMans').textContent = `${filteredMansData.length} MANs`;
+}
+
+function updatePeriodoTextoMans() {
+    const periodoTexto = document.getElementById('periodo-texto-mans');
+    const periodo = mansFilters.periodo;
+    
+    const today = new Date();
+    const currentYear = today.getFullYear();
+    
+    let texto = '';
+    switch(periodo) {
+        case 'ano_atual':
+            texto = `${currentYear}`;
+            break;
+        case 'q1':
+            texto = `Q1 ${currentYear} (Jan-Mar)`;
+            break;
+        case 'q2':
+            texto = `Q2 ${currentYear} (Abr-Jun)`;
+            break;
+        case 'q3':
+            texto = `Q3 ${currentYear} (Jul-Set)`;
+            break;
+        case 'q4':
+            texto = `Q4 ${currentYear} (Out-Dez)`;
+            break;
+        case '6_meses':
+            texto = 'Últimos 6 Meses';
+            break;
+        case '3_meses':
+            texto = 'Últimos 3 Meses';
+            break;
+        case 'mes_atual':
+            texto = today.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+            break;
+        case 'personalizado':
+            if (mansFilters.data_inicio && mansFilters.data_fim) {
+                texto = `${mansFilters.data_inicio} até ${mansFilters.data_fim}`;
+            } else if (mansFilters.data_inicio) {
+                texto = `A partir de ${mansFilters.data_inicio}`;
+            } else if (mansFilters.data_fim) {
+                texto = `Até ${mansFilters.data_fim}`;
+            } else {
+                texto = 'Personalizado (sem datas)';
+            }
+            break;
+        default:
+            texto = 'Todos os Períodos';
+    }
+    
+    if (periodoTexto) {
+        periodoTexto.textContent = texto;
+    }
+}
+
+// ==========================================
+// MODAL DE DETALHES
+// ==========================================
 
 function showMANDetails(index) {
     const item = filteredMansData[index];
@@ -1077,157 +1183,184 @@ Resolução: ${man.ResolutionDate ? new Date(man.ResolutionDate).toLocaleString(
     });
 }
 
-function renderPaginationMans() {
-    const pagination = document.getElementById('paginationMans');
-    const totalPages = Math.ceil(filteredMansData.length / pageSizeMans);
-    
-    pagination.innerHTML = '';
-
-    if (totalPages <= 1) return;
-
-    const prevLi = document.createElement('li');
-    prevLi.className = `page-item ${currentPageMans === 1 ? 'disabled' : ''}`;
-    prevLi.innerHTML = `<a class="page-link" href="#" onclick="changePageMans(${currentPageMans - 1})">Anterior</a>`;
-    pagination.appendChild(prevLi);
-
-    const startPage = Math.max(1, currentPageMans - 2);
-    const endPage = Math.min(totalPages, currentPageMans + 2);
-
-    for (let i = startPage; i <= endPage; i++) {
-        const li = document.createElement('li');
-        li.className = `page-item ${i === currentPageMans ? 'active' : ''}`;
-        li.innerHTML = `<a class="page-link" href="#" onclick="changePageMans(${i})">${i}</a>`;
-        pagination.appendChild(li);
-    }
-
-    const nextLi = document.createElement('li');
-    nextLi.className = `page-item ${currentPageMans === totalPages ? 'disabled' : ''}`;
-    nextLi.innerHTML = `<a class="page-link" href="#" onclick="changePageMans(${currentPageMans + 1})">Próximo</a>`;
-    pagination.appendChild(nextLi);
-}
-
-function changePageMans(page) {
-    const totalPages = Math.ceil(filteredMansData.length / pageSizeMans);
-    if (page >= 1 && page <= totalPages) {
-        currentPageMans = page;
-        renderTableMans();
-    }
-}
-
-function updateTableInfoMans() {
-    const startIndex = (currentPageMans - 1) * pageSizeMans + 1;
-    const endIndex = Math.min(currentPageMans * pageSizeMans, filteredMansData.length);
-    
-    document.getElementById('showingFromMans').textContent = filteredMansData.length > 0 ? startIndex : 0;
-    document.getElementById('showingToMans').textContent = endIndex;
-    document.getElementById('totalRecordsMans').textContent = filteredMansData.length;
-}
-
-function updateTotalRegistrosMans() {
-    document.getElementById('totalRegistrosMans').textContent = `${filteredMansData.length} MANs`;
-}
-
-function showErrorMans(message) {
-    document.getElementById('errorMessageMans').textContent = message;
-    document.getElementById('errorMans').style.display = 'block';
-}
-
-function clearFiltersMans() {
-    mansFilters = {
-        equipe: "",
-        status: "",
-        produto: "",
-        search: "",
-        ano: "",
-        data_inicio: "",
-        data_fim: "",
-        periodo: "ano_atual"
-    };
-
-    document.getElementById('filterEquipeMans').value = '';
-    document.getElementById('filterStatusMans').value = '';
-    document.getElementById('filterProdutoMans').value = '';
-    document.getElementById('searchMans').value = '';
-    document.getElementById('filterPeriodoMans').value = 'ano_atual';
-    document.getElementById('filterDataInicioMans').value = '';
-    document.getElementById('filterDataFimMans').value = '';
-    
-    // Esconder datas personalizadas
-    document.getElementById('datas-personalizadas-mans').style.display = 'none';
-    updatePeriodoTextoMans();
-    applyFiltersMans();
-}
+// ==========================================
+// EXPORTAÇÃO SIMPLIFICADA
+// ==========================================
 
 function exportFilteredCSVMans() {
-    console.log('Exportando MANs com filtros:', mansFilters);
+    console.log('Exportando MANs filtradas...', filteredMansData.length, 'registros');
     
-    const params = new URLSearchParams();
-    
-    // Filtros básicos
-    if (mansFilters.equipe) {
-        params.append('equipe', mansFilters.equipe);
+    if (!filteredMansData || filteredMansData.length === 0) {
+        alert('Nenhum dado para exportar com os filtros aplicados.');
+        return;
     }
-    
-    if (mansFilters.status) {
-        params.append('status', mansFilters.status);
-    }
-    
-    if (mansFilters.produto) {
-        params.append('produto', mansFilters.produto);
-    }
-    
-    if (mansFilters.search) {
-        params.append('busca', mansFilters.search);
-    }
-    
-    if (mansFilters.ano) {
-        params.append('ano', mansFilters.ano);
-    }
-    
-    // Filtros de período
-    if (mansFilters.periodo) {
-        params.append('periodo', mansFilters.periodo);
-    }
-    
-    // Datas personalizadas (se aplicável)
-    if (mansFilters.periodo === 'personalizado') {
-        if (mansFilters.data_inicio) {
-            params.append('data_inicio', mansFilters.data_inicio);
-        }
-        if (mansFilters.data_fim) {
-            params.append('data_fim', mansFilters.data_fim);
-        }
-    }
-    
-    // Adicionar informação sobre quantos registros serão exportados
-    params.append('total_registros', filteredMansData.length);
     
     const btnExport = document.getElementById('btnExportCSVMans');
     const originalText = btnExport.innerHTML;
     
-    // Feedback visual melhorado
+    // Feedback visual
     btnExport.innerHTML = `<i class="fas fa-spinner fa-spin me-2"></i>Exportando ${filteredMansData.length} MANs...`;
     btnExport.disabled = true;
     
-    const url = `/export/mans-filtered?${params.toString()}`;
-    
-    console.log('URL de exportação:', url);
-    
-    // Criar iframe para download
-    const iframe = document.createElement('iframe');
-    iframe.style.display = 'none';
-    iframe.src = url;
-    document.body.appendChild(iframe);
-    
-    // Restaurar botão após delay
-    setTimeout(() => {
-        btnExport.innerHTML = originalText;
-        btnExport.disabled = false;
-        document.body.removeChild(iframe);
+    try {
+        // Criar CSV
+        const csvContent = createCSVFromFilteredData();
+        
+        // Fazer download do arquivo
+        downloadCSV(csvContent, generateExportFilename());
         
         // Mostrar mensagem de sucesso
         showExportSuccessMans(filteredMansData.length);
-    }, 2000);
+        
+    } catch (error) {
+        console.error('Erro na exportação:', error);
+        alert('Erro ao exportar dados: ' + error.message);
+    } finally {
+        // Restaurar botão
+        setTimeout(() => {
+            btnExport.innerHTML = originalText;
+            btnExport.disabled = false;
+        }, 1000);
+    }
+}
+
+function createCSVFromFilteredData() {
+    // Cabeçalhos do CSV
+    const headers = [
+        'Número MAN',
+        'Resumo', 
+        'Equipe',
+        'Status',
+        'Produto',
+        'Responsável',
+        'Data Criação',
+        'Data Atualização',
+        'Data Resolução',
+        'Tempo Resolução (Dias)',
+        'Origem Abertura',
+        'Service Pack',
+        'Patch',
+        'Quantidade Vínculos',
+        'Chave Projeto',
+        'Tipo Issue',
+        'Situação'
+    ];
+    
+    // Função para formatar data
+    const formatDate = (dateStr) => {
+        if (!dateStr) return '';
+        try {
+            return new Date(dateStr).toLocaleDateString('pt-BR') + ' ' + 
+                   new Date(dateStr).toLocaleTimeString('pt-BR');
+        } catch {
+            return dateStr;
+        }
+    };
+    
+    // Função para calcular tempo de resolução
+    const calculateResolutionTime = (created, resolved) => {
+        if (!created || !resolved) return '';
+        try {
+            const createdDate = new Date(created);
+            const resolvedDate = new Date(resolved);
+            const diffTime = Math.abs(resolvedDate - createdDate);
+            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+            return diffDays.toString();
+        } catch {
+            return '';
+        }
+    };
+    
+    // Função para determinar situação
+    const getSituacao = (status, resolutionDate) => {
+        if (resolutionDate) return 'Resolvida';
+        if (['Closed', 'Done', 'Resolved'].includes(status)) return 'Fechada';
+        if (['In Progress', 'Development'].includes(status)) return 'Em Andamento';
+        return 'Aberta';
+    };
+    
+    // Criar linhas do CSV
+    const rows = filteredMansData.map(item => {
+        return [
+            item.Number || 'N/A',
+            (item.Summary || 'Sem resumo').replace(/"/g, '""'), // Escapar aspas
+            item.Equipe || 'Sem Equipe',
+            item.Status || 'Indefinido',
+            item.Produto || 'Sem Produto',
+            item.Assignee || 'Não Atribuído',
+            formatDate(item.Created),
+            formatDate(item.Updated),
+            formatDate(item.ResolutionDate),
+            calculateResolutionTime(item.Created, item.ResolutionDate),
+            item.OrigemAbertura || 'Não Informada',
+            item.ServicePackLiberacao || 'N/A',
+            item.PatchLiberacao || 'N/A',
+            item.QtdeVinculos || '0',
+            item.ProjectKey || 'N/A',
+            item.IssueType || 'N/A',
+            getSituacao(item.Status, item.ResolutionDate)
+        ];
+    });
+    
+    // Combinar cabeçalhos e dados
+    const csvData = [headers, ...rows];
+    
+    // Converter para string CSV com separador ponto e vírgula
+    return csvData.map(row => 
+        row.map(field => `"${field}"`).join(';')
+    ).join('\n');
+}
+
+function generateExportFilename() {
+    const timestamp = new Date().toISOString().slice(0, 19).replace(/[:-]/g, '');
+    const totalRecords = filteredMansData.length;
+    
+    let filename = `relatorio_mans_${totalRecords}registros_${timestamp}`;
+    
+    // Adicionar informações dos filtros aplicados
+    if (mansFilters.equipe) {
+        filename += `_equipe_${mansFilters.equipe.replace(/[^a-zA-Z0-9]/g, '_')}`;
+    }
+    
+    if (mansFilters.status) {
+        filename += `_status_${mansFilters.status.replace(/[^a-zA-Z0-9]/g, '_')}`;
+    }
+    
+    if (mansFilters.produto) {
+        filename += `_produto_${mansFilters.produto.replace(/[^a-zA-Z0-9]/g, '_')}`;
+    }
+    
+    if (mansFilters.search) {
+        filename += `_busca_${mansFilters.search.slice(0, 10).replace(/[^a-zA-Z0-9]/g, '_')}`;
+    }
+    
+    if (mansFilters.periodo !== 'ano_atual') {
+        filename += `_periodo_${mansFilters.periodo}`;
+    }
+    
+    return filename + '.csv';
+}
+
+function downloadCSV(csvContent, filename) {
+    // Adicionar BOM para UTF-8 (para que o Excel reconheça acentos)
+    const BOM = '\uFEFF';
+    const blob = new Blob([BOM + csvContent], { type: 'text/csv;charset=utf-8;' });
+    
+    // Criar link de download
+    const link = document.createElement('a');
+    if (link.download !== undefined) {
+        const url = URL.createObjectURL(blob);
+        link.setAttribute('href', url);
+        link.setAttribute('download', filename);
+        link.style.visibility = 'hidden';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+    } else {
+        // Fallback para navegadores antigos
+        window.open('data:text/csv;charset=utf-8,' + encodeURIComponent(csvContent));
+    }
 }
 
 function showExportSuccessMans(totalRegistros) {
@@ -1261,168 +1394,192 @@ function showExportSuccessMans(totalRegistros) {
     });
 }
 
-function updatePeriodoTextoMans() {
-    const periodoTexto = document.getElementById('periodo-texto-mans');
-    const periodo = mansFilters.periodo;
-    
-    const today = new Date();
-    const currentYear = today.getFullYear();
-    
-    let texto = '';
-    switch(periodo) {
-        case 'ano_atual':
-            texto = `${currentYear}`;
-            break;
-        case 'q1':
-            texto = `Q1 ${currentYear} (Jan-Mar)`;
-            break;
-        case 'q2':
-            texto = `Q2 ${currentYear} (Abr-Jun)`;
-            break;
-        case 'q3':
-            texto = `Q3 ${currentYear} (Jul-Set)`;
-            break;
-        case 'q4':
-            texto = `Q4 ${currentYear} (Out-Dez)`;
-            break;
-        case '6_meses':
-            texto = 'Últimos 6 Meses';
-            break;
-        case '3_meses':
-            texto = 'Últimos 3 Meses';
-            break;
-        case 'mes_atual':
-            texto = today.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
-            break;
-        case 'personalizado':
-            if (mansFilters.data_inicio && mansFilters.data_fim) {
-                texto = `${mansFilters.data_inicio} até ${mansFilters.data_fim}`;
-            } else if (mansFilters.data_inicio) {
-                texto = `A partir de ${mansFilters.data_inicio}`;
-            } else if (mansFilters.data_fim) {
-                texto = `Até ${mansFilters.data_fim}`;
-            } else {
-                texto = 'Personalizado (sem datas)';
-            }
-            break;
-        default:
-            texto = 'Todos os Períodos';
-    }
-    
-    if (periodoTexto) {
-        periodoTexto.textContent = texto;
-    }
+// ==========================================
+// FUNÇÕES AUXILIARES
+// ==========================================
+
+
+// Função de debounce para evitar muitas chamadas à API
+let debounceTimer;
+function debounceApiCall(func, delay = 1000) {
+    clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(func, delay);
 }
 
-// Event Listeners
-document.addEventListener('DOMContentLoaded', function() {
-    console.log('Inicializando página de MANs...');
-    
-    // Event listeners para filtros (aplicar automaticamente após mudança)
-    document.getElementById('filterEquipeMans').addEventListener('change', applyFiltersMans);
-    document.getElementById('filterStatusMans').addEventListener('change', applyFiltersMans);
-    document.getElementById('filterProdutoMans').addEventListener('change', applyFiltersMans);
-    
-    // Para a busca, aplicar com pequeno delay para evitar muitas requisições
-   // let searchTimeout;
-   // document.getElementById('searchMans').addEventListener('input', function() {
-   //     clearTimeout(searchTimeout);
-   //     searchTimeout = setTimeout(applyFiltersMans, 3000);
-   // });
+// Função para validar se uma data está no formato correto
+function isValidDate(dateString) {
+    if (!dateString) return false;
+    const regex = /^\d{4}-\d{2}-\d{2}$/;
+    if (!regex.test(dateString)) return false;
+    const date = new Date(dateString);
+    return date instanceof Date && !isNaN(date);
+}
 
-    // Para a busca, aplicar apenas quando sair do campo
-    document.getElementById('searchMans').addEventListener('blur', function() {
-        applyFiltersMans();
+function showErrorMans(message) {
+    document.getElementById('errorMessageMans').textContent = message;
+    document.getElementById('errorMans').style.display = 'block';
+}
+
+// ==========================================
+// EVENT LISTENERS
+// ==========================================
+
+// Esta função configura os event listeners existentes no DOMContentLoaded
+function setupEventListenersMans() {
+    console.log('Configurando event listeners para MANs...');
+    
+    // *** FILTROS FRONTEND - aplicam filtro imediatamente nos dados carregados ***
+    
+    // Equipe - filtro frontend
+    document.getElementById('filterEquipeMans').addEventListener('change', function() {
+        console.log('Mudança na equipe:', this.value);
+        applyFrontendFiltersMans();
+    });
+    
+    // Status - filtro frontend  
+    document.getElementById('filterStatusMans').addEventListener('change', function() {
+        console.log('Mudança no status:', this.value);
+        applyFrontendFiltersMans();
+    });
+    
+    // Produto - filtro frontend
+    document.getElementById('filterProdutoMans').addEventListener('change', function() {
+        console.log('Mudança no produto:', this.value);
+        applyFrontendFiltersMans();
+    });
+    
+    // Busca - filtro frontend com debounce
+    let searchTimeout;
+    document.getElementById('searchMans').addEventListener('input', function() {
+        console.log('Mudança na busca:', this.value);
+        clearTimeout(searchTimeout);
+        searchTimeout = setTimeout(() => {
+            applyFrontendFiltersMans();
+        }, 300); // Debounce de 300ms para não filtrar a cada tecla
     });
 
-    // Opcional: também aplicar quando pressionar Enter
-    document.getElementById('searchMans').addEventListener('keypress', function(e) {
-        if (e.key === 'Enter') {
-            this.blur(); // Remove o foco, que já vai acionar o applyFiltersMans
-        }
-    });
-
-    // Event listener para período (aplicar automaticamente)
+    // *** FILTROS BACKEND - recarregam dados do servidor ***
+    
+    // Período - chama backend
     document.getElementById('filterPeriodoMans').addEventListener('change', function() {
         const periodo = this.value;
         const datasPersonalizadas = document.getElementById('datas-personalizadas-mans');
 
+        console.log('=== MUDANÇA DE PERÍODO - BACKEND ===');
+        console.log('Período selecionado:', periodo);
+
+        mansFilters.periodo = periodo;
+
         if (periodo === 'personalizado') {
             datasPersonalizadas.style.display = 'block';
-
             const anoAtual = new Date().getFullYear();
             const dataInicio = `${anoAtual}-01-01`;
             const dataFim = `${anoAtual}-12-31`;
-
             document.getElementById('filterDataInicioMans').value = dataInicio;
             document.getElementById('filterDataFimMans').value = dataFim;
+            
+            mansFilters.data_inicio = dataInicio;
+            mansFilters.data_fim = dataFim;
         } else {
             datasPersonalizadas.style.display = 'none';
             document.getElementById('filterDataInicioMans').value = '';
             document.getElementById('filterDataFimMans').value = '';
+            
+            calculatePeriodDates();
         }
 
-        // Aplicar filtros automaticamente quando o período mudar
-        applyFiltersMans();
+        updatePeriodoTextoMans();
+        loadMansData(true, mansFilters); // Chamar backend
     });
 
-    // Event listeners para datas personalizadas
-    document.getElementById('filterDataInicioMans').addEventListener('change', function() {
+    // Datas personalizadas - chamam backend
+    document.getElementById('filterDataInicioMans').addEventListener('blur', function() {
         if (mansFilters.periodo === 'personalizado') {
-            applyFiltersMans();
+            const dataInicio = this.value;
+            if (isValidDate(dataInicio)) {
+                mansFilters.data_inicio = dataInicio;
+                console.log('Data início alterada (backend):', dataInicio);
+                debounceApiCall(() => loadMansData(true, mansFilters), 500);
+            } else if (dataInicio === '') {
+                mansFilters.data_inicio = '';
+            }
         }
     });
     
-    document.getElementById('filterDataFimMans').addEventListener('change', function() {
+    document.getElementById('filterDataFimMans').addEventListener('blur', function() {
         if (mansFilters.periodo === 'personalizado') {
-            applyFiltersMans();
+            const dataFim = this.value;
+            if (isValidDate(dataFim)) {
+                mansFilters.data_fim = dataFim;
+                console.log('Data fim alterada (backend):', dataFim);
+                debounceApiCall(() => loadMansData(true, mansFilters), 500);
+            } else if (dataFim === '') {
+                mansFilters.data_fim = '';
+            }
         }
     });
 
-    // Event listeners para botões
-    document.getElementById('btnAplicarFiltrosMans').addEventListener('click', applyFiltersMans);
-    document.getElementById('btnLimparFiltrosMans').addEventListener('click', clearFiltersMans);
+    // Atualização em tempo real do texto (só visual)
+    document.getElementById('filterDataInicioMans').addEventListener('input', function() {
+        if (mansFilters.periodo === 'personalizado') {
+            mansFilters.data_inicio = this.value;
+            updatePeriodoTextoMans();
+        }
+    });
+    
+    document.getElementById('filterDataFimMans').addEventListener('input', function() {
+        if (mansFilters.periodo === 'personalizado') {
+            mansFilters.data_fim = this.value;
+            updatePeriodoTextoMans();
+        }
+    });
 
-    // Event listener para tamanho da página
+    // *** BOTÕES - ações específicas ***
+    
+    // Aplicar filtros - backend
+    document.getElementById('btnAplicarFiltrosMans').addEventListener('click', function() {
+        console.log('Botão APLICAR clicado - chamando backend');
+        applyFiltersWithBackend();
+    });
+    
+    // Limpar filtros - backend  
+    document.getElementById('btnLimparFiltrosMans').addEventListener('click', function() {
+        console.log('Botão LIMPAR clicado - chamando backend');
+        clearFiltersMans();
+    });
+
+    // Refresh - carregamento inicial
+    document.getElementById('btnRefreshMans').addEventListener('click', function() {
+        console.log('Botão REFRESH clicado');
+        document.getElementById('tableContainerMans').style.display = 'none';
+        document.getElementById('errorMans').style.display = 'none';
+        document.getElementById('loadingMans').style.display = 'block';
+        loadMansData(false); // Carregamento inicial
+    });
+
+    // Tamanho da página
     document.getElementById('pageSizeMans').addEventListener('change', function() {
         pageSizeMans = parseInt(this.value);
         currentPageMans = 1;
         renderTableMans();
     });
 
-    // Event listeners para botões de ação
-    document.getElementById('btnRefreshMans').addEventListener('click', function() {
-        document.getElementById('tableContainerMans').style.display = 'none';
-        document.getElementById('errorMans').style.display = 'none';
-        document.getElementById('loadingMans').style.display = 'block';
-        loadMansData();
-    });
-
+    // Exportação
     document.getElementById('btnExportCSVMans').addEventListener('click', exportFilteredCSVMans);
-
-    // Carregar dados iniciais
-    loadMansData();
-});
+}
 
 
-// Event listeners atualizados
 document.addEventListener('DOMContentLoaded', function() {
-    console.log('Inicializando gráfico detalhado...');
+    console.log('Inicializando página de MANs com correções...');
     
-   
+    // Configurar todos os event listeners
+    setupEventListenersMans();
     
-    //  Hook para quando os filtros principais mudarem
-   
-    const originalApplyFrontend = window.applyFrontendFiltersMans;
-    if (originalApplyFrontend) {
-        window.applyFrontendFiltersMans = function() {
-            // Executar a função original
-            originalApplyFrontend.apply(this, arguments);
-            
-           
-        };
-    }
+    // Carregar dados iniciais (sem filtros aplicados)
+    loadMansData(false);
 });
+
+
 
 
 </script>

@@ -2210,6 +2210,131 @@ def get_mans_chart_data(conn, equipe_filter=None, periodo_filter='ano_atual', da
         }
         
 # ===============================
+# APIS PARA O Relatório DE MANS
+# ===============================
+@app.route('/api/mans-report-table-data')
+def mans_report_table_data_api():
+    try:
+        conn = db_manager.get_connection()
+        
+        # Obter parâmetros dos filtros
+        equipe_filter = request.args.get('equipe', '').strip()
+        status_filter = request.args.get('status', '').strip()
+        produto_filter = request.args.get('produto', '').strip()
+        busca_filter = request.args.get('busca', '').strip()
+        search_filter = request.args.get('search', '').strip()
+        periodo_filter = request.args.get('periodo', 'ano_atual')
+        data_inicio = request.args.get('data_inicio', '').strip()
+        data_fim = request.args.get('data_fim', '').strip()
+        
+        # Usar busca ou search (compatibilidade)
+        search_text = busca_filter or search_filter
+        
+        log_message(f"MANs Table API - Filtros recebidos: equipe={equipe_filter}, status={status_filter}, produto={produto_filter}, busca={search_text}, periodo={periodo_filter}, data_inicio={data_inicio}, data_fim={data_fim}")
+        
+        # Calcular datas baseadas no período se não fornecidas
+        if not data_inicio or not data_fim:
+            data_inicio, data_fim = calculate_period_dates_for_mans(periodo_filter)
+        
+        log_message(f"MANs Table API - Datas calculadas: inicio={data_inicio}, fim={data_fim}")
+        
+        # Query base com filtros aplicados no SQL
+        query = """
+        SELECT 
+            ID,
+            ISSUE_ID,
+            Number,
+            Project,
+            ProjectKey,
+            IssueType,
+            Summary,
+            Produto,
+            ParentEpicID,
+            ParentEpicNumber,
+            Equipe,
+            Assignee,
+            Status,
+            Created,
+            Updated,
+            ResolutionDate,
+            OrigemAbertura,
+            ServicePackLiberacao,
+            PatchLiberacao,
+            QtdeVinculos
+        FROM BI_Jira_US 
+        WHERE Project = 'MAN'
+        """
+        
+        params = []
+        
+        # Aplicar filtro de período se tiver
+        if data_inicio and data_fim:
+            query += " AND Created >= ? AND Created <= ?"
+            # Adicionar tempo para incluir o dia completo
+            data_fim_completo = data_fim + " 23:59:59"
+            params.extend([data_inicio, data_fim_completo])
+            log_message(f"MANs Table API - Filtro de período aplicado: {data_inicio} até {data_fim_completo}")
+        
+        # Aplicar outros filtros se fornecidos
+        if equipe_filter:
+            query += " AND ISNULL(Equipe, '') = ?"
+            params.append(equipe_filter)
+            
+        if status_filter:
+            query += " AND ISNULL(Status, '') = ?"
+            params.append(status_filter)
+            
+        if produto_filter:
+            query += " AND ISNULL(Produto, '') = ?"
+            params.append(produto_filter)
+        
+        query += " ORDER BY Created DESC"
+        
+        log_message(f"MANs Table Query: {query}")
+        log_message(f"MANs Table Params: {params}")
+        
+        # Executar query COM filtros aplicados
+        df = pd.read_sql(query, conn, params=params)
+        log_message(f"MANs Table - {len(df)} registros carregados do banco (COM filtros)")
+        
+        # Obter estatísticas baseadas nos dados filtrados
+        stats = get_mans_dashboard_stats(conn, equipe_filter, status_filter, produto_filter, 
+                                       periodo_filter, data_inicio, data_fim)
+        
+        # Converter datas para string
+        date_columns = ['Created', 'Updated', 'ResolutionDate']
+        for col in date_columns:
+            if col in df.columns and not df[col].empty:
+                df[col] = pd.to_datetime(df[col], errors='coerce').dt.strftime('%Y-%m-%d %H:%M:%S')
+        
+        # Converter para formato JSON
+        mans_data = convert_numpy_types(df.fillna('').to_dict('records'))
+        
+        conn.close()
+        
+        log_message(f"MANs Table - Retornando {len(mans_data)} registros")
+        
+        return jsonify({
+            'mans': mans_data,
+            'stats': stats,
+            'filtros_aplicados': {
+                'equipe': equipe_filter,
+                'status': status_filter,
+                'produto': produto_filter,
+                'busca': search_text,
+                'periodo': periodo_filter,
+                'data_inicio': data_inicio,
+                'data_fim': data_fim
+            }
+        })
+        
+    except Exception as e:
+        error_msg = f"Erro na API de tabela de MANs: {str(e)}"
+        log_message(error_msg)
+        return jsonify({'error': error_msg})
+
+
+# ===============================
 # APIS PARA O DASHBOARD DE MANS
 # ===============================
 
@@ -2230,6 +2355,7 @@ def mans_table_data_api():
         
         # Usar busca ou search (compatibilidade)
         search_text = busca_filter or search_filter
+        
         
         log_message(f"MANs Table API - Filtros: equipe={equipe_filter}, status={status_filter}, produto={produto_filter}, busca={search_text}, periodo={periodo_filter}")
         
@@ -2511,174 +2637,7 @@ def get_mans_dashboard_stats(conn, equipe_filter=None, status_filter=None, produ
             'taxa_resolucao': 0
         }
         
-    """API para estatísticas do dashboard de MANs com KPIs avançados"""
-    try:
-        conn = db_manager.get_connection()
-        
-        # Obter parâmetros dos filtros
-        equipe_filter = request.args.get('equipe', '').strip()
-        status_filter = request.args.get('status', '').strip()
-        produto_filter = request.args.get('produto', '').strip()
-        periodo_filter = request.args.get('periodo', 'ano_atual')
-        data_inicio = request.args.get('data_inicio', '').strip()
-        data_fim = request.args.get('data_fim', '').strip()
-        
-        # Calcular datas baseadas no período
-        data_inicio, data_fim = calculate_period_dates_for_mans(periodo_filter, data_inicio, data_fim)
-        
-        # Query base com filtros
-        where_conditions = ["Project = 'MAN'"]
-        params = []
-        
-        if equipe_filter:
-            where_conditions.append("ISNULL(Equipe, '') = ?")
-            params.append(equipe_filter)
-        
-        if status_filter:
-            where_conditions.append("ISNULL(Status, '') = ?")
-            params.append(status_filter)
-        
-        if produto_filter:
-            where_conditions.append("ISNULL(Produto, '') = ?")
-            params.append(produto_filter)
-        
-        if data_inicio and data_fim:
-            where_conditions.append("Created BETWEEN ? AND ?")
-            params.extend([data_inicio, data_fim])
-        
-        where_clause = " AND ".join(where_conditions)
-        
-        # 1. Estatísticas básicas
-        query_stats = f"""
-        SELECT 
-            COUNT(*) as total_mans,
-            SUM(CASE WHEN ResolutionDate IS NOT NULL THEN 1 ELSE 0 END) as mans_fechadas,
-            COUNT(*) - SUM(CASE WHEN ResolutionDate IS NOT NULL THEN 1 ELSE 0 END) as mans_abertas,
-            COUNT(DISTINCT ISNULL(Equipe, 'Sem Equipe')) as total_equipes,
-            AVG(CASE 
-                WHEN ResolutionDate IS NOT NULL AND Created IS NOT NULL 
-                THEN DATEDIFF(day, Created, ResolutionDate)
-                ELSE NULL 
-            END) as tempo_medio_resolucao
-        FROM BI_Jira_US
-        WHERE {where_clause}
-        """
-        
-        df_stats = pd.read_sql(query_stats, conn, params=params)
-        stats = convert_numpy_types(df_stats.iloc[0].to_dict()) if not df_stats.empty else {}
-        
-        # 2. MANs críticas (simulação - você pode ajustar conforme sua regra)
-        query_criticas = f"""
-        SELECT COUNT(*) as mans_criticas
-        FROM BI_Jira_US
-        WHERE {where_clause}
-        AND (
-            Priority IN ('High', 'Critical', 'Highest') OR
-            DATEDIFF(day, Created, GETDATE()) > 30
-        )
-        """
-        
-        df_criticas = pd.read_sql(query_criticas, conn, params=params)
-        if not df_criticas.empty:
-            stats['mans_criticas'] = convert_numpy_types(df_criticas.iloc[0]['mans_criticas'])
-        else:
-            stats['mans_criticas'] = 0
-        
-        # 3. SLA Atrasado (MANs abertas há mais de X dias)
-        query_sla = f"""
-        SELECT COUNT(*) as sla_atrasado
-        FROM BI_Jira_US
-        WHERE {where_clause}
-        AND ResolutionDate IS NULL
-        AND DATEDIFF(day, Created, GETDATE()) > 15
-        """
-        
-        df_sla = pd.read_sql(query_sla, conn, params=params)
-        if not df_sla.empty:
-            stats['sla_atrasado'] = convert_numpy_types(df_sla.iloc[0]['sla_atrasado'])
-        else:
-            stats['sla_atrasado'] = 0
-        
-        # 4. Backlog total (todas as MANs abertas, independente do período)
-        query_backlog = """
-        SELECT COUNT(*) as backlog_total
-        FROM BI_Jira_US
-        WHERE Project = 'MAN'
-        AND ResolutionDate IS NULL
-        """
-        
-        backlog_params = []
-        if equipe_filter:
-            query_backlog += " AND ISNULL(Equipe, '') = ?"
-            backlog_params.append(equipe_filter)
-        
-        df_backlog = pd.read_sql(query_backlog, conn, params=backlog_params)
-        if not df_backlog.empty:
-            stats['backlog_total'] = convert_numpy_types(df_backlog.iloc[0]['backlog_total'])
-        else:
-            stats['backlog_total'] = 0
-        
-        # 5. Taxa de resolução
-        total_mans = stats.get('total_mans', 0)
-        mans_fechadas = stats.get('mans_fechadas', 0)
-        if total_mans > 0:
-            stats['taxa_resolucao'] = (mans_fechadas / total_mans) * 100
-        else:
-            stats['taxa_resolucao'] = 0
-        
-        # 6. Dados para gráfico de distribuição por status
-        query_status = f"""
-        SELECT 
-            ISNULL(Status, 'Indefinido') as status,
-            COUNT(*) as quantidade
-        FROM BI_Jira_US
-        WHERE {where_clause}
-        GROUP BY Status
-        ORDER BY quantidade DESC
-        """
-        
-        df_status = pd.read_sql(query_status, conn, params=params)
-        status_distribution = convert_numpy_types(df_status.to_dict('records')) if not df_status.empty else []
-        
-        # 7. Performance por equipe (para o gráfico de performance)
-        query_performance = f"""
-        SELECT 
-            ISNULL(Equipe, 'Sem Equipe') as equipe,
-            COUNT(*) as total,
-            SUM(CASE WHEN ResolutionDate IS NOT NULL THEN 1 ELSE 0 END) as resolvidas,
-            AVG(CASE 
-                WHEN ResolutionDate IS NOT NULL AND Created IS NOT NULL 
-                THEN DATEDIFF(day, Created, ResolutionDate)
-                ELSE NULL 
-            END) as tempo_medio
-        FROM BI_Jira_US
-        WHERE {where_clause}
-        GROUP BY Equipe
-        ORDER BY equipe
-        """
-        
-        df_performance = pd.read_sql(query_performance, conn, params=params)
-        performance_data = convert_numpy_types(df_performance.to_dict('records')) if not df_performance.empty else []
-        
-        conn.close()
-        
-        return jsonify({
-            'stats': stats,
-            'status_distribution': status_distribution,
-            'performance_data': performance_data,
-            'periodo_info': {
-                'periodo_selecionado': periodo_filter,
-                'data_inicio': data_inicio,
-                'data_fim': data_fim,
-                'descricao': get_periodo_description(periodo_filter)
-            }
-        })
-        
-    except Exception as e:
-        error_msg = f"Erro na API de estatísticas do dashboard de MANs: {str(e)}"
-        log_message(error_msg)
-        return jsonify({'error': error_msg})
-
+    
 def calculate_period_dates_for_mans(periodo_filter, data_inicio_custom=None, data_fim_custom=None):
     """Função auxiliar para calcular datas do período para MANs"""
     today = datetime.now()
